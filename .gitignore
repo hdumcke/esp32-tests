@@ -1,3 +1,17 @@
+# MacOS directory files
+.DS_Store
+
+# VIM files
+*.swp
+*.swo
+
+# cache dir
+.cache/
+
+# ESP-IDF default build directory name
+build
+sdkconfig.old
+
 # Prerequisites
 *.d
 
