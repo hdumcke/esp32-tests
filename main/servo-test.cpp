@@ -15,17 +15,21 @@ public:
         vTaskDelay(500 / portTICK_RATE_MS);
         this->WritePos(0xfe, 0, 1000);
         vTaskDelay(1000 / portTICK_RATE_MS);
-    
-        for(i = 0; i<1024; i++)
-        {
-          this->WritePos(0xfe,i,20);
-          printf("Hello world!\n");
-          vTaskDelay(20 / portTICK_RATE_MS);
-        }
-        for(i = 1023; i > 0; i--)
-        {
-          this->WritePos(0xfe,i,10);
-          vTaskDelay(10 / portTICK_RATE_MS);
+   
+        while(1) {	
+          printf("Start of Cycle!\n");
+          for(i = 0; i<1024; i++)
+          {
+            this->WritePos(0xfe,i,20);
+            printf("Position: %d\n", i);
+            vTaskDelay(20 / portTICK_RATE_MS);
+          }
+          for(i = 1023; i > 0; i--)
+          {
+            this->WritePos(0xfe,i,10);
+            printf("Position: %d\n", i);
+            vTaskDelay(10 / portTICK_RATE_MS);
+          }
         }
     }
 };
@@ -58,7 +62,7 @@ extern "C" void app_main(void)
 #endif
     ESP_ERROR_CHECK(uart_driver_install(UART_NUM_2, 2*1024, 0, 0, NULL, 0));
     ESP_ERROR_CHECK(uart_param_config(UART_NUM_2, &uart_config));
-    ESP_ERROR_CHECK(uart_set_pin(UART_NUM_2, 5, 4, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
+    ESP_ERROR_CHECK(uart_set_pin(UART_NUM_2, 4, 5, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
     SERVO servo;
     servo.uart_port_num = UART_NUM_2;
 
