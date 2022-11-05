@@ -85,8 +85,7 @@ void SERVO::setPosition(u8 servoID, u16 position) {
 }
 
 void SERVO::setID(u8 servoID, u8 newID) {
-	printf("setID: %d %d\r\n", servoID, newID);
-}
-
-void SERVO::readServo(u8 servoID) {
+	unLockEprom(servoID);
+	writeByte(servoID, SCSCL_ID, newID);
+	LockEprom(newID);
 }

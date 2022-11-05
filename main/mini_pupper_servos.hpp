@@ -15,7 +15,6 @@ public:
     void setEndPos(u8 servoID);
     void setPosition(u8 servoID, u16 position);
     void setID(u8 servoID, u8 newID);
-    void readServo(u8 servoID);
     bool isEnabled; 
 };
 
