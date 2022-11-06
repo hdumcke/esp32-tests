@@ -1,9 +1,12 @@
 #include "QMI8658C.h"
+#include "esp_log.h"
+#include "driver/i2c.h"
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
 
-#define I2C_Freq 400000
+#define I2C_MASTER_TIMEOUT_MS       1000
 
-#define SDA_1 41
-#define SCL_1 42
+#define I2C_MASTER_NUM    I2C_NUM_0
 
 #define I2C_DEV_ADDR (uint8_t)0x6B //0b1101010+1b (A0=GND)
 
@@ -70,10 +73,8 @@
 #define QMI8658C_ACC_GYRO_OUTZ_H_V_REG			0x56
 
 
-QMI8658C::QMI8658C() : 
-_I2C(TwoWire(1)) // I2C1
+QMI8658C::QMI8658C()
 {
-
 }
 
 struct imu_configuration
@@ -90,76 +91,50 @@ uint8_t QMI8658C::init()
     {QMI8658C_ACC_GYRO_CTRL2_ACC_REG, 0b00000101 }, // 0b00000101 2g aODR = 235Hz
     {QMI8658C_ACC_GYRO_CTRL3_G_REG,   0b01110101 }  // 0b01110101 2048dps gODR = 235Hz
   };
-  
-  delay(150);
-  _I2C.begin(SDA_1 , SCL_1 , I2C_Freq );
 
   for(size_t index=0; index < 4; ++index)
   {
     uint8_t error = write_byte(config[index].reg,config[index].value);
     if(error!=0) return index*10;
-    delay(10);
-    uint8_t value = 0;
-    error = read_byte(config[index].reg,value);
-    if(error!=1) return index*10+1; 
-    if(value!=config[index].value) return index*10+2;
-    delay(10);
+    vTaskDelay(10 / portTICK_RATE_MS);
+    uint8_t data[2];
+    error = read_bytes(config[index].reg, data, 1);
+    if(error) return index*10+1; 
+    if(data[0]!=config[index].value) return index*10+2;
+    vTaskDelay(10 / portTICK_RATE_MS);
   }
   return 0;
 }
 
-uint8_t QMI8658C::write_byte(uint8_t address, uint8_t data)
+uint8_t QMI8658C::write_byte(uint8_t reg_addr, uint8_t data)
 {
-  _I2C.beginTransmission(I2C_DEV_ADDR);
-  _I2C.write(address);
-  _I2C.write(data);
-  uint8_t const error = _I2C.endTransmission();
-  return error;
+    int ret;
+    uint8_t write_buf[2] = {reg_addr, data};
+
+    ret = i2c_master_write_to_device(I2C_MASTER_NUM, I2C_DEV_ADDR, write_buf, sizeof(write_buf), I2C_MASTER_TIMEOUT_MS / portTICK_PERIOD_MS);
+
+    return ret;
 }
 
-uint8_t QMI8658C::read_byte(uint8_t address, uint8_t & data)
+uint8_t QMI8658C::read_bytes(uint8_t reg_addr, uint8_t data[], uint8_t size)
 {
-  _I2C.beginTransmission(I2C_DEV_ADDR);
-  _I2C.write(address);
-  uint8_t error = _I2C.endTransmission();
-  uint8_t const bytesReceived = _I2C.requestFrom(I2C_DEV_ADDR, (uint8_t)1);
-  if(bytesReceived==1)
-    data = _I2C.read();
-  return bytesReceived;
-}
-
-uint8_t QMI8658C::read_bytes(uint8_t address, uint8_t data[], uint8_t size)
-{
-  _I2C.beginTransmission(I2C_DEV_ADDR);
-  _I2C.write(address);
-  uint8_t const error = _I2C.endTransmission();
-  uint8_t const bytesReceived = _I2C.requestFrom(I2C_DEV_ADDR, size);
-  for(size_t index=0; index<bytesReceived;++index)
-    data[index] = _I2C.read();
-  return bytesReceived;
+  return i2c_master_write_read_device(I2C_MASTER_NUM, I2C_DEV_ADDR, &reg_addr, 1, data, size, I2C_MASTER_TIMEOUT_MS / portTICK_PERIOD_MS);
 }
 
 uint8_t QMI8658C::read_6dof()
 {
-  _I2C.beginTransmission(I2C_DEV_ADDR);
-  _I2C.write(QMI8658C_ACC_GYRO_OUTX_L_XL_REG);
-  uint8_t const error = _I2C.endTransmission();
-  if(error!=0) return 5;
-  uint8_t bytesReceived = _I2C.requestFrom(I2C_DEV_ADDR, (uint8_t)12);
+  uint8_t raw[12];
+  uint8_t reg_addr = QMI8658C_ACC_GYRO_OUTX_L_XL_REG;
+  uint8_t err = i2c_master_write_read_device(I2C_MASTER_NUM, I2C_DEV_ADDR, &reg_addr, 1, raw, sizeof(raw), I2C_MASTER_TIMEOUT_MS / portTICK_PERIOD_MS);
 
-  if(bytesReceived==12)
+  if(!err)
   {
-    uint8_t raw[12];
-    for(size_t index=0;index<12;++index)
-      raw[index]=_I2C.read();
-    
     acc.x = 1.0/16384.0*((int16_t)(raw[1]<<8) | raw[0]);
     acc.y = 1.0/16384.0*((int16_t)(raw[3]<<8) | raw[2]);
     acc.z = 1.0/16384.0*((int16_t)(raw[5]<<8) | raw[4]);
     gyro.x = 1.0/16.0* ((int16_t)(raw[7]<<8) | raw[6]);
     gyro.y = 1.0/16.0* ((int16_t)(raw[9]<<8) | raw[8]);
     gyro.z = 1.0/16.0* ((int16_t)(raw[11]<<8) | raw[10]);
-    return 0;
   }
   else
   {
@@ -176,18 +151,12 @@ uint8_t QMI8658C::read_6dof()
 
 uint8_t QMI8658C::read_attitude()
 {
-  _I2C.beginTransmission(I2C_DEV_ADDR);
-  _I2C.write(QMI8658C_ACC_GYRO_OUTW_L_Q_REG);
-  uint8_t const error = _I2C.endTransmission();
-  if(error!=0) return 5;
-  uint8_t bytesReceived = _I2C.requestFrom(I2C_DEV_ADDR, (uint8_t)16);
+  uint8_t raw[16];
+  uint8_t reg_addr = QMI8658C_ACC_GYRO_OUTW_L_Q_REG;
+  uint8_t err = i2c_master_write_read_device(I2C_MASTER_NUM, I2C_DEV_ADDR, &reg_addr, 1, raw, sizeof(raw), I2C_MASTER_TIMEOUT_MS / portTICK_PERIOD_MS);
 
-  if(bytesReceived==16)
+  if(!err)
   {
-    uint8_t raw[16];
-    for(size_t index=0;index<16;++index)
-      raw[index]=_I2C.read();
-    
     dq.w = 1.0/16384.0*((int16_t)(raw[1]<<8) | raw[0]);
     dq.v.x = 1.0/16384.0*((int16_t)(raw[3]<<8) | raw[2]);
     dq.v.y = 1.0/16384.0*((int16_t)(raw[5]<<8) | raw[4]);
@@ -197,7 +166,6 @@ uint8_t QMI8658C::read_attitude()
     dv.z = 1.0/1024.0* ((int16_t)(raw[13]<<8) | raw[12]);
     ae_reg1 = raw[14];
     ae_reg2 = raw[15];
-    return 0;
   }
   else
   {
@@ -217,15 +185,15 @@ uint8_t QMI8658C::read_attitude()
 
 uint8_t QMI8658C::who_am_i()
 {
-  uint8_t value = 0;
-  read_byte(QMI8658C_WHO_AM_I_REG,value);
-  return value;
+  uint8_t data[2];
+  read_bytes(QMI8658C_WHO_AM_I_REG, data, 1);
+  return data[0];
 }
 
 uint8_t QMI8658C::version()
 {
-  uint8_t value = 0;
-  read_byte(QMI8658C_WHO_AM_I_REG+1,value);
-  return value;
+  uint8_t data[2];
+  read_bytes(QMI8658C_WHO_AM_I_REG+1, data, 1);
+  return data[0];
 }
 

@@ -1,4 +1,4 @@
-#include "mini_pupper_servos.hpp"
+#include "mini_pupper_servos.h"
 #include "driver/uart.h"
 #include "driver/gpio.h"
 #include "hal/gpio_hal.h"

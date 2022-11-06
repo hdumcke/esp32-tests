@@ -1,6 +1,9 @@
-#include "Wire.h"
+#include <stdint.h>
 #include "vector_type.h"
 #include "quaternion_type.h"
+
+#ifndef QMI8658C_h
+#define QMI8658C_h
 
 struct QMI8658C
 {
@@ -23,12 +26,9 @@ struct QMI8658C
 
 protected:
 
-  uint8_t write_byte(uint8_t address, uint8_t data);
-  uint8_t read_byte(uint8_t address, uint8_t & data);
-  uint8_t read_bytes(uint8_t address, uint8_t data[], uint8_t size);
-
-private:
-  
-  TwoWire _I2C;
+  uint8_t write_byte(uint8_t reg_addr, uint8_t data);
+  uint8_t read_byte(uint8_t reg_addr, uint8_t *data);
+  uint8_t read_bytes(uint8_t reg_addr, uint8_t data[], uint8_t size);
 };
 
+#endif
