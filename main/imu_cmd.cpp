@@ -84,7 +84,7 @@ static int imu_cmd_read_6dof(int argc, char **argv)
         else {
             printf("%f\t%f\t%f\t%f\t%f\t%f \r\n", imu.acc.x, imu.acc.y, imu.acc.z, imu.gyro.x, imu.gyro.y, imu.gyro.z);
         }
-	vTaskDelay(200 / portTICK_RATE_MS);
+	vTaskDelay(200 / portTICK_PERIOD_MS);
     }
     return 0;
 }
@@ -112,7 +112,7 @@ static int imu_cmd_read_attitude(int argc, char **argv)
         else {
             printf("%f\t%f\t%f\t%f\t%f\t%f\t%f\t%d\t%d \r\n", imu.dq.w, imu.dq.v.x, imu.dq.v.y, imu.dq.v.x, imu.dv.x, imu.dv.y, imu.dv.z, imu.ae_reg1, imu.ae_reg2);
         }
-	vTaskDelay(200 / portTICK_RATE_MS);
+	vTaskDelay(200 / portTICK_PERIOD_MS);
     }
     return 0;
 }

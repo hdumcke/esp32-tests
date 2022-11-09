@@ -96,12 +96,12 @@ uint8_t QMI8658C::init()
   {
     uint8_t error = write_byte(config[index].reg,config[index].value);
     if(error!=0) return index*10;
-    vTaskDelay(10 / portTICK_RATE_MS);
+    vTaskDelay(10 / portTICK_PERIOD_MS);
     uint8_t data[2];
     error = read_bytes(config[index].reg, data, 1);
     if(error) return index*10+1; 
     if(data[0]!=config[index].value) return index*10+2;
-    vTaskDelay(10 / portTICK_RATE_MS);
+    vTaskDelay(10 / portTICK_PERIOD_MS);
   }
   return 0;
 }

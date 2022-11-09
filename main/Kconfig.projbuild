@@ -1,5 +1,12 @@
 menu "Mini Pupper Configuration"
 
+    config RASPI_CONTROLLED
+        bool "Is the device controlled by Raspi"
+        default n
+        help
+            Currently only once conection to seros and IMU possible. 
+            
+
     config CONSOLE_STORE_HISTORY
         bool "Store command history in flash"
         default y

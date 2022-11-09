@@ -2,8 +2,14 @@
 #include "driver/uart.h"
 #include "driver/gpio.h"
 #include "hal/gpio_hal.h"
+#include "esp_log.h"
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
+
+static const char *TAG = "MINIPUPPERSERVOS";
+
+// number of retries for servo functions
+int retries = 3;
 
 SERVO::SERVO() {
     // setup enable pin
@@ -27,10 +33,10 @@ SERVO::SERVO() {
 #elif SOC_UART_SUPPORT_XTAL_CLK
     uart_config.source_clk = UART_SCLK_XTAL;
 #endif
-    ESP_ERROR_CHECK(uart_driver_install(UART_NUM_2, 2*1024, 0, 0, NULL, 0));
-    ESP_ERROR_CHECK(uart_param_config(UART_NUM_2, &uart_config));
-    ESP_ERROR_CHECK(uart_set_pin(UART_NUM_2, 4, 5, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
-    this->uart_port_num = UART_NUM_2;
+    ESP_ERROR_CHECK(uart_driver_install(UART_NUM_1, 2*1024, 0, 0, NULL, 0));
+    ESP_ERROR_CHECK(uart_param_config(UART_NUM_1, &uart_config));
+    ESP_ERROR_CHECK(uart_set_pin(UART_NUM_1, 4, 5, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
+    this->uart_port_num = UART_NUM_1;
     this->disable();
 }
 
@@ -47,41 +53,74 @@ void SERVO::enable() {
 void SERVO::rotate(u8 servoID) {
     int i;
     this->EnableTorque(servoID,1);
-    vTaskDelay(500 / portTICK_RATE_MS);
-    this->WritePos(servoID, 0, 1000);
-    vTaskDelay(1000 / portTICK_RATE_MS);
+    setPosition(servoID, 0);
    
-    while(1) {	
+    for(int l=0; l<5; l++) {	
       printf("Start of Cycle!\n");
       for(i = 0; i<1024; i++)
       {
-        this->WritePos(servoID,i,20);
+        setPosition(servoID,i);
         printf("Position: %d\n", i);
-        vTaskDelay(20 / portTICK_RATE_MS);
       }
       for(i = 1023; i > 0; i--)
       {
-        this->WritePos(servoID,i,10);
+        setPosition(servoID,i);
         printf("Position: %d\n", i);
-        vTaskDelay(10 / portTICK_RATE_MS);
       }
     }
 }
 
 void SERVO::setStartPos(u8 servoID) {
-    this->WritePos(servoID, 0, 10);
+    setPosition(servoID, 0);
 }
 
 void SERVO::setMidPos(u8 servoID) {
-    this->WritePos(servoID, 512, 10);
+    setPosition(servoID, 511);
 }
 
 void SERVO::setEndPos(u8 servoID) {
-    this->WritePos(servoID, 1023, 10);
+    setPosition(servoID, 1023);
 }
 
 void SERVO::setPosition(u8 servoID, u16 position) {
-    this->WritePos(servoID, position, 10);
+    int retry_counter = retries;
+    for( int i=0; i<retry_counter; i++) {
+        this->WritePos(servoID, position, 100);
+	if(!this->Err) { 
+	    retry_counter = 0;
+        }
+	else {
+            ESP_LOGI(TAG, "Retrying WritePos((%d)", servoID);
+            vTaskDelay(20 / portTICK_PERIOD_MS);
+	}
+    }
+}
+
+bool SERVO::checkPosition(u8 servoID, u16 position) {
+    static int accuracy = 5; //allow position to be within +/- accuracy
+    int pos = 0;
+    bool ret = false;
+    int retry_counter = retries;
+    
+    for( int i=0; i<retry_counter; i++) {
+        pos = this->ReadPos(servoID);
+	if(!this->Err) { 
+	    retry_counter = 0;
+        }
+	else {
+            ESP_LOGI(TAG, "Retrying ReadPos(%d)", servoID);
+            vTaskDelay(20 / portTICK_PERIOD_MS);
+	}
+    }
+    ret = (pos>=(position-accuracy) && pos<=(position+accuracy));
+    //ESP_LOGI(TAG, "Position: %d FeedBack %d Servo: %d %d", pos, this->FeedBack(servoID), servoID, ret);
+    ESP_LOGI(TAG, "Position: %d Speed %d Servo: %d %d", pos, this->ReadSpeed(servoID), servoID, ret);
+    //ESP_LOGI(TAG, "Position: %d Load %d Servo: %d %d", pos, this->ReadLoad(servoID), servoID, ret);
+    //ESP_LOGI(TAG, "Position: %d Voltage %d Servo: %d %d", pos, this->ReadSpeed(servoID), servoID, ret);
+    //ESP_LOGI(TAG, "Position: %d Temper %d Servo: %d %d", pos, this->ReadSpeed(servoID), servoID, ret);
+    //ESP_LOGI(TAG, "Position: %d Move %d Servo: %d %d", pos, this->ReadSpeed(servoID), servoID, ret);
+    //ESP_LOGI(TAG, "Position: %d Current %d Servo: %d %d", pos, this->ReadSpeed(servoID), servoID, ret);
+    return ret;
 }
 
 void SERVO::setID(u8 servoID, u8 newID) {

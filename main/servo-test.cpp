@@ -1,5 +1,6 @@
 #include "servo_cmd.h"
 #include "imu_cmd.h"
+#include "uart_server.h"
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <stdio.h>
@@ -59,6 +60,8 @@ static void initialize_nvs(void)
 
 extern "C" void app_main(void)
 {
+
+    /* start i2c bus */
     i2c_config_t conf;
     conf.mode = I2C_MODE_MASTER;
     conf.sda_io_num = I2C_MASTER_SDA_IO;
@@ -90,8 +93,13 @@ extern "C" void app_main(void)
 
     /* Register commands */
     esp_console_register_help_command();
+#if CONFIG_RASPI_CONTROLLED
+    /* start UART server for Raspberry Pi communication */
+    UARTServer uart_server;
+#else
     register_servo_cmds();
     register_imu_cmds();
+#endif
     register_system();
     register_wifi();
 
