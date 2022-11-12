@@ -10,6 +10,7 @@ import random
 import math
 import time
 import binascii
+import struct
 
 class ParserStates(Enum):
     idle    = 0
@@ -156,10 +157,12 @@ class PeriodicAction:
     #    ser.write( parseProtocol.compileMessage('R',0xFE) )
 
         data  = bytearray()
-        if self.code == 0x27:
-            data += int(round(time.time() * 1000)).to_bytes(length=8,byteorder='little', signed=True)
         self.only_once = False
         self.command = 'R'
+        if self.code == 0x27:
+            self.command = 'W'
+            data += int(round(time.time() * 1000)).to_bytes(length=8,byteorder='little', signed=True)
+            #print("%s\n" % binascii.hexlify(data));
         # enable
         if(self.code == 0x70):
             self.only_once = True
@@ -190,7 +193,7 @@ class PeriodicAction:
             self.only_once = True
         # 0x75, "servo get get feedback"
         if(self.code == 0x75):
-            self.only_once = False
+            self.only_once = True
         # 0x76, "servo get get speed"
         if(self.code == 0x76):
             self.only_once = True
@@ -210,7 +213,13 @@ class PeriodicAction:
         if(self.code == 0x7B):
             self.only_once = True
         # 0x7C, "servo ping"
-        if(self.code == 0x7B):
+        if(self.code == 0x7C):
+            self.only_once = True
+        # 0x7D, "imu read 6dof",
+        if(self.code == 0x7D):
+            self.only_once = False
+        # 0x7E, "imu read attitude",
+        if(self.code == 0x7E):
             self.only_once = True
         msg = parseProtocol.compileMessage(self.command, self.code, data)
         ser.write( msg )
@@ -258,14 +267,32 @@ if __name__ == "__main__":
            receivedPacket.code=='77' or \
            receivedPacket.code=='78' or \
            receivedPacket.code=='79' or \
-           receivedPacket.code=='7A' or \
-           receivedPacket.code=='7B' or \
-           receivedPacket.code=='7C':
+           receivedPacket.code=='7a' or \
+           receivedPacket.code=='7b' or \
+           receivedPacket.code=='7c':
            ret = receivedPacket.rawDecoded[5:-1]
            ret_array = []
            for i in range(0, len(ret), 2):
                ret_array.append(int.from_bytes(ret[i:i+2], 'little'))
            print("%s %s" % (receivedPacket.CI, ret_array))
+        if receivedPacket.code=='7d':
+           ret = receivedPacket.rawDecoded[5:-1]
+           ret_dict = { 'acc': [], 'gyro': [] }
+           for i in range(0, 12, 4):
+               ret_dict['acc'].append(struct.unpack('f', ret[i:i+4])[0])
+           for i in range(12, 24, 4):
+               ret_dict['gyro'].append(struct.unpack('f', ret[i:i+4])[0])
+           print("%s %s" % (receivedPacket.CI, ret_dict))
+        if receivedPacket.code=='7e':
+           ret = receivedPacket.rawDecoded[5:-1]
+           ret_dict = { 'dq': [], 'dv': [], 'ae_reg1': 0, 'ae_reg2': 0 }
+           for i in range(0, 16, 4):
+               ret_dict['dq'].append(struct.unpack('f', ret[i:i+4])[0])
+           for i in range(16, 28, 4):
+               ret_dict['dv'].append(struct.unpack('f', ret[i:i+4])[0])
+           ret_dict['ae_reg1'] = int(ret[29])
+           ret_dict['ae_reg1'] = int(ret[30])
+           print("%s %s" % (receivedPacket.CI, ret_dict))
         # print('ACK', receivedPacket.ACK, 'CMD', receivedPacket.CMD, 'CI', receivedPacket.CI, 'LEN', receivedPacket.LEN, 'code', receivedPacket.code, receivedPacket.rawDecoded)
       #  if receivedPacket.rawDecoded != bytearray():
        #     print(receivedPacket)

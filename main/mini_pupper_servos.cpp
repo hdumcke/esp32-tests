@@ -38,6 +38,8 @@ SERVO::SERVO() {
     ESP_ERROR_CHECK(uart_set_pin(UART_NUM_1, 4, 5, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
     this->uart_port_num = UART_NUM_1;
     this->disable();
+    this->disableTorque();
+    write_type = swt_gen;
 }
 
 void SERVO::disable() {
@@ -50,9 +52,18 @@ void SERVO::enable() {
     isEnabled = true;
 }
 
+void SERVO::enableTorque() {
+    this->EnableTorque(0xFE, 1);
+    isTorqueEnabled = true;
+}
+
+void SERVO::disableTorque() {
+    this->EnableTorque(0xFE, 0);
+    isTorqueEnabled = false;
+}
+
 void SERVO::rotate(u8 servoID) {
     int i;
-    this->EnableTorque(servoID,1);
     setPosition(servoID, 0);
    
     for(int l=0; l<5; l++) {	
@@ -82,22 +93,33 @@ void SERVO::setEndPos(u8 servoID) {
     setPosition(servoID, 1023);
 }
 
-void SERVO::setPosition(u8 servoID, u16 position) {
+int SERVO::setPosition(u8 servoID, u16 position, u16 speed) {
     int retry_counter = retries;
+
     for( int i=0; i<retry_counter; i++) {
-        this->WritePos(servoID, position, 100);
+        switch(write_type) {
+            case swt_gen:
+                this->WritePos(servoID, position, speed);
+		break;
+            case swt_reg:
+                this->RegWritePos(servoID, position, speed);
+		break;
+            default:
+		break;
+	}
 	if(!this->Err) { 
-	    retry_counter = 0;
+	    return i;
         }
 	else {
             ESP_LOGI(TAG, "Retrying WritePos((%d)", servoID);
             vTaskDelay(20 / portTICK_PERIOD_MS);
 	}
     }
+
+    return 999; //too many retries
 }
 
-bool SERVO::checkPosition(u8 servoID, u16 position) {
-    static int accuracy = 5; //allow position to be within +/- accuracy
+bool SERVO::checkPosition(u8 servoID, u16 position, int accuracy = 5) {
     int pos = 0;
     bool ret = false;
     int retry_counter = retries;
@@ -114,7 +136,7 @@ bool SERVO::checkPosition(u8 servoID, u16 position) {
     }
     ret = (pos>=(position-accuracy) && pos<=(position+accuracy));
     //ESP_LOGI(TAG, "Position: %d FeedBack %d Servo: %d %d", pos, this->FeedBack(servoID), servoID, ret);
-    ESP_LOGI(TAG, "Position: %d Speed %d Servo: %d %d", pos, this->ReadSpeed(servoID), servoID, ret);
+    //ESP_LOGI(TAG, "Position: %d Speed %d Servo: %d %d", pos, this->ReadSpeed(servoID), servoID, ret);
     //ESP_LOGI(TAG, "Position: %d Load %d Servo: %d %d", pos, this->ReadLoad(servoID), servoID, ret);
     //ESP_LOGI(TAG, "Position: %d Voltage %d Servo: %d %d", pos, this->ReadSpeed(servoID), servoID, ret);
     //ESP_LOGI(TAG, "Position: %d Temper %d Servo: %d %d", pos, this->ReadSpeed(servoID), servoID, ret);
