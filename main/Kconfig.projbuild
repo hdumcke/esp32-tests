@@ -1,10 +1,10 @@
 menu "Mini Pupper Configuration"
 
     config RASPI_CONTROLLED
-        bool "The device controlled by Raspi"
+        bool "The device is controlled by Raspi"
         default n
         help
-            Currently only once conection to seros and IMU possible. 
+            Currently only one conection to seros and IMU possible. 
             
 
     config CONSOLE_STORE_HISTORY

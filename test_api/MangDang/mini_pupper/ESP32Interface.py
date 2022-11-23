@@ -1,6 +1,5 @@
 import serial
 from cobs import cobsr
-import argparse
 from enum import Enum
 from dataclasses import dataclass
 import threading
@@ -154,136 +153,170 @@ class ParseProtocol:
 class ESP32Interface:
     """ESP32Interface"""
 
-    def __init__(self, code):
+    def __init__(self):
         self.pos = 0
         self.pos_step = 1
-        self.code = code
+        self.code = 0
+        self.err = False
         self.sentCounter = 0
+        self.parseProtocol = ParseProtocol()
+        port = '/dev/ttyAMA1'
+        baudrate = 3000000
+        self.ser = serial.Serial(port, baudrate=baudrate)  # open serial port
 
-    def periodicFunctions(self):
-        data = bytearray()
+    def sendFunction(self, data):
         if self.code == 0x27:
             data += int(round(time.time() * 1000)).to_bytes(length=8, byteorder='little', signed=True)
-        self.only_once = False
-        self.command = 'R'
-        # enable
-        if(self.code == 0x70):
-            self.only_once = True
-            self.command = 'W'
-        # disable
-        if(self.code == 0x71):
-            self.only_once = True
-            self.command = 'W'
-        # isEnabled
-        if(self.code == 0x72):
-            self.only_once = True
-        # set
-        if(self.code == 0x73):
-            self.only_once = False
-            self.command = 'W'
-            for i in range(12):
-                data += int(self.pos).to_bytes(length=2, byteorder='little', signed=False)
-            self.pos += self.pos_step
-            if(self.pos > 1022):
-                self.pos = 1023
-                self.pos_step = -self.pos_step
-            if(self.pos < 1):
-                self.pos = 0
-                self.pos_step = -self.pos_step
-            self.pos = self.pos % 1024
-        # 0x74, "servo get get position"
-        if(self.code == 0x74):
-            self.only_once = True
-        # 0x75, "servo get get feedback"
-        if(self.code == 0x75):
-            self.only_once = False
-        # 0x76, "servo get get speed"
-        if(self.code == 0x76):
-            self.only_once = True
-        # 0x77, "servo get get load"
-        if(self.code == 0x77):
-            self.only_once = True
-        # 0x78, "servo get get voltage"
-        if(self.code == 0x78):
-            self.only_once = True
-        # 0x79, "servo get get temper"
-        if(self.code == 0x79):
-            self.only_once = True
-        # 0x7A, "servo get get move"
-        if(self.code == 0x7A):
-            self.only_once = True
-        # 0x7B, "servo get get current"
-        if(self.code == 0x7B):
-            self.only_once = True
-        # 0x7C, "servo ping"
-        if(self.code == 0x7C):
-            self.only_once = True
-        # 0x7E, "imu read attitude",
-        if(self.code == 0x7E):
-            self.only_once = True
-        msg = parseProtocol.compileMessage(self.command, self.code, data)
-        ser.write(msg)
-        if(self.only_once):
-            return
+        msg = self.parseProtocol.compileMessage(self.command, self.code, data)
+        self.ser.write(msg)
         self.sentCounter += 1
-        # print('\n'+str(self.sentCounter),end='> ')
-        # print("%s" % binascii.hexlify(msg))
-        threading.Timer(0.01, self.periodicFunctions).start()
+
+    def receiveFunction(self):
+        self.err = False
+        while True:
+            ret = self.parseProtocol.parse(esp32.ser.read(), verbose)
+            if isinstance(ret.code, str) and int(ret.code, base=16) == self.code:
+                break
+        return ret
+
+    def decodeServoResponse(self, buffer):
+        ret = buffer.rawDecoded[5:-1]
+        ret_array = []
+        for i in range(0, len(ret), 2):
+            ret_array.append(int.from_bytes(ret[i:i + 2], 'little'))
+        return ret_array
+
+    def executeServoCommand(self, code, command, data=None):
+        if data is None:
+            data = bytearray()
+        self.code = code
+        self.command = command
+        self.sendFunction(data)
+        return self.receiveFunction()
+
+    def servos_enable(self):
+        self.executeServoCommand(0x70, 'W')
+
+    def servos_torque_disable(self):
+        self.executeServoCommand(0x71, 'W')
+
+    def servos_torque_enable(self):
+        self.executeServoCommand(0x72, 'W')
+
+    def servos_disable(self):
+        self.executeServoCommand(0x73, 'W')
+
+    def servos_isEnabled(self):
+        ret = self.executeServoCommand(0x74, 'R')
+        if not self.err:
+            ret_val = ret.rawDecoded[5:-1]
+            return ret_val[0]
+        return False
+
+    def servos_torque_isEnabled(self):
+        ret = self.executeServoCommand(0x75, 'R')
+        if not self.err:
+            ret_val = ret.rawDecoded[5:-1]
+            return ret_val[0]
+        return False
+
+    def servos_set_position(self):
+        data = bytearray()
+        for i in range(12):
+            data += int(self.pos).to_bytes(length=2, byteorder='little', signed=False)
+        self.pos += self.pos_step
+        if(self.pos > 1022):
+            self.pos = 1023
+            self.pos_step = -self.pos_step
+        if(self.pos < 1):
+            self.pos = 0
+            self.pos_step = -self.pos_step
+        self.pos = self.pos % 1024
+        self.executeServoCommand(0x76, 'W', data)
+
+    def servo_get_position(self):
+        ret = self.executeServoCommand(0x77, 'R')
+        if not self.err:
+            return self.decodeServoResponse(ret)
+
+    def servo_get_feedback(self):
+        ret = self.executeServoCommand(0x78, 'R')
+        if not self.err:
+            return self.decodeServoResponse(ret)
+
+    def servo_get_speed(self):
+        ret = self.executeServoCommand(0x79, 'R')
+        if not self.err:
+            return self.decodeServoResponse(ret)
+
+    def servo_get_load(self):
+        ret = self.executeServoCommand(0x7a, 'R')
+        if not self.err:
+            return self.decodeServoResponse(ret)
+
+    def servo_get_voltage(self):
+        ret = self.executeServoCommand(0x7b, 'R')
+        if not self.err:
+            return self.decodeServoResponse(ret)
+
+    def servo_get_temperature(self):
+        ret = self.executeServoCommand(0x7c, 'R')
+        if not self.err:
+            return self.decodeServoResponse(ret)
+
+    def servo_get_move(self):
+        ret = self.executeServoCommand(0x7d, 'R')
+        if not self.err:
+            return self.decodeServoResponse(ret)
+
+    def servo_get_current(self):
+        ret = self.executeServoCommand(0x7e, 'R')
+        if not self.err:
+            return self.decodeServoResponse(ret)
+
+    def servo_ping(self):
+        ret = self.executeServoCommand(0x7f, 'R')
+        if not self.err:
+            return self.decodeServoResponse(ret)
+
+    def imu_get_6dof(self):
+        ret = self.executeServoCommand(0x60, 'R')
+        buff = ret.rawDecoded[5:-1]
+        ret_dict = {'acc': [], 'gyro': []}
+        if not self.err:
+            for i in range(0, 12, 4):
+                ret_dict['acc'].append(struct.unpack('f', buff[i:i + 4])[0])
+            for i in range(12, 24, 4):
+                ret_dict['gyro'].append(struct.unpack('f', buff[i:i + 4])[0])
+        return ret_dict
+
+    def imu_get_attitude(self):
+        ret = self.executeServoCommand(0x61, 'R')
+        buff = ret.rawDecoded[5:-1]
+        ret_dict = {'dq': [], 'dv': [], 'ae_reg1': 0, 'ae_reg2': 0}
+        if not self.err:
+            for i in range(0, 16, 4):
+                ret_dict['dq'].append(struct.unpack('f', buff[i:i + 4])[0])
+            for i in range(16, 28, 4):
+                ret_dict['dv'].append(struct.unpack('f', buff[i:i + 4])[0])
+            ret_dict['ae_reg1'] = int(buff[29])
+            ret_dict['ae_reg1'] = int(buff[30])
+        return ret_dict
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
 
-    port = '/dev/ttyAMA1'
-    baudrate = 3000000
+    verbose = False
 
-    verbose = True
-    command = "0x0D"
-
-    ser = serial.Serial(port, baudrate=baudrate)  # open serial port
-
-    parseProtocol = ParseProtocol()
-
-    periodic = ESP32Interface(int(command, base=16))
-    periodic.periodicFunctions()
-
-    while(1):
-        receivedPacket = parseProtocol.parse(ser.read(), verbose)
-        if receivedPacket.code == '70' or \
-           receivedPacket.code == '71' or \
-           receivedPacket.code == '72' or \
-           receivedPacket.code == '73':
-            ret = receivedPacket.rawDecoded[5:-1]
-            print("%s %s" % (receivedPacket.CI, ret))
-        if receivedPacket.code == '74' or \
-           receivedPacket.code == '75' or \
-           receivedPacket.code == '76' or \
-           receivedPacket.code == '77' or \
-           receivedPacket.code == '78' or \
-           receivedPacket.code == '79' or \
-           receivedPacket.code == '7a' or \
-           receivedPacket.code == '7b' or \
-           receivedPacket.code == '7c':
-            ret = receivedPacket.rawDecoded[5:-1]
-            ret_array = []
-            for i in range(0, len(ret), 2):
-                ret_array.append(int.from_bytes(ret[i:i + 2], 'little'))
-            print("%s %s" % (receivedPacket.CI, ret_array))
-        if receivedPacket.code == '7d':
-            ret = receivedPacket.rawDecoded[5:-1]
-            ret_dict = {'acc': [], 'gyro': []}
-            for i in range(0, 12, 4):
-                ret_dict['acc'].append(struct.unpack('f', ret[i:i + 4])[0])
-            for i in range(12, 24, 4):
-                ret_dict['gyro'].append(struct.unpack('f', ret[i:i + 4])[0])
-            print("%s %s" % (receivedPacket.CI, ret_dict))
-        if receivedPacket.code == '7e':
-            ret = receivedPacket.rawDecoded[5:-1]
-            ret_dict = {'dq': [], 'dv': [], 'ae_reg1': 0, 'ae_reg2': 0}
-            for i in range(0, 16, 4):
-                ret_dict['dq'].append(struct.unpack('f', ret[i:i + 4])[0])
-            for i in range(16, 28, 4):
-                ret_dict['dv'].append(struct.unpack('f', ret[i:i + 4])[0])
-            ret_dict['ae_reg1'] = int(ret[29])
-            ret_dict['ae_reg1'] = int(ret[30])
-            print("%s %s" % (receivedPacket.CI, ret_dict))
+    esp32 = ESP32Interface()
+    esp32.servos_disable()
+    print(esp32.servos_isEnabled())
+    esp32.servos_enable()
+    print(esp32.servos_isEnabled())
+    esp32.servos_torque_disable()
+    print(esp32.servos_torque_isEnabled())
+    print(esp32.servo_get_position())
+    print(esp32.imu_get_6dof())
+    print(esp32.imu_get_attitude())
+    for i in range(2048):
+        esp32.servos_set_position()

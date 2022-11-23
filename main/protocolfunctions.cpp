@@ -35,10 +35,6 @@ void fn_servo_enable ( PROTOCOL_STAT *s, PARAMSTAT *param, unsigned char cmd, PR
     switch (cmd) {
         case PROTOCOL_CMD_WRITEVAL:
 	    servo1.enable();
-            for(u8 i = 0; i<12; i++)
-            {
-                servo1.EnableTorque(i+1, 1);
-	    }
             break;
     }
     fn_defaultProcessing(s, param, cmd, msg);
@@ -47,11 +43,25 @@ void fn_servo_enable ( PROTOCOL_STAT *s, PARAMSTAT *param, unsigned char cmd, PR
 void fn_servo_disable ( PROTOCOL_STAT *s, PARAMSTAT *param, unsigned char cmd, PROTOCOL_MSG3full *msg ) {
     switch (cmd) {
         case PROTOCOL_CMD_WRITEVAL:
+	    servo1.disableTorque();
+            break;
+    }
+    fn_defaultProcessing(s, param, cmd, msg);
+}
+
+void fn_servo_torque_enable ( PROTOCOL_STAT *s, PARAMSTAT *param, unsigned char cmd, PROTOCOL_MSG3full *msg ) {
+    switch (cmd) {
+        case PROTOCOL_CMD_WRITEVAL:
+	    servo1.enableTorque();
+            break;
+    }
+    fn_defaultProcessing(s, param, cmd, msg);
+}
+
+void fn_servo_torque_disable ( PROTOCOL_STAT *s, PARAMSTAT *param, unsigned char cmd, PROTOCOL_MSG3full *msg ) {
+    switch (cmd) {
+        case PROTOCOL_CMD_WRITEVAL:
 	    servo1.disable();
-            for(u8 i = 0; i<12; i++)
-            {
-                servo1.EnableTorque(i+1, 0);
-	    }
             break;
     }
     fn_defaultProcessing(s, param, cmd, msg);
@@ -61,6 +71,15 @@ void fn_servo_is_enabled ( PROTOCOL_STAT *s, PARAMSTAT *param, unsigned char cmd
     switch (cmd) {
         case PROTOCOL_CMD_READVAL:
             isEnabled = servo1.isEnabled;
+            break;
+    }
+    fn_defaultProcessing(s, param, cmd, msg);
+}
+
+void fn_servo_is_torque_enabled ( PROTOCOL_STAT *s, PARAMSTAT *param, unsigned char cmd, PROTOCOL_MSG3full *msg ) {
+    switch (cmd) {
+        case PROTOCOL_CMD_READVAL:
+            isEnabled = servo1.isTorqueEnabled;
             break;
     }
     fn_defaultProcessing(s, param, cmd, msg);
@@ -247,44 +266,53 @@ int setup_protocol(PROTOCOL_STAT *s) {
     errors += setParamVariable( s, 0x71, UI_NONE, data, sizeof(data) );
     setParamHandler( s, 0x71, fn_servo_disable );
 
-    errors += setParamVariable( s, 0x72, UI_NONE, &isEnabled, sizeof(isEnabled) );
-    setParamHandler( s, 0x72, fn_servo_is_enabled );
+    errors += setParamVariable( s, 0x72, UI_NONE, data, sizeof(data) );
+    setParamHandler( s, 0x72, fn_servo_torque_enable );
 
-    errors += setParamVariable( s, 0x73, UI_NONE, (void*)&servo_data, sizeof(servo_data) );
-    setParamHandler( s, 0x73, fn_servo_set_position );
+    errors += setParamVariable( s, 0x73, UI_NONE, data, sizeof(data) );
+    setParamHandler( s, 0x73, fn_servo_torque_disable );
 
-    errors += setParamVariable( s, 0x74, UI_NONE, (void*)&servo_data, sizeof(servo_data) );
-    setParamHandler( s, 0x74, fn_servo_get_position );
+    errors += setParamVariable( s, 0x74, UI_NONE, &isEnabled, sizeof(isEnabled) );
+    setParamHandler( s, 0x74, fn_servo_is_enabled );
 
-    errors += setParamVariable( s, 0x75, UI_NONE, (void*)&servo_data, sizeof(servo_data) );
-    setParamHandler( s, 0x75, fn_servo_get_feedback );
+    errors += setParamVariable( s, 0x75, UI_NONE, &isEnabled, sizeof(isEnabled) );
+    setParamHandler( s, 0x75, fn_servo_is_torque_enabled );
 
     errors += setParamVariable( s, 0x76, UI_NONE, (void*)&servo_data, sizeof(servo_data) );
-    setParamHandler( s, 0x76, fn_servo_get_speed );
+    setParamHandler( s, 0x76, fn_servo_set_position );
 
     errors += setParamVariable( s, 0x77, UI_NONE, (void*)&servo_data, sizeof(servo_data) );
-    setParamHandler( s, 0x77, fn_servo_get_load );
+    setParamHandler( s, 0x77, fn_servo_get_position );
 
     errors += setParamVariable( s, 0x78, UI_NONE, (void*)&servo_data, sizeof(servo_data) );
-    setParamHandler( s, 0x78, fn_servo_get_voltage );
+    setParamHandler( s, 0x78, fn_servo_get_feedback );
 
     errors += setParamVariable( s, 0x79, UI_NONE, (void*)&servo_data, sizeof(servo_data) );
-    setParamHandler( s, 0x79, fn_servo_get_temperature );
+    setParamHandler( s, 0x79, fn_servo_get_speed );
 
     errors += setParamVariable( s, 0x7A, UI_NONE, (void*)&servo_data, sizeof(servo_data) );
-    setParamHandler( s, 0x7A, fn_servo_get_move );
+    setParamHandler( s, 0x7A, fn_servo_get_load );
 
     errors += setParamVariable( s, 0x7B, UI_NONE, (void*)&servo_data, sizeof(servo_data) );
-    setParamHandler( s, 0x7B, fn_servo_get_current );
+    setParamHandler( s, 0x7B, fn_servo_get_voltage );
 
     errors += setParamVariable( s, 0x7C, UI_NONE, (void*)&servo_data, sizeof(servo_data) );
-    setParamHandler( s, 0x7C, fn_servo_ping );
+    setParamHandler( s, 0x7C, fn_servo_get_temperature );
 
-    errors += setParamVariable( s, 0x7D, UI_NONE, (void*)&imu_6dof_data, sizeof(imu_6dof_data) );
-    setParamHandler( s, 0x7D, fn_imu_get_6dof );
+    errors += setParamVariable( s, 0x7D, UI_NONE, (void*)&servo_data, sizeof(servo_data) );
+    setParamHandler( s, 0x7D, fn_servo_get_move );
 
-    errors += setParamVariable( s, 0x7E, UI_NONE, (void*)&imu_att_data, sizeof(imu_att_data) );
-    setParamHandler( s, 0x7E, fn_imu_get_attitude );
+    errors += setParamVariable( s, 0x7E, UI_NONE, (void*)&servo_data, sizeof(servo_data) );
+    setParamHandler( s, 0x7E, fn_servo_get_current );
+
+    errors += setParamVariable( s, 0x7F, UI_NONE, (void*)&servo_data, sizeof(servo_data) );
+    setParamHandler( s, 0x7F, fn_servo_ping );
+
+    errors += setParamVariable( s, 0x60, UI_NONE, (void*)&imu_6dof_data, sizeof(imu_6dof_data) );
+    setParamHandler( s, 0x60, fn_imu_get_6dof );
+
+    errors += setParamVariable( s, 0x61, UI_NONE, (void*)&imu_att_data, sizeof(imu_att_data) );
+    setParamHandler( s, 0x61, fn_imu_get_attitude );
 
     return errors;
 }

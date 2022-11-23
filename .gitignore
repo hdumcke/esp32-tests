@@ -44,3 +44,8 @@ sdkconfig.old
 *.exe
 *.out
 *.app
+
+# Python
+test_api/tests/__pycache__
+test_api/MangDang/mini_pupper/__pycache__
+test_api/.eggs/
