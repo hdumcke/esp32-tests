@@ -89,17 +89,24 @@ void fn_servo_set_position ( PROTOCOL_STAT *s, PARAMSTAT *param, unsigned char c
     fn_defaultProcessing(s, param, cmd, msg);
     switch (cmd) {
         case PROTOCOL_CMD_WRITEVAL:
-	    if( param->len != sizeof(servo_data) )
+	    if( msg->lenPayload == 4 )
 	    {
-                ESP_LOGE(TAG, "Invalid parameter lenght received: %d", param->len);
-		break;
+                //ESP_LOGI(TAG, "Position: %u %d", i+1, ((SERVOPARAM*) (param->ptr))->param[i]);
+                servo1.setPosition(((SERVOPARAM*) (param->ptr))->param[0], ((SERVOPARAM*) (param->ptr))->param[1]);
+	    }
+	    else if(msg->lenPayload == sizeof(servo_data))
+	    {
+                for(u8 i = 0; i<12; i++)
+                {
+                    //ESP_LOGI(TAG, "Position: %u %d", i+1, ((SERVOPARAM*) (param->ptr))->param[i]);
+                    servo1.setPosition(i+1, ((SERVOPARAM*) (param->ptr))->param[i]);
+                }
+	    }
+	    else
+	    {
+                ESP_LOGE(TAG, "Invalid parameter lenght received: %d", msg->lenPayload);
 	    }
 
-            for(u8 i = 0; i<12; i++)
-            {
-                //ESP_LOGI(TAG, "Position: %u %d", i+1, ((SERVOPARAM*) (param->ptr))->param[i]);
-                servo1.setPosition(i+1, ((SERVOPARAM*) (param->ptr))->param[i]);
-            }
             break;
     }
 }

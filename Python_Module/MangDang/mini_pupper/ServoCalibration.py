@@ -5,7 +5,7 @@ import numpy as np
 import MangDang.mini_pupper.nvram as nvram
 
 
-MICROS_PER_RAD = 11.111 * 180.0 / np.pi
+MICROS_PER_RAD = (760 - 210) / np.pi
 NEUTRAL_ANGLE_DEGREES = np.array(
 [[  0.,  0.,  0.,  0.],
  [  0.,  0.,  0.,  0.],

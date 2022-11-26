@@ -1,0 +1,18 @@
+CHANGES
+=======
+
+* added Python\_Module from v1
+* working on simulation
+* testing Python API
+* bug fixing and work on python side
+* added ESP32<->Raspi channel
+* finished with IMU
+* adding QMI8658C code
+* finished with servo API
+* added REPL (Read-Evaluate-Print-Loop) environment
+* fixed baud\_rate
+* WIP
+* work in progress
+* updated README
+* first checked in
+* Initial commit

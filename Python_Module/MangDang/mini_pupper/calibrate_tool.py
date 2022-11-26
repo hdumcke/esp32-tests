@@ -86,7 +86,7 @@ class CalibrationTool:
 
         
         # calibration data
-        self.MICROS_PER_RAD = 11.111 * 180.0 / np.pi
+        self.MICROS_PER_RAD = (760 - 210) * 180.0 / np.pi
         self.Matrix_EEPROM = np.array([[0, 0, 0, 0], [45, 45, 45, 45], [-45, -45, -45, -45]])
      
         self.ServoStandardLAngle =     [[0,0,0,0],[45,45,45,45],[-45,-45,-45,-45]]

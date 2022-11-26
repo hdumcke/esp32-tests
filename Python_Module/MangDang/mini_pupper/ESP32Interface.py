@@ -154,10 +154,9 @@ class ESP32Interface:
     """ESP32Interface"""
 
     def __init__(self):
-        self.pos = 0
-        self.pos_step = 1
         self.code = 0
         self.err = False
+        self.verbose = False
         self.sentCounter = 0
         self.parseProtocol = ParseProtocol()
         port = '/dev/ttyAMA1'
@@ -174,7 +173,7 @@ class ESP32Interface:
     def receiveFunction(self):
         self.err = False
         while True:
-            ret = self.parseProtocol.parse(esp32.ser.read(), verbose)
+            ret = self.parseProtocol.parse(self.ser.read(), self.verbose)
             if isinstance(ret.code, str) and int(ret.code, base=16) == self.code:
                 break
         return ret
@@ -220,18 +219,16 @@ class ESP32Interface:
             return ret_val[0]
         return False
 
-    def servos_set_position(self):
+    def servo_set_position(self, id, pos):
+        data = bytearray()
+        data += int(id).to_bytes(length=2, byteorder='little', signed=False)
+        data += int(pos).to_bytes(length=2, byteorder='little', signed=False)
+        self.executeServoCommand(0x76, 'W', data)
+
+    def servos_set_position(self, positions):
         data = bytearray()
         for i in range(12):
-            data += int(self.pos).to_bytes(length=2, byteorder='little', signed=False)
-        self.pos += self.pos_step
-        if(self.pos > 1022):
-            self.pos = 1023
-            self.pos_step = -self.pos_step
-        if(self.pos < 1):
-            self.pos = 0
-            self.pos_step = -self.pos_step
-        self.pos = self.pos % 1024
+            data += int(positions[i]).to_bytes(length=2, byteorder='little', signed=False)
         self.executeServoCommand(0x76, 'W', data)
 
     def servo_get_position(self):
@@ -305,8 +302,6 @@ class ESP32Interface:
 
 
 if __name__ == "__main__":
-
-    verbose = False
 
     esp32 = ESP32Interface()
     esp32.servos_disable()

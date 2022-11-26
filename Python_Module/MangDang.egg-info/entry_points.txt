@@ -1,0 +1,4 @@
+[console_scripts]
+calibrate = MangDang.mini_pupper.calibrate_tool:main
+cli-calibrate = MangDang.mini_pupper.calibrate_servos:main
+set-servos-before-assembly = MangDang.mini_pupper.set_servos_before_assembly:main
