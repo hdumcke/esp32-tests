@@ -37,6 +37,9 @@ display_auto_detect=1
 arm_64bit=1
 dtoverlay=dwc2
 
+# Enable serial buss to ESP32
+dtoverlay=uart3
+
 
 [all]
 # Required for mini pupper
