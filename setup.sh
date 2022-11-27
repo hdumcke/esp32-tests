@@ -42,7 +42,7 @@ git clone https://github.com/mangdangroboticsclub/mini_pupper_web_controller.git
 cd $BASEDIR
 ./install.sh
 
-cd StanfordQuadruped
+cd ~/StanfordQuadruped
 ./install.sh
 ./configure_network.sh $1 "$2"
 
