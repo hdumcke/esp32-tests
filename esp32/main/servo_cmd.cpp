@@ -19,61 +19,6 @@ static const char *TAG = "SERVOCMD";
 static uint64_t start_time = 0;
 static uint64_t end_time = 0;
 
-static int servo_cmd_set_write_type_gen(int argc, char **argv)
-{
-    servo.write_type = swt_gen;
-    return 0;
-}
-
-static void register_servo_cmd_set_write_type_gen(void)
-{
-    const esp_console_cmd_t cmd_set_write_type_gen = {
-        .command = "servo-wt-gen",
-        .help = "Set servo write type to gen",
-        .hint = NULL,
-        .func = &servo_cmd_set_write_type_gen,
-        .argtable = NULL
-    };
-    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_set_write_type_gen) );
-}
-
-static int servo_cmd_set_write_type_reg(int argc, char **argv)
-{
-    servo.write_type = swt_reg;
-    return 0;
-}
-
-static void register_servo_cmd_set_write_type_reg(void)
-{
-    const esp_console_cmd_t cmd_set_write_type_reg = {
-        .command = "servo-wt-reg",
-        .help = "Set servo write type to reg",
-        .hint = NULL,
-        .func = &servo_cmd_set_write_type_reg,
-        .argtable = NULL
-    };
-    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_set_write_type_reg) );
-}
-
-static int servo_cmd_set_write_type_sync(int argc, char **argv)
-{
-    //servo.write_type = swt_sync;
-    printf("Not implemented yet!!!\r\n");
-    return 0;
-}
-
-static void register_servo_cmd_set_write_type_sync(void)
-{
-    const esp_console_cmd_t cmd_set_write_type_sync = {
-        .command = "servo-wt-sync",
-        .help = "Set servo write type to sync",
-        .hint = NULL,
-        .func = &servo_cmd_set_write_type_sync,
-        .argtable = NULL
-    };
-    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_set_write_type_sync) );
-}
-
 static int servo_cmd_disable(int argc, char **argv)
 {
     servo.disable();
@@ -525,6 +470,40 @@ static void register_servo_cmd_setPosition(void)
 }
 
 static struct {
+    struct arg_str *servo_pos12;
+    struct arg_end *end;
+} servo_pos12_args;
+
+static int servo_cmd_setPosition12(int argc, char **argv)
+{
+    int nerrors = arg_parse(argc, argv, (void **)&servo_pos12_args);
+    if (nerrors != 0) {
+        arg_print_errors(stderr, servo_pos_args.end, argv[0]);
+        return 0;
+    }
+
+    /* Check servo_pos "--pos" option */
+    const char *servo_pos12 = servo_pos12_args.servo_pos12->sval[0];
+    ESP_LOG_BUFFER_HEXDUMP(TAG, servo_pos12, 64, ESP_LOG_INFO);
+    //servo.setPosition12((u8)servo_id, (u16)[12]servo_pos);
+    return 0;
+}
+
+static void register_servo_cmd_setPosition12(void)
+{
+    servo_pos12_args.servo_pos12 = arg_str1(NULL, "pos", "<pos>", "Servo Positions");
+    servo_pos12_args.end = arg_end(1);
+    const esp_console_cmd_t cmd_servo_setPosition12 = {
+        .command = "servo-setPosition12",
+        .help = "rotate the servos to a given position",
+        .hint = "--pos <string of 12 positions>",
+        .func = &servo_cmd_setPosition12,
+        .argtable = &servo_pos12_args
+    };
+    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_servo_setPosition12) );
+}
+
+static struct {
     struct arg_int *servo_id;
     struct arg_int *servo_newid;
     struct arg_end *end;
@@ -910,9 +889,6 @@ static void register_servo_cmd_ReadCurrent(void)
 
 void register_servo_cmds(void)
 {
-    register_servo_cmd_set_write_type_gen();
-    register_servo_cmd_set_write_type_reg();
-    register_servo_cmd_set_write_type_sync();
     register_servo_cmd_disable();
     register_servo_cmd_enable();
     register_servo_cmd_isEnabled();
@@ -926,6 +902,7 @@ void register_servo_cmds(void)
     register_servo_cmd_setMidPos();
     register_servo_cmd_setEndPos();
     register_servo_cmd_setPosition();
+    register_servo_cmd_setPosition12();
     register_servo_cmd_setID();
     register_servo_cmd_FeedBack();
     register_servo_cmd_ReadPos();
