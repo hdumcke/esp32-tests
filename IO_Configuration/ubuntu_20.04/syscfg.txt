@@ -4,6 +4,7 @@
 # partition.
 
 dtparam=i2c1
+dtoverlay=uart3
 dtoverlay=i2c3,pins_4_5
 dtoverlay=i2c4,pins_6_7
 dtoverlay=spi0-1cs

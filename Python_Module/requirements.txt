@@ -1,3 +1,4 @@
+cobs
 Pillow
 RPi.GPIO
 numpy

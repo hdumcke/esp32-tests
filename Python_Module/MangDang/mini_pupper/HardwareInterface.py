@@ -61,7 +61,7 @@ def send_servo_commands(pwm_params, servo_params, joint_angles):
                 leg_index,
             )
             positions[pwm_params.servo_ids[axis_index, leg_index]-1] = servo_position
-            pwm_params.esp32.servo_set_position(positions)
+            pwm_params.esp32.servos_set_position(positions)
 
 
 def send_servo_command(pwm_params, servo_params, joint_angle, axis, leg):
