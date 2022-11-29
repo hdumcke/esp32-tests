@@ -470,7 +470,7 @@ static void register_servo_cmd_setPosition(void)
 }
 
 static struct {
-    struct arg_str *servo_pos12;
+    struct arg_int *servo_pos12;
     struct arg_end *end;
 } servo_pos12_args;
 
@@ -481,22 +481,27 @@ static int servo_cmd_setPosition12(int argc, char **argv)
         arg_print_errors(stderr, servo_pos_args.end, argv[0]);
         return 0;
     }
-
-    /* Check servo_pos "--pos" option */
-    const char *servo_pos12 = servo_pos12_args.servo_pos12->sval[0];
-    ESP_LOG_BUFFER_HEXDUMP(TAG, servo_pos12, 64, ESP_LOG_INFO);
-    //servo.setPosition12((u8)servo_id, (u16)[12]servo_pos);
+    static u8 const servoIDs[] {1,2,3,4,5,6,7,8,9,10,11,12};
+    static u16 servoPositions[12] {0};
+    for(size_t index=0;index<12;++index) {
+        int const & value = servo_pos12_args.servo_pos12->ival[index];
+        if(0<=value && value<1024)
+            servoPositions[index]=static_cast<u16>(value);
+        else
+            servoPositions[index]=512;
+    }
+    servo.setPosition12(servoIDs,servoPositions);
     return 0;
 }
 
 static void register_servo_cmd_setPosition12(void)
 {
-    servo_pos12_args.servo_pos12 = arg_str1(NULL, "pos", "<pos>", "Servo Positions");
+    servo_pos12_args.servo_pos12 = arg_intn(NULL,NULL,"<pos>",12,12,"Servo position array (x12)");
     servo_pos12_args.end = arg_end(1);
     const esp_console_cmd_t cmd_servo_setPosition12 = {
         .command = "servo-setPosition12",
         .help = "rotate the servos to a given position",
-        .hint = "--pos <string of 12 positions>",
+        .hint = "<pos> (x12)",
         .func = &servo_cmd_setPosition12,
         .argtable = &servo_pos12_args
     };
