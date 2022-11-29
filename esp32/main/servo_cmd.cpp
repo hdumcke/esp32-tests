@@ -207,6 +207,63 @@ static void register_servo_cmd_rotate(void)
 }
 
 static struct {
+    struct arg_int *loop;
+    struct arg_end *end;
+} servo_rotate12_args;
+
+static int servo_cmd_rotate12(int argc, char **argv)
+{
+    int nerrors = arg_parse(argc, argv, (void **)&servo_rotate12_args);
+    if (nerrors != 0) {
+        arg_print_errors(stderr, servo_rotate12_args.end, argv[0]);
+        return 0;
+    }
+    int loop = servo_rotate12_args.loop->ival[0];
+    int i = 0;
+    int l = 0;
+    static u8 const servoIDs[] {1,2,3,4,5,6,7,8,9,10,11,12};
+    static u16 servoPositions[12] {0};
+    servo.setPosition12(servoIDs,servoPositions);
+    // make sure the servo is in the starting position before we measure time
+    vTaskDelay(6000 / portTICK_PERIOD_MS);
+    start_time = esp_timer_get_time();
+    for (l = 0; l < loop; l++) {
+        for (i = 0; i < 1024; i++) {
+            for(size_t index=0;index<12;++index) {
+                servoPositions[index] = i;
+            }
+    	    servo.setPosition12(servoIDs,servoPositions);
+            vTaskDelay(10 / portTICK_PERIOD_MS);
+        }
+        for (i = 1023; i > 0; i--) {
+            for(size_t index=0;index<12;++index) {
+                servoPositions[index] = i;
+            }
+    	    servo.setPosition12(servoIDs,servoPositions);
+            vTaskDelay(10 / portTICK_PERIOD_MS);
+        }
+    }
+    end_time = esp_timer_get_time();
+    ESP_LOGI(TAG, "Time: %llu microseconds", end_time-start_time);
+
+    return 0;
+}
+
+static void register_servo_cmd_rotate12(void)
+{
+    servo_rotate12_args.loop = arg_int1(NULL, "loop", "<n>", "loop <n> times");
+    servo_rotate12_args.end = arg_end(2);
+    const esp_console_cmd_t cmd_servo_rotate12 = {
+        .command = "servo-rotate12",
+        .help = "rotate the servos",
+        .hint = "--loop <n>",
+        .func = &servo_cmd_rotate12,
+        .argtable = NULL
+    };
+    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_servo_rotate12) );
+}
+
+static struct {
     struct arg_int *servo_id;
     struct arg_int *start_pos;
     struct arg_int *end_pos;
@@ -902,6 +959,7 @@ void register_servo_cmds(void)
     register_servo_cmd_isTorqueEnabled();
     register_servo_cmd_scan();
     register_servo_cmd_rotate();
+    register_servo_cmd_rotate12();
     register_servo_cmd_perftest();
     register_servo_cmd_setStartPos();
     register_servo_cmd_setMidPos();

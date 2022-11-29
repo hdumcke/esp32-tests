@@ -86,6 +86,8 @@ void fn_servo_is_torque_enabled ( PROTOCOL_STAT *s, PARAMSTAT *param, unsigned c
 }
 
 void fn_servo_set_position ( PROTOCOL_STAT *s, PARAMSTAT *param, unsigned char cmd, PROTOCOL_MSG3full *msg ) {
+    static u8 const servoIDs[] {1,2,3,4,5,6,7,8,9,10,11,12};
+    static u16 servoPositions[12] {0};
     fn_defaultProcessing(s, param, cmd, msg);
     switch (cmd) {
         case PROTOCOL_CMD_WRITEVAL:
@@ -98,9 +100,9 @@ void fn_servo_set_position ( PROTOCOL_STAT *s, PARAMSTAT *param, unsigned char c
 	    {
                 for(u8 i = 0; i<12; i++)
                 {
-                    //ESP_LOGI(TAG, "Position: %u %d", i+1, ((SERVOPARAM*) (param->ptr))->param[i]);
-                    servo1.setPosition(i+1, ((SERVOPARAM*) (param->ptr))->param[i]);
+		    servoPositions[i] = ((SERVOPARAM*) (param->ptr))->param[i];
                 }
+                servo1.setPosition12(servoIDs,servoPositions);
 	    }
 	    else
 	    {
