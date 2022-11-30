@@ -304,14 +304,17 @@ class ESP32Interface:
 if __name__ == "__main__":
 
     esp32 = ESP32Interface()
-    esp32.servos_disable()
-    print(esp32.servos_isEnabled())
     esp32.servos_enable()
-    print(esp32.servos_isEnabled())
-    esp32.servos_torque_disable()
-    print(esp32.servos_torque_isEnabled())
-    print(esp32.servo_get_position())
-    print(esp32.imu_get_6dof())
-    print(esp32.imu_get_attitude())
-    for i in range(2048):
-        esp32.servos_set_position()
+    esp32.servos_torque_enable()
+    positions = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    esp32.servos_set_position(positions)
+    time.sleep(6)
+    start_time = time.time()
+    for i in range(1024):
+        positions = [i for j in range(12)] 
+        esp32.servos_set_position(positions)
+    for i in range(1022):
+        positions = [(1022 - i) for j in range(12)] 
+        esp32.servos_set_position(positions)
+    end_time = time.time()
+    print("Time: %s microseconds" % ((end_time-start_time) * 1000000))
