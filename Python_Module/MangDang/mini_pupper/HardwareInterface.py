@@ -1,6 +1,7 @@
 from MangDang.mini_pupper.Config import ServoParams, PWMParams
 import numpy as np
 
+
 class HardwareInterface:
     def __init__(self):
         self.pwm_params = PWMParams()
@@ -32,13 +33,8 @@ def angle_to_position(angle, servo_params, axis_index, leg_index):
     float
         desired servo position
     """
-    angle_deviation = (
-                              angle - servo_params.neutral_angles[axis_index, leg_index]
-                      ) * servo_params.servo_multipliers[axis_index, leg_index]
-    servo_position = (
-            servo_params.neutral_position
-            + servo_params.micros_per_rad * angle_deviation
-    )
+    angle_deviation = (angle - servo_params.neutral_angles[axis_index, leg_index]) * servo_params.servo_multipliers[axis_index, leg_index]
+    servo_position = (servo_params.neutral_position + servo_params.micros_per_rad * angle_deviation)
     return servo_position
 
 
@@ -60,8 +56,8 @@ def send_servo_commands(pwm_params, servo_params, joint_angles):
                 axis_index,
                 leg_index,
             )
-            positions[pwm_params.servo_ids[axis_index, leg_index]-1] = servo_position
-            pwm_params.esp32.servos_set_position(positions)
+            positions[pwm_params.servo_ids[axis_index, leg_index] - 1] = servo_position
+    pwm_params.esp32.servos_set_position(positions)
 
 
 def send_servo_command(pwm_params, servo_params, joint_angle, axis, leg):
