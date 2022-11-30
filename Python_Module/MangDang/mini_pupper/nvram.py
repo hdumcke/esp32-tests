@@ -1,6 +1,6 @@
 import pickle
 
-ServoCalibrationFilePath = '/sys/bus/nvmem/devices/3-00500/nvmem'
+ServoCalibrationFilePath = '/home/ubuntu/nvmem'
 
 
 def write(data):
