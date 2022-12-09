@@ -82,6 +82,9 @@ public:
     // background servo bus service
     bool isSyncRunning {false};
     TaskHandle_t task_handle {NULL};
+
 };
+
+extern SERVO servo;
 
 #endif

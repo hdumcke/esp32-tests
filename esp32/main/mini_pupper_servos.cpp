@@ -12,6 +12,8 @@
 
 static const char *TAG = "MINIPUPPERSERVOS";
 
+SERVO servo;
+
 // number of retries for servo functions
 int retries = 3;
 

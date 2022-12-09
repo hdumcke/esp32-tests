@@ -13,8 +13,6 @@
 #include "nvs.h"
 #include "nvs_flash.h"
 
-SERVO servo;
-
 static const char *TAG = "SERVOCMD";
 static uint64_t start_time = 0;
 static uint64_t end_time = 0;

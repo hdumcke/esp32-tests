@@ -1,6 +1,6 @@
 #include "mini_pupper_servos.h"
 #include "protocolfunctions.h"
-#include "QMI8658C.h"
+#include "imu_cmd.h"
 #include <cstddef>
 #include <cstring>
 #include <cstdio>
@@ -9,8 +9,6 @@
 static const char *TAG = "PROTOCOLFUNCTIONS";
 
 PROTOCOL_STAT sUSART2;
-SERVO servo1;
-QMI8658C imu1;
 
 uint8_t data[2];
 struct SERVOPARAM {
@@ -34,7 +32,7 @@ bool isEnabled;
 void fn_servo_enable ( PROTOCOL_STAT *s, PARAMSTAT *param, unsigned char cmd, PROTOCOL_MSG3full *msg ) {
     switch (cmd) {
         case PROTOCOL_CMD_WRITEVAL:
-	    servo1.enable();
+	    servo.enable();
             break;
     }
     fn_defaultProcessing(s, param, cmd, msg);
@@ -43,7 +41,7 @@ void fn_servo_enable ( PROTOCOL_STAT *s, PARAMSTAT *param, unsigned char cmd, PR
 void fn_servo_disable ( PROTOCOL_STAT *s, PARAMSTAT *param, unsigned char cmd, PROTOCOL_MSG3full *msg ) {
     switch (cmd) {
         case PROTOCOL_CMD_WRITEVAL:
-	    servo1.disableTorque();
+	    servo.disableTorque();
             break;
     }
     fn_defaultProcessing(s, param, cmd, msg);
@@ -52,7 +50,7 @@ void fn_servo_disable ( PROTOCOL_STAT *s, PARAMSTAT *param, unsigned char cmd, P
 void fn_servo_torque_enable ( PROTOCOL_STAT *s, PARAMSTAT *param, unsigned char cmd, PROTOCOL_MSG3full *msg ) {
     switch (cmd) {
         case PROTOCOL_CMD_WRITEVAL:
-	    servo1.enableTorque();
+	    servo.enableTorque();
             break;
     }
     fn_defaultProcessing(s, param, cmd, msg);
@@ -61,7 +59,7 @@ void fn_servo_torque_enable ( PROTOCOL_STAT *s, PARAMSTAT *param, unsigned char 
 void fn_servo_torque_disable ( PROTOCOL_STAT *s, PARAMSTAT *param, unsigned char cmd, PROTOCOL_MSG3full *msg ) {
     switch (cmd) {
         case PROTOCOL_CMD_WRITEVAL:
-	    servo1.disable();
+	    servo.disable();
             break;
     }
     fn_defaultProcessing(s, param, cmd, msg);
@@ -70,7 +68,7 @@ void fn_servo_torque_disable ( PROTOCOL_STAT *s, PARAMSTAT *param, unsigned char
 void fn_servo_is_enabled ( PROTOCOL_STAT *s, PARAMSTAT *param, unsigned char cmd, PROTOCOL_MSG3full *msg ) {
     switch (cmd) {
         case PROTOCOL_CMD_READVAL:
-            isEnabled = servo1.isEnabled;
+            isEnabled = servo.isEnabled;
             break;
     }
     fn_defaultProcessing(s, param, cmd, msg);
@@ -79,14 +77,13 @@ void fn_servo_is_enabled ( PROTOCOL_STAT *s, PARAMSTAT *param, unsigned char cmd
 void fn_servo_is_torque_enabled ( PROTOCOL_STAT *s, PARAMSTAT *param, unsigned char cmd, PROTOCOL_MSG3full *msg ) {
     switch (cmd) {
         case PROTOCOL_CMD_READVAL:
-            isEnabled = servo1.isTorqueEnabled;
+            isEnabled = servo.isTorqueEnabled;
             break;
     }
     fn_defaultProcessing(s, param, cmd, msg);
 }
 
 void fn_servo_set_position ( PROTOCOL_STAT *s, PARAMSTAT *param, unsigned char cmd, PROTOCOL_MSG3full *msg ) {
-    static u8 const servoIDs[] {1,2,3,4,5,6,7,8,9,10,11,12};
     static u16 servoPositions[12] {0};
     fn_defaultProcessing(s, param, cmd, msg);
     switch (cmd) {
@@ -94,7 +91,7 @@ void fn_servo_set_position ( PROTOCOL_STAT *s, PARAMSTAT *param, unsigned char c
 	    if( msg->lenPayload == 4 )
 	    {
                 //ESP_LOGI(TAG, "Position: %u %d", i+1, ((SERVOPARAM*) (param->ptr))->param[i]);
-                servo1.setPosition(((SERVOPARAM*) (param->ptr))->param[0], ((SERVOPARAM*) (param->ptr))->param[1]);
+                servo.setPosition(((SERVOPARAM*) (param->ptr))->param[0], ((SERVOPARAM*) (param->ptr))->param[1]);
 	    }
 	    else if(msg->lenPayload == sizeof(servo_data))
 	    {
@@ -102,7 +99,7 @@ void fn_servo_set_position ( PROTOCOL_STAT *s, PARAMSTAT *param, unsigned char c
                 {
 		    servoPositions[i] = ((SERVOPARAM*) (param->ptr))->param[i];
                 }
-                servo1.setPosition12(servoIDs,servoPositions);
+                servo.setPosition12Async(servoPositions);
 	    }
 	    else
 	    {
@@ -118,7 +115,7 @@ void fn_servo_get_position ( PROTOCOL_STAT *s, PARAMSTAT *param, unsigned char c
         case PROTOCOL_CMD_READVAL:
             for(u8 i = 0; i<12; i++)
 	    {
-                servo_data.param[i] = servo1.ReadPos(i+1);
+                servo_data.param[i] = servo.ReadPos(i+1);
                 //ESP_LOGI(TAG, "Position: %u %d", i+1, servo_data.param[i]);
 	    }
             //ESP_LOG_BUFFER_HEX(TAG, &servo_data, sizeof(servo_data));
@@ -132,7 +129,7 @@ void fn_servo_get_feedback ( PROTOCOL_STAT *s, PARAMSTAT *param, unsigned char c
         case PROTOCOL_CMD_READVAL:
             for(u8 i = 0; i<12; i++)
 	    {
-                servo_data.param[i] = servo1.FeedBack(i+1);
+                servo_data.param[i] = servo.FeedBack(i+1);
 	    }
             break;
     }
@@ -144,7 +141,7 @@ void fn_servo_get_speed ( PROTOCOL_STAT *s, PARAMSTAT *param, unsigned char cmd,
         case PROTOCOL_CMD_READVAL:
             for(u8 i = 0; i<12; i++)
 	    {
-                servo_data.param[i] = servo1.ReadSpeed(i+1);
+                servo_data.param[i] = servo.ReadSpeed(i+1);
 	    }
             break;
     }
@@ -156,7 +153,7 @@ void fn_servo_get_load ( PROTOCOL_STAT *s, PARAMSTAT *param, unsigned char cmd, 
         case PROTOCOL_CMD_READVAL:
             for(u8 i = 0; i<12; i++)
 	    {
-                servo_data.param[i] = servo1.ReadLoad(i+1);
+                servo_data.param[i] = servo.ReadLoad(i+1);
 	    }
             break;
     }
@@ -168,7 +165,7 @@ void fn_servo_get_voltage ( PROTOCOL_STAT *s, PARAMSTAT *param, unsigned char cm
         case PROTOCOL_CMD_READVAL:
             for(u8 i = 0; i<12; i++)
 	    {
-                servo_data.param[i] = servo1.ReadVoltage(i+1);
+                servo_data.param[i] = servo.ReadVoltage(i+1);
 	    }
             break;
     }
@@ -180,7 +177,7 @@ void fn_servo_get_temperature ( PROTOCOL_STAT *s, PARAMSTAT *param, unsigned cha
         case PROTOCOL_CMD_READVAL:
             for(u8 i = 0; i<12; i++)
 	    {
-                servo_data.param[i] = servo1.ReadTemper(i+1);
+                servo_data.param[i] = servo.ReadTemper(i+1);
 	    }
             break;
     }
@@ -192,7 +189,7 @@ void fn_servo_get_move ( PROTOCOL_STAT *s, PARAMSTAT *param, unsigned char cmd, 
         case PROTOCOL_CMD_READVAL:
             for(u8 i = 0; i<12; i++)
 	    {
-                servo_data.param[i] = servo1.ReadMove(i+1);
+                servo_data.param[i] = servo.ReadMove(i+1);
 	    }
             break;
     }
@@ -204,7 +201,7 @@ void fn_servo_get_current ( PROTOCOL_STAT *s, PARAMSTAT *param, unsigned char cm
         case PROTOCOL_CMD_READVAL:
             for(u8 i = 0; i<12; i++)
 	    {
-                servo_data.param[i] = servo1.ReadCurrent(i+1);
+                servo_data.param[i] = servo.ReadCurrent(i+1);
 	    }
             break;
     }
@@ -217,7 +214,7 @@ void fn_servo_ping ( PROTOCOL_STAT *s, PARAMSTAT *param, unsigned char cmd, PROT
             for(u8 i = 0; i<12; i++)
 	    {
                 servo_data.param[i] = 0;
-                if(servo1.Ping(i+1) == i+1) {
+                if(servo.Ping(i+1) == i+1) {
                     servo_data.param[i] = i+1;
                     //ESP_LOGI(TAG, "Ping: %u", i+1);
                 }
@@ -230,11 +227,11 @@ void fn_servo_ping ( PROTOCOL_STAT *s, PARAMSTAT *param, unsigned char cmd, PROT
 void fn_imu_get_6dof ( PROTOCOL_STAT *s, PARAMSTAT *param, unsigned char cmd, PROTOCOL_MSG3full *msg ) {
     switch (cmd) {
         case PROTOCOL_CMD_READVAL:
-            imu1.read_6dof();
-	    memcpy(&imu_6dof_data.acc, &imu1.acc, sizeof(imu1.acc));
-	    memcpy(&imu_6dof_data.gyro, &imu1.gyro, sizeof(imu1.gyro));
+            imu.read_6dof();
+	    memcpy(&imu_6dof_data.acc, &imu.acc, sizeof(imu.acc));
+	    memcpy(&imu_6dof_data.gyro, &imu.gyro, sizeof(imu.gyro));
             //ESP_LOG_BUFFER_HEX(TAG, &imu_6dof_data, sizeof(imu_6dof_data));
-	    //printf("%f\t%f\t%f\t%f\t%f\t%f \r\n", imu1.acc.x, imu1.acc.y, imu1.acc.z, imu1.gyro.x, imu1.gyro.y, imu1.gyro.z);
+	    //printf("%f\t%f\t%f\t%f\t%f\t%f \r\n", imu.acc.x, imu.acc.y, imu.acc.z, imu.gyro.x, imu.gyro.y, imu.gyro.z);
             break;
     }
     fn_defaultProcessing(s, param, cmd, msg);
@@ -243,13 +240,13 @@ void fn_imu_get_6dof ( PROTOCOL_STAT *s, PARAMSTAT *param, unsigned char cmd, PR
 void fn_imu_get_attitude ( PROTOCOL_STAT *s, PARAMSTAT *param, unsigned char cmd, PROTOCOL_MSG3full *msg ) {
     switch (cmd) {
         case PROTOCOL_CMD_READVAL:
-            imu1.read_attitude();
-	    memcpy(&imu_att_data.dq, &imu1.dq, sizeof(imu1.dq));
-	    memcpy(&imu_att_data.dv, &imu1.dv, sizeof(imu1.dv));
-            imu_att_data.ae_reg1 = imu1.ae_reg1;
-            imu_att_data.ae_reg2 = imu1.ae_reg2;
+            imu.read_attitude();
+	    memcpy(&imu_att_data.dq, &imu.dq, sizeof(imu.dq));
+	    memcpy(&imu_att_data.dv, &imu.dv, sizeof(imu.dv));
+            imu_att_data.ae_reg1 = imu.ae_reg1;
+            imu_att_data.ae_reg2 = imu.ae_reg2;
             //ESP_LOG_BUFFER_HEX(TAG, &imu_att_data, sizeof(imu_att_data));
-            //printf("%f\t%f\t%f\t%f\t%f\t%f\t%f\t%d\t%d \r\n", imu1.dq.w, imu1.dq.v.x, imu1.dq.v.y, imu1.dq.v.x, imu1.dv.x, imu1.dv.y, imu1.dv.z, imu1.ae_reg1, imu1.ae_reg2);
+            //printf("%f\t%f\t%f\t%f\t%f\t%f\t%f\t%d\t%d \r\n", imu.dq.w, imu.dq.v.x, imu.dq.v.y, imu.dq.v.x, imu.dv.x, imu.dv.y, imu.dv.z, imu.ae_reg1, imu.ae_reg2);
             break;
     }
     fn_defaultProcessing(s, param, cmd, msg);
