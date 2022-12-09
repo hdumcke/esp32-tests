@@ -1,6 +1,7 @@
 #include "servo_cmd.h"
 #include "imu_cmd.h"
 #include "uart_server.h"
+#include "driver/uart.h"
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <stdio.h>
@@ -93,13 +94,8 @@ extern "C" void app_main(void)
 
     /* Register commands */
     esp_console_register_help_command();
-#if CONFIG_RASPI_CONTROLLED
-    /* start UART server for Raspberry Pi communication */
-    UARTServer uart_server;
-#else
     register_servo_cmds();
     register_imu_cmds();
-#endif
     register_system();
     register_wifi();
 
@@ -118,6 +114,9 @@ extern "C" void app_main(void)
 #else
 #error Unsupported console type
 #endif
+
+    /* start UART server to communicated with Raspberry Pi */
+    UARTServer uart_server;
 
     ESP_ERROR_CHECK(esp_console_start_repl(repl));
 

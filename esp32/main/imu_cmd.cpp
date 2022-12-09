@@ -11,11 +11,11 @@
 #include "esp_log.h"
 #include "esp_timer.h"
 
-QMI8658C imu;
-
 static const char *TAG = "IMUCMD";
 static uint64_t start_time = 0;
 static uint64_t end_time = 0;
+
+QMI8658C imu;
 
 static int imu_cmd_init(int argc, char **argv)
 {

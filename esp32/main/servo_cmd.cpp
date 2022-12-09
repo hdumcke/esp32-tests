@@ -13,8 +13,6 @@
 #include "nvs.h"
 #include "nvs_flash.h"
 
-SERVO servo;
-
 static const char *TAG = "SERVOCMD";
 static uint64_t start_time = 0;
 static uint64_t end_time = 0;
@@ -610,7 +608,7 @@ static void register_servo_cmd_setID(void)
         .help = "Change the servo ID",
         .hint = "--id <servoID> --newid <new servoID>",
         .func = &servo_cmd_setID,
-	.argtable = NULL
+	   .argtable = NULL
     };
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_servo_setID) );
 }
@@ -949,6 +947,197 @@ static void register_servo_cmd_ReadCurrent(void)
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_servo_ReadCurrent) );
 }
 
+
+
+static int servo_cmd_setPositionAsync(int argc, char **argv)
+{
+    int nerrors = arg_parse(argc, argv, (void **)&servo_pos_args);
+    if (nerrors != 0) {
+        arg_print_errors(stderr, servo_pos_args.end, argv[0]);
+        return 0;
+    }
+
+    /* Check servoID "--id" option */
+    int servo_id = servo_pos_args.servo_id->ival[0];
+    if(servo_id<0) {
+        printf("Invalid servo ID\r\n");
+        return 0;
+    }
+    if( servo_id>12 && servo_id != 254 ) {
+        printf("Invalid servo ID\r\n");
+        return 0;
+    }
+    if( servo_id == 254) {
+        printf("Warning: your servo ID is the broadcast ID\r\n");
+    }
+
+    /* Check servo_pos "--pos" option */
+    int servo_pos = servo_pos_args.servo_pos->ival[0];
+    if(servo_pos<0 || servo_pos>1023) {
+        printf("Invalid servo position\r\n");
+        return 0;
+    }
+    servo.setPositionAsync((u8)servo_id, (u16)servo_pos);
+    return 0;
+}
+
+static void register_servo_cmd_setPositionAsync(void)
+{
+    servo_pos_args.servo_id = arg_int1(NULL, "id", "<n>", "Servo ID");
+    servo_pos_args.servo_pos = arg_int1(NULL, "pos", "<n>", "Servo Position");
+    servo_pos_args.end = arg_end(2);
+    const esp_console_cmd_t cmd_servo_setPosition = {
+        .command = "servo-setPosAsync",
+        .help = "rotate the servos to a given position",
+        .hint = "--id <servoID> --pos <position>",
+        .func = &servo_cmd_setPositionAsync,
+        .argtable = &servo_pos_args
+    };
+    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_servo_setPosition) );
+}
+
+
+static int servo_cmd_setPosition12Async(int argc, char **argv)
+{
+    int nerrors = arg_parse(argc, argv, (void **)&servo_pos12_args);
+    if (nerrors != 0) {
+        arg_print_errors(stderr, servo_pos_args.end, argv[0]);
+        return 0;
+    }
+    static u16 servoPositions[12] {0};
+    for(size_t index=0;index<12;++index) {
+        int const & value = servo_pos12_args.servo_pos12->ival[index];
+        if(0<=value && value<1024)
+            servoPositions[index]=static_cast<u16>(value);
+        else
+            servoPositions[index]=512;
+    }
+    servo.setPosition12Async(servoPositions);
+    return 0;
+}
+
+static void register_servo_cmd_setPosition12Async(void)
+{
+    servo_pos12_args.servo_pos12 = arg_intn(NULL,NULL,"<pos>",12,12,"Servo position array (x12)");
+    servo_pos12_args.end = arg_end(1);
+    const esp_console_cmd_t cmd_servo_setPosition12 = {
+        .command = "servo-setPos12Async",
+        .help = "rotate the servos to a given position",
+        .hint = "<pos> (x12)",
+        .func = &servo_cmd_setPosition12Async,
+        .argtable = &servo_pos12_args
+    };
+    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_servo_setPosition12) );
+}
+
+static int servo_cmd_ReadPosAsync(int argc, char **argv)
+{
+    int nerrors = arg_parse(argc, argv, (void **)&servo_id_args);
+    if (nerrors != 0) {
+        arg_print_errors(stderr, servo_id_args.end, argv[0]);
+        return 0;
+    }
+
+    /* Check servoID "--id" option */
+    int servo_id = servo_id_args.servo_id->ival[0];
+    if(servo_id<=0) {
+        printf("Invalid servo ID\r\n");
+        return 0;
+    }
+    if( servo_id>12 ) {
+        printf("Invalid servo ID\r\n");
+        return 0;
+    }
+    printf("ReadPos: %d\r\n", servo.getPositionAsync((u8)servo_id));
+    return 0;
+}
+
+static void register_servo_cmd_ReadPosAsync(void)
+{
+    servo_id_args.servo_id = arg_int1(NULL, "id", "<n>", "Servo ID");
+    servo_id_args.end = arg_end(2);
+    const esp_console_cmd_t cmd_servo_ReadPos = {
+        .command = "servo-ReadPosAsync",
+        .help = "return ReadPos",
+        .hint = "--id <servoID>",
+        .func = &servo_cmd_ReadPosAsync,
+        .argtable = &servo_id_args
+    };
+    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_servo_ReadPos) );
+}
+
+static int servo_cmd_ReadVelAsync(int argc, char **argv)
+{
+    int nerrors = arg_parse(argc, argv, (void **)&servo_id_args);
+    if (nerrors != 0) {
+        arg_print_errors(stderr, servo_id_args.end, argv[0]);
+        return 0;
+    }
+
+    /* Check servoID "--id" option */
+    int servo_id = servo_id_args.servo_id->ival[0];
+    if(servo_id<=0) {
+        printf("Invalid servo ID\r\n");
+        return 0;
+    }
+    if( servo_id>12 ) {
+        printf("Invalid servo ID\r\n");
+        return 0;
+    }
+    printf("ReadVel: %d\r\n", servo.getVelocityAsync((u8)servo_id));
+    return 0;
+}
+
+static void register_servo_cmd_ReadVelAsync(void)
+{
+    servo_id_args.servo_id = arg_int1(NULL, "id", "<n>", "Servo ID");
+    servo_id_args.end = arg_end(2);
+    const esp_console_cmd_t cmd_servo_ReadVel = {
+        .command = "servo-ReadVelAsync",
+        .help = "return ReadVel",
+        .hint = "--id <servoID>",
+        .func = &servo_cmd_ReadVelAsync,
+        .argtable = &servo_id_args
+    };
+    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_servo_ReadVel) );
+}
+
+static int servo_cmd_ReadLoadAsync(int argc, char **argv)
+{
+    int nerrors = arg_parse(argc, argv, (void **)&servo_id_args);
+    if (nerrors != 0) {
+        arg_print_errors(stderr, servo_id_args.end, argv[0]);
+        return 0;
+    }
+
+    /* Check servoID "--id" option */
+    int servo_id = servo_id_args.servo_id->ival[0];
+    if(servo_id<=0) {
+        printf("Invalid servo ID\r\n");
+        return 0;
+    }
+    if( servo_id>12 ) {
+        printf("Invalid servo ID\r\n");
+        return 0;
+    }
+    printf("ReadLoad: %d\r\n", servo.getLoadAsync((u8)servo_id));
+    return 0;
+}
+
+static void register_servo_cmd_ReadLoadAsync(void)
+{
+    servo_id_args.servo_id = arg_int1(NULL, "id", "<n>", "Servo ID");
+    servo_id_args.end = arg_end(2);
+    const esp_console_cmd_t cmd_servo_ReadLoad = {
+        .command = "servo-ReadLoadAsync",
+        .help = "return ReadLoad",
+        .hint = "--id <servoID>",
+        .func = &servo_cmd_ReadLoadAsync,
+        .argtable = &servo_id_args
+    };
+    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_servo_ReadLoad) );
+}
+
 void register_servo_cmds(void)
 {
     register_servo_cmd_disable();
@@ -975,4 +1164,10 @@ void register_servo_cmds(void)
     register_servo_cmd_ReadTemper();
     register_servo_cmd_ReadMove();
     register_servo_cmd_ReadCurrent();
+
+    register_servo_cmd_setPositionAsync();
+    register_servo_cmd_setPosition12Async();
+    register_servo_cmd_ReadPosAsync();
+    register_servo_cmd_ReadVelAsync();
+    register_servo_cmd_ReadLoadAsync();
 }
