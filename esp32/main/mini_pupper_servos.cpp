@@ -4,7 +4,7 @@
 #include "hal/gpio_hal.h"
 #include "esp_log.h"
 
-static const char *TAG = "MINIPUPPERSERVOS";
+//static const char *TAG = "MINIPUPPERSERVOS";
 
 void SERVO_TASK(void * parameters);
 
@@ -74,21 +74,30 @@ void SERVO::enable() {
 
 int SERVO::ping(u8 ID)
 {
-    /// TODO
-    /// TODO
-    /// TODO
-    /// TODO
+    // abort if servo not powered on
+    if(!isEnabled) return SERVO_STATUS_FAIL;
 
+    // stop sync task and wait a moment
+    if(isSyncRunning)
+    {
+        isSyncRunning = false;
+        vTaskDelay(10 / portTICK_PERIOD_MS);
+    }
 
+    // abord command when broadcasting
+    if(ID==0XFE) return SERVO_STATUS_FAIL;
 
+    // send ping instruction
+    write_frame(ID,INST_PING,nullptr,0);
 
+    // wait for reply
+    u8 reply_id {0};
+    u8 reply_state {0};
+    int const status = reply_frame(reply_id,reply_state,nullptr,0);
+    if(status!=SERVO_STATUS_OK) return SERVO_STATUS_FAIL;
 
-
-
-
-
-
-
+    // check reply
+    if(reply_id!=ID || reply_state!=0) return SERVO_STATUS_FAIL;
 
     return SERVO_STATUS_OK;
 }
@@ -686,7 +695,6 @@ void SERVO::ack_feedback_one_servo(SERVO_STATE & servoState)
     uart_flush(uart_port_num); 
 }
 
-
 void SERVO_TASK(void * parameters)
 {
     SERVO * servo = reinterpret_cast<SERVO*>(parameters);
@@ -709,6 +717,87 @@ void SERVO_TASK(void * parameters)
         // - about 80Hz refresh frequency for read/ack servo feedbacks
         vTaskDelay(1 / portTICK_PERIOD_MS);
     }
+}
+
+int SERVO::write_frame(u8 ID, u8 instruction, u8 const * parameters, size_t parameter_length)
+{
+    // prepare frame to one servo
+    size_t const length {parameter_length+2};       // Length : instruction + params + checksum
+    size_t const buffer_size {2+1+1+length};        // 0xFF 0xFF ID LENGTH (INSTR PARAM... CHK)    
+    u8 buffer[buffer_size] {
+        0xFF,                                       // Start of Frame
+        0xFF,                                       // Start of Frame
+        ID,                                         // ID
+        (u8)length,                                 // Length of payload
+        instruction                                 // Instruction
+    };
+    // fill payload
+    if(parameters)
+    {
+        for(size_t index=0; index<parameter_length; ++index)
+        {
+            buffer[index+5]=parameters[index];
+        }
+    }
+    else
+    {
+        for(size_t index=0; index<parameter_length; ++index)
+        {
+            buffer[index+5]=0;
+        }        
+    }
+    // compute checksum and fill payload
+    u8 chk_sum {0};
+    for(size_t chk_index=2; chk_index<(buffer_size-1); ++chk_index)
+    {
+        chk_sum += buffer[chk_index];
+    }
+    buffer[buffer_size-1] = ~chk_sum;
+    // send frame to servo
+    uart_write_bytes(uart_port_num,buffer,buffer_size);
+    // flush RX FIFO
+    uart_flush(uart_port_num);  
+
+    return SERVO_STATUS_OK;
+}
+
+int SERVO::reply_frame(u8 & ID, u8 & state, u8 * parameters, size_t parameter_length)
+{
+    // a buffer to process reply packet from one servo
+    // prepare frame to one servo
+    size_t const length {parameter_length+2};       // Length : state + params + checksum
+    size_t const buffer_size {2+1+1+length};        // 0xFF 0xFF ID LENGTH (STATE PARAM... CHK)    
+    u8 buffer[buffer_size] {0};
+    // copy RX fifo into local buffer
+    int const read_length = uart_read_bytes(uart_port_num,buffer,buffer_size,1);
+    // flush RX FIFO
+    uart_flush(uart_port_num);    
+    // check expected frame size
+    if(read_length!=buffer_size) return SERVO_STATUS_FAIL;
+    // check frame header
+    if(buffer[0]!=0xFF || buffer[1]!=0xFF) return SERVO_STATUS_FAIL;
+    // check length
+    if(buffer[3]!=length) return SERVO_STATUS_FAIL;
+    // compute checksum
+    u8 chk_sum {0};
+    for(size_t chk_index=2; chk_index<(buffer_size-1); ++chk_index) {
+        chk_sum += buffer[chk_index];
+    }   
+    // check checksum
+    if(buffer[buffer_size-1]!=(u8)(~chk_sum)) return SERVO_STATUS_FAIL;
+    // extract servo ID
+    ID = buffer[2];
+    // extract state
+    state = buffer[4];
+    // extract parameters
+    if(parameters)
+    {
+        for(size_t index=0; index<parameter_length; ++index)
+        {
+            buffer[index+5]=parameters[index];
+        }
+    }
+    return SERVO_STATUS_OK;   
 }
 
 int SERVO::write_register_byte(u8 id, u8 reg, u8 value)
