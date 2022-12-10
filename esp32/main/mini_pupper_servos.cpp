@@ -879,11 +879,6 @@ int SERVO::write_register_word(u8 id, u8 reg, u16 value)
     return SERVO_STATUS_OK;
 }
 
-int SERVO::write_ack(u8 id, size_t length)
-{
-    return SERVO_STATUS_OK;
-}
-
 int SERVO::read_register_byte(u8 id, u8 reg, u8 & value)
 {
     // abort command when broadcasting

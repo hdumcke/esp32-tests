@@ -112,7 +112,7 @@ public:
 
     /* Sync API
      *
-     * Each member function generates one or several instruction/ack frames on servo BUS 
+     * Each member function generates one or several instruction/reply frames on servo BUS 
      *
      */
 
@@ -181,9 +181,9 @@ public:
     bool isSyncRunning {false};
     TaskHandle_t task_handle {NULL};
 
-    /* LOW LEVEL API
+    /* LOW LEVEL helpers
      *
-     * R/W access to register through serial bus using SCS protocol
+     * R/W access to register through serial bus using smart protocol
      * 
      */
     int write_frame(u8 ID, u8 instruction, u8 const * parameters, size_t parameter_length);
@@ -191,7 +191,6 @@ public:
 
     int write_register_byte(u8 id, u8 reg, u8 value);
     int write_register_word(u8 id, u8 reg, u16 value);
-    int write_ack(u8 id, size_t length);
 
     int read_register_byte(u8 id, u8 reg, u8 & value);
     int read_register_word(u8 id, u8 reg, u16 & value);
