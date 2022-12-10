@@ -44,7 +44,7 @@ SERVO::SERVO() {
     ESP_ERROR_CHECK(uart_param_config(uart_port_num, &uart_config));
     ESP_ERROR_CHECK(uart_set_pin(uart_port_num, 4, 5, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
 
-    /*** ASYNC API ***/
+    /*** ASYNC API service ***/
 
     xTaskCreate(
         SERVO_TASK,                 /* Function that implements the task. */
@@ -55,7 +55,7 @@ SERVO::SERVO() {
         &task_handle                /* Used to pass out the created task's handle. */
     );
 
-    /*** ASYNC API ***/
+    /*** ASYNC API service ***/
 }
 
 void SERVO::disable() {
@@ -84,7 +84,7 @@ int SERVO::ping(u8 ID)
         vTaskDelay(10 / portTICK_PERIOD_MS);
     }
 
-    // abord command when broadcasting
+    // abort command when broadcasting
     if(ID==0XFE) return SERVO_STATUS_FAIL;
 
     // send ping instruction
@@ -117,8 +117,27 @@ int SERVO::enable_torque(u8 ID)
         vTaskDelay(10 / portTICK_PERIOD_MS);
     }
 
+    // write instruction
     write_register_byte(ID, SCSCL_TORQUE_ENABLE, 1);
-    // ACK
+
+    // if broadcast, do not wait for reply
+    if(ID==0XFE)
+    {
+        isTorqueEnabled = true;
+        return SERVO_STATUS_OK;    
+    }
+
+    // wait for reply
+    u8 reply_id {0};
+    u8 reply_state {0};
+    int const status = reply_frame(reply_id,reply_state,nullptr,0);
+    ///printf(" reply_id:%d reply_state:%d status:%d.",reply_id,reply_state,status);
+
+    // check reply
+    if(status!=SERVO_STATUS_OK) return SERVO_STATUS_FAIL;
+
+    // check reply
+    if(reply_id!=ID || reply_state!=0) return SERVO_STATUS_FAIL;
 
     isTorqueEnabled = true;
     return SERVO_STATUS_OK;    
@@ -137,7 +156,25 @@ int SERVO::disable_torque(u8 ID)
     }
 
     write_register_byte(ID, SCSCL_TORQUE_ENABLE, 0);
-    // ACK
+    
+    // if broadcast, do not wait for reply
+    if(ID==0XFE)
+    {
+        isTorqueEnabled = true;
+        return SERVO_STATUS_OK;    
+    }
+
+    // wait for reply
+    u8 reply_id {0};
+    u8 reply_state {0};
+    int const status = reply_frame(reply_id,reply_state,nullptr,0);
+    ///printf(" reply_id:%d reply_state:%d status:%d.",reply_id,reply_state,status);
+
+    // check reply
+    if(status!=SERVO_STATUS_OK) return SERVO_STATUS_FAIL;
+
+    // check reply
+    if(reply_id!=ID || reply_state!=0) return SERVO_STATUS_FAIL;
 
     isTorqueEnabled = false;
     return SERVO_STATUS_OK; 
@@ -155,9 +192,23 @@ int SERVO::set_position(u8 ID, u16 position)
         vTaskDelay(10 / portTICK_PERIOD_MS);
     }
 
-    // TODO
-    // TODO
-    // TODO
+    // abort command when broadcasting
+    if(ID==0XFE) return SERVO_STATUS_FAIL;
+
+    // send ping instruction
+    write_register_word(ID, SCSCL_GOAL_POSITION_L, position);
+
+    // wait for reply
+    u8 reply_id {0};
+    u8 reply_state {0};
+    int const status = reply_frame(reply_id,reply_state,nullptr,0);
+    ///printf(" reply_id:%d reply_state:%d status:%d.",reply_id,reply_state,status);
+
+    // check reply
+    if(status!=SERVO_STATUS_OK) return SERVO_STATUS_FAIL;
+
+    // check reply
+    if(reply_id!=ID || reply_state!=0) return SERVO_STATUS_FAIL;
 
     return SERVO_STATUS_OK;
 }
@@ -807,18 +858,21 @@ int SERVO::reply_frame(u8 & ID, u8 & state, u8 * parameters, size_t parameter_le
 
 int SERVO::write_register_byte(u8 id, u8 reg, u8 value)
 {
+    u8 const buffer[2] {reg,value};
+    write_frame(id,INST_WRITE,buffer,2);
+
     return SERVO_STATUS_OK;
 }
 
 int SERVO::write_register_word(u8 id, u8 reg, u16 value)
 {
-/*
-    u8 buffer[] {
-        (u8)(servoPosition>>8),
-        (u8)(servoPosition&0xff)
+    u8 const buffer[3] {
+        reg,
+        (u8)(value>>8),
+        (u8)(value&0xff)
     };
-    return genWrite(servoID, SCSCL_GOAL_POSITION_L,buffer,2);
-    */    
+    write_frame(id,INST_WRITE,buffer,3);
+
     return SERVO_STATUS_OK;
 }
 
