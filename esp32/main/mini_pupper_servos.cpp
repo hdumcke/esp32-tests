@@ -3,14 +3,10 @@
 #include "driver/gpio.h"
 #include "hal/gpio_hal.h"
 #include "esp_log.h"
-#include <freertos/FreeRTOS.h>
-#include <freertos/task.h>
-
-// MENUCONFIG > COMPONENTS > FREERTOS > KERNEL > 1000Hz
-// MENUCONFIG > COMPONENTS > FREERTOS > KERNEL > 1000Hz
-// MENUCONFIG > COMPONENTS > FREERTOS > KERNEL > 1000Hz
 
 static const char *TAG = "MINIPUPPERSERVOS";
+
+void SERVO_TASK(void * parameters);
 
 SERVO servo;
 
@@ -26,6 +22,10 @@ SERVO::SERVO() {
     io_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;//disable pull-down mode
     io_conf.pull_up_en = GPIO_PULLUP_DISABLE;//disable pull-up mode
     ESP_ERROR_CHECK(gpio_config(&io_conf));//configure GPIO with the given settings
+
+    // power off servo system
+    disable();
+
     // set UART port
     uart_config_t uart_config;
     uart_config.baud_rate = 500000;
@@ -42,11 +42,9 @@ SERVO::SERVO() {
     ESP_ERROR_CHECK(uart_driver_install(UART_NUM_1, 1024, 1024, 0, NULL, 0));
     ESP_ERROR_CHECK(uart_param_config(UART_NUM_1, &uart_config));
     ESP_ERROR_CHECK(uart_set_pin(UART_NUM_1, 4, 5, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
-    this->uart_port_num = UART_NUM_1;
-    this->disable();
-    this->disableTorque();
+    uart_port_num = UART_NUM_1;
 
-    /*** ASYNC API Work In Progress ***/
+    /*** ASYNC API ***/
 
     xTaskCreate(
         SERVO_TASK,                 /* Function that implements the task. */
@@ -57,7 +55,7 @@ SERVO::SERVO() {
         &task_handle                /* Used to pass out the created task's handle. */
     );
 
-    /*** ASYNC API Work In Progress ***/
+    /*** ASYNC API ***/
 }
 
 void SERVO::disable() {
@@ -342,6 +340,12 @@ u16  SERVO::getLoadAsync(u8 servoID)
 void SERVO::enableAsyncService(bool enable)
 {
     isSyncRunning = enable;
+
+    // TODO include delay and call it from other member functions
+    // TODO include delay and call it from other member functions
+    // TODO include delay and call it from other member functions
+    // TODO include delay and call it from other member functions
+    // TODO include delay and call it from other member functions
 }
 
 void SERVO::sync_all_goal_position()
@@ -446,19 +450,8 @@ void SERVO_TASK(void * parameters)
 {
     SERVO * servo = reinterpret_cast<SERVO*>(parameters);
     u8 servoID {0};
-    //unsigned int counter {0};
     for(;;)
     {
-        /*
-        ++counter;
-        if((counter%250)==0)
-        {
-            printf(" pos:%d pos:%d \r\n",
-                servo->state[1].present_position,
-                servo->state[1].present_load
-            );
-        }
-        */
         if(servo->isEnabled && servo->isSyncRunning)
         {
             // process read ack from one servo
@@ -475,4 +468,24 @@ void SERVO_TASK(void * parameters)
         // - about 80Hz refresh frequency for read/ack servo feedbacks
         vTaskDelay(1 / portTICK_PERIOD_MS);
     }
+}
+
+SERVO::write_register_byte(u8 reg, u8 value)
+{
+
+}
+
+SERVO::write_register_word(u8 reg, u8 value)
+{
+
+}
+
+u8 SERVO::read_register_byte(u8 reg)
+{
+
+}
+
+u16 SERVO::read_register_word(u8 reg)
+{
+
 }
