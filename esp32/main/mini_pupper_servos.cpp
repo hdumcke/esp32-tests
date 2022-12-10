@@ -70,6 +70,37 @@ void SERVO::enable() {
     isSyncRunning = false;
 }
 
+int SERVO::ping(u8 ID)
+{
+
+}
+
+int SERVO::enable_torque(u8 ID)
+{
+    write_register_byte(0xFE, SCSCL_TORQUE_ENABLE, 1);
+    // ACK
+}
+
+int SERVO::disable_torque(u8 ID)
+{
+
+}
+
+int SERVO::set_position(u8 ID, u16 position)
+{
+
+}
+
+int SERVO::unlock_eeprom(u8 ID)
+{
+
+}
+
+int SERVO::lock_eeprom(u8 ID)
+{
+
+}
+
 void SERVO::enableTorque() {
     // stop sync task and wait a moment
     if(isSyncRunning)
@@ -78,7 +109,7 @@ void SERVO::enableTorque() {
         vTaskDelay(10 / portTICK_PERIOD_MS);
     }
     // enable torque
-    this->EnableTorque(0xFE, 1);
+    write_register_byte(0xFE, SCSCL_TORQUE_ENABLE, 1);
     isTorqueEnabled = true;
 }
 
@@ -90,7 +121,7 @@ void SERVO::disableTorque() {
         vTaskDelay(10 / portTICK_PERIOD_MS);
     }
     // disable torque..
-    this->EnableTorque(0xFE, 0);
+    write_register_byte(0xFE, SCSCL_TORQUE_ENABLE, 0);
     isTorqueEnabled = false;
 }
 
@@ -470,22 +501,29 @@ void SERVO_TASK(void * parameters)
     }
 }
 
-SERVO::write_register_byte(u8 reg, u8 value)
+int SERVO::write_register_byte(u8 id, u8 reg, u8 value)
 {
 
 }
 
-SERVO::write_register_word(u8 reg, u8 value)
+int SERVO::write_register_word(u8 id, u8 reg, u8 value)
 {
 
 }
 
-u8 SERVO::read_register_byte(u8 reg)
+int SERVO::write_ack(u8 id, size_t length)
 {
 
 }
 
-u16 SERVO::read_register_word(u8 reg)
+
+int SERVO::read_register_byte(u8 id, u8 reg, u8 & value)
 {
 
 }
+
+int SERVO::read_register_word(u8 id, u8 reg, u16 & value)
+{
+
+}
+

@@ -87,6 +87,14 @@ struct SERVO_STATE
     // TODO add torque enable 
     // TODO add torque enable 
     // TODO add torque enable 
+
+    // TODO convert load and vel to signed
+    // TODO convert load and vel to signed
+    // TODO convert load and vel to signed
+    /*
+        if(!Err && (Current&(1<<15))){
+        Current = -(Current&~(1<<15));
+    */
 };
 
 class SERVO
@@ -107,21 +115,40 @@ public:
      *
      */
 
-    void enableTorque();
-    void disableTorque(); 
+    // one-servo API
+    int ping(u8 ID);
+    int enable_torque(u8 ID);
+    int disable_torque(u8 ID);
+    int set_position(u8 ID, u16 position);
+    int get_position(u8 ID, u16 & position);
+    int get_velocity(u8 ID, s16 & velocity);
+    int get_load(u8 ID, s16 & load);
+    int get_voltage(u8 ID, u8 & voltage);
+    int get_temperature(u8 ID, u8 & temperature);
+    int get_move(u8 ID, u8 & move);
+    int get_current(u8 ID, s16 & current);
+    int unlock_eeprom(u8 ID);
+    int lock_eeprom(u8 ID);
+
+    // all-servo API
+    void enable_torque();
+    void disable_torque(); 
+    void set_position_all(u16 const servoPositions[]);    
+
+    // advanced API
+    void setID(u8 ID, u8 newID);
+
+    // deprecated API
     void rotate(u8 servoID);
     void setStartPos(u8 servoID);
     void setMidPos(u8 servoID);
     void setEndPos(u8 servoID);
-    int  setPosition(u8 servoID, u16 position, u16 speed = 0); // default maximum speed
-    int  setPositionFast(u8 servoID, u16 position);                         
-    void setPosition12(u8 const servoIDs[], u16 const servoPositions[]);    
     bool checkPosition(u8 servoID, u16 position, int accuracy);
-    void setID(u8 servoID, u8 newID);
-
+    /*int  setPosition(u8 servoID, u16 position, u16 speed = 0); // default maximum speed*/
+    //void setPosition12(u8 const servoIDs[], u16 const servoPositions[]);    
+    
     bool isEnabled {false}; 
     bool isTorqueEnabled {false}; 
-
 
     /* ASYNC API 
      *
@@ -159,11 +186,12 @@ public:
      * 
      */
 
-    void write_register_byte(u8 reg, u8 value);
-    void write_register_word(u8 reg, u8 value);
+    int write_register_byte(u8 id, u8 reg, u8 value);
+    int write_register_word(u8 id, u8 reg, u8 value);
+    int write_ack(u8 id, size_t length);
 
-    u8 read_register_byte(u8 reg);
-    u16 read_register_word(u8 reg);
+    int read_register_byte(u8 id, u8 reg, u8 & value);
+    int read_register_word(u8 id, u8 reg, u16 & value);
 
     int uart_port_num;
 

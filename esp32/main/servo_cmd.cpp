@@ -78,7 +78,7 @@ static void register_servo_cmd_isEnabled(void)
 
 static int servo_cmd_disableTorque(int argc, char **argv)
 {
-    servo.disableTorque();
+    servo.disable_torque();
     return 0;
 }
 
@@ -96,7 +96,7 @@ static void register_servo_cmd_disableTorque(void)
 
 static int servo_cmd_enableTorque(int argc, char **argv)
 {
-    servo.enableTorque();
+    servo.enable_torque();
     return 0;
 }
 
@@ -140,7 +140,7 @@ static int servo_cmd_scan(int argc, char **argv)
     printf("Servos on the bus:\r\n");
     for(u8 i = 0; i<13; i++)
     {
-        if(servo.Ping(i) == i) {
+        if(servo.ping(i) == i) {
             printf("%d ", i);
 	}
     }
@@ -219,9 +219,8 @@ static int servo_cmd_rotate12(int argc, char **argv)
     int loop = servo_rotate12_args.loop->ival[0];
     int i = 0;
     int l = 0;
-    static u8 const servoIDs[] {1,2,3,4,5,6,7,8,9,10,11,12};
     static u16 servoPositions[12] {0};
-    servo.setPosition12(servoIDs,servoPositions);
+    servo.set_position_all(servoPositions);
     // make sure the servo is in the starting position before we measure time
     vTaskDelay(6000 / portTICK_PERIOD_MS);
     start_time = esp_timer_get_time();
@@ -230,14 +229,14 @@ static int servo_cmd_rotate12(int argc, char **argv)
             for(size_t index=0;index<12;++index) {
                 servoPositions[index] = i;
             }
-    	    servo.setPosition12(servoIDs,servoPositions);
+    	    servo.set_position_all(servoPositions);
             vTaskDelay(10 / portTICK_PERIOD_MS);
         }
         for (i = 1023; i > 0; i--) {
             for(size_t index=0;index<12;++index) {
                 servoPositions[index] = i;
             }
-    	    servo.setPosition12(servoIDs,servoPositions);
+    	    servo.set_position_all(servoPositions);
             vTaskDelay(10 / portTICK_PERIOD_MS);
         }
     }
@@ -306,14 +305,16 @@ static int servo_cmd_perftest(int argc, char **argv)
     }
     int id = 0;
     for (id = start_range; id <= end_range; id++) {
-        servo.setPosition((u8)id, (u16)start_pos, (u16) speed);
+        servo.set_position((u8)id, (u16)start_pos);
     }
     // make sure the servo is in the starting position before we measure time
     vTaskDelay(6000 / portTICK_PERIOD_MS);
     bool hasError = false;
     for (id = start_range; id <= end_range; id++) {
         if(! servo.checkPosition((u8)id, (u16)start_pos, accuracy)) {
-            ESP_LOGE(TAG, "Servo %d has not reached it's starting position. Expected % d Read, %d", id, start_pos, servo.ReadPos((u8)id));
+            u16 position {0};
+            servo.get_position((u8)id,position);
+            ESP_LOGE(TAG, "Servo %d has not reached it's starting position. Expected % d Read, %d", id, start_pos, position);
             hasError = true;
         }
     }
@@ -321,7 +322,7 @@ static int servo_cmd_perftest(int argc, char **argv)
 
     start_time = esp_timer_get_time();
     for (id = start_range; id <= end_range; id++) {
-        servo.setPosition((u8)id, (u16)end_pos, (u16) speed);
+        servo.set_position((u8)id, (u16)end_pos);
     }
     if(accuracy<=1023) {
         for (id = start_range; id <= end_range; id++) {
@@ -505,7 +506,7 @@ static int servo_cmd_setPosition(int argc, char **argv)
         printf("Invalid servo position\r\n");
         return 0;
     }
-    servo.setPosition((u8)servo_id, (u16)servo_pos);
+    servo.set_position((u8)servo_id, (u16)servo_pos);
     return 0;
 }
 
@@ -536,7 +537,6 @@ static int servo_cmd_setPosition12(int argc, char **argv)
         arg_print_errors(stderr, servo_pos_args.end, argv[0]);
         return 0;
     }
-    static u8 const servoIDs[] {1,2,3,4,5,6,7,8,9,10,11,12};
     static u16 servoPositions[12] {0};
     for(size_t index=0;index<12;++index) {
         int const & value = servo_pos12_args.servo_pos12->ival[index];
@@ -545,7 +545,7 @@ static int servo_cmd_setPosition12(int argc, char **argv)
         else
             servoPositions[index]=512;
     }
-    servo.setPosition12(servoIDs,servoPositions);
+    servo.set_position_all(servoPositions);
     return 0;
 }
 
@@ -619,47 +619,6 @@ static struct {
     struct arg_end *end;
 } servo_loop_args;
 
-static int servo_cmd_FeedBack(int argc, char **argv)
-{
-    int nerrors = arg_parse(argc, argv, (void **)&servo_loop_args);
-    if (nerrors != 0) {
-        arg_print_errors(stderr, servo_loop_args.end, argv[0]);
-        return 0;
-    }
-
-    /* Check servoID "--id" option */
-    int servo_id = servo_loop_args.servo_id->ival[0];
-    int loop = servo_loop_args.loop->ival[0];
-    if(servo_id<0) {
-        printf("Invalid servo ID\r\n");
-        return 0;
-    }
-    if( servo_id>12 ) {
-        printf("Invalid servo ID\r\n");
-        return 0;
-    }
-    for(int i=0; i<loop; i++){
-        printf("FeedBack: %d\r\n", servo.FeedBack((u8)servo_id));
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
-    }
-    return 0;
-}
-
-static void register_servo_cmd_FeedBack(void)
-{
-    servo_loop_args.servo_id = arg_int1(NULL, "id", "<n>", "Servo ID");
-    servo_loop_args.loop = arg_int1(NULL, "loop", "<n>", "loop <n> times");
-    servo_loop_args.end = arg_end(2);
-    const esp_console_cmd_t cmd_servo_FeedBack = {
-        .command = "servo-FeedBack",
-        .help = "return FeedBack",
-        .hint = "--id <servoID> --loop <n>",
-        .func = &servo_cmd_FeedBack,
-        .argtable = NULL
-    };
-    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_servo_FeedBack) );
-}
-
 static int servo_cmd_ReadPos(int argc, char **argv)
 {
     int nerrors = arg_parse(argc, argv, (void **)&servo_loop_args);
@@ -680,7 +639,9 @@ static int servo_cmd_ReadPos(int argc, char **argv)
         return 0;
     }
     for(int i=0; i<loop; i++){
-        printf("ReadPos: %d\r\n", servo.ReadPos((u8)servo_id));
+        u16 position {0};
+        servo.get_position((u8)servo_id, position);
+        printf("ReadPos: %d\r\n", position);
         vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
     return 0;
@@ -721,7 +682,9 @@ static int servo_cmd_ReadSpeed(int argc, char **argv)
         return 0;
     }
     for(int i=0; i<loop; i++){
-        printf("ReadSpeed: %d\r\n", servo.ReadSpeed((u8)servo_id));
+        s16 velocity {0};
+        servo.get_velocity((u8)servo_id,velocity);
+        printf("ReadSpeed: %d\r\n", velocity);
         vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
     return 0;
@@ -762,7 +725,9 @@ static int servo_cmd_ReadLoad(int argc, char **argv)
         return 0;
     }
     for(int i=0; i<loop; i++){
-        printf("ReadLoad: %d\r\n", servo.ReadLoad((u8)servo_id));
+        s16 load {0};
+        servo.get_load((u8)servo_id,load);
+        printf("ReadLoad: %d\r\n", load);
         vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
     return 0;
@@ -803,7 +768,9 @@ static int servo_cmd_ReadVoltage(int argc, char **argv)
         return 0;
     }
     for(int i=0; i<loop; i++){
-        printf("ReadVoltage: %d\r\n", servo.ReadVoltage((u8)servo_id));
+        u8 voltage {0};
+        servo.get_voltage((u8)servo_id,voltage);
+        printf("ReadVoltage: %d\r\n", voltage);
         vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
     return 0;
@@ -844,7 +811,9 @@ static int servo_cmd_ReadTemper(int argc, char **argv)
         return 0;
     }
     for(int i=0; i<loop; i++){
-        printf("ReadTemper: %d\r\n", servo.ReadTemper((u8)servo_id));
+        u8 temperature {0};
+        servo.get_temperature((u8)servo_id,temperature);
+        printf("ReadTemper: %d\r\n", temperature);
         vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
     return 0;
@@ -885,7 +854,9 @@ static int servo_cmd_ReadMove(int argc, char **argv)
         return 0;
     }
     for(int i=0; i<loop; i++){
-        printf("ReadMove: %d\r\n", servo.ReadMove((u8)servo_id));
+        u8 move {0};
+        servo.get_move((u8)servo_id,move);
+        printf("ReadMove: %d\r\n", move);
         vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
     return 0;
@@ -926,7 +897,9 @@ static int servo_cmd_ReadCurrent(int argc, char **argv)
         return 0;
     }
     for(int i=0; i<loop; i++){
-        printf("ReadCurrent: %d\r\n", servo.ReadCurrent((u8)servo_id));
+        s16 current {0};
+        servo.get_current((u8)servo_id,current);
+        printf("ReadCurrent: %d\r\n", current);
         vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
     return 0;
@@ -946,8 +919,6 @@ static void register_servo_cmd_ReadCurrent(void)
     };
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_servo_ReadCurrent) );
 }
-
-
 
 static int servo_cmd_setPositionAsync(int argc, char **argv)
 {
@@ -1156,7 +1127,6 @@ void register_servo_cmds(void)
     register_servo_cmd_setPosition();
     register_servo_cmd_setPosition12();
     register_servo_cmd_setID();
-    register_servo_cmd_FeedBack();
     register_servo_cmd_ReadPos();
     register_servo_cmd_ReadSpeed();
     register_servo_cmd_ReadLoad();
