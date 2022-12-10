@@ -94,6 +94,9 @@ int SERVO::ping(u8 ID)
     u8 reply_id {0};
     u8 reply_state {0};
     int const status = reply_frame(reply_id,reply_state,nullptr,0);
+    ///printf(" reply_id:%d reply_state:%d status:%d.",reply_id,reply_state,status);
+
+    // check reply
     if(status!=SERVO_STATUS_OK) return SERVO_STATUS_FAIL;
 
     // check reply
@@ -753,10 +756,10 @@ int SERVO::write_frame(u8 ID, u8 instruction, u8 const * parameters, size_t para
         chk_sum += buffer[chk_index];
     }
     buffer[buffer_size-1] = ~chk_sum;
-    // send frame to servo
-    uart_write_bytes(uart_port_num,buffer,buffer_size);
     // flush RX FIFO
     uart_flush(uart_port_num);  
+    // send frame to servo
+    uart_write_bytes(uart_port_num,buffer,buffer_size);
 
     return SERVO_STATUS_OK;
 }
@@ -769,10 +772,11 @@ int SERVO::reply_frame(u8 & ID, u8 & state, u8 * parameters, size_t parameter_le
     size_t const buffer_size {2+1+1+length};        // 0xFF 0xFF ID LENGTH (STATE PARAM... CHK)    
     u8 buffer[buffer_size] {0};
     // copy RX fifo into local buffer
-    int const read_length = uart_read_bytes(uart_port_num,buffer,buffer_size,1);
+    int const read_length = uart_read_bytes(uart_port_num,buffer,buffer_size,2);
     // flush RX FIFO
     uart_flush(uart_port_num);    
     // check expected frame size
+    ///printf("   buffer_size:%d read_length:%d.",buffer_size,read_length);
     if(read_length!=buffer_size) return SERVO_STATUS_FAIL;
     // check frame header
     if(buffer[0]!=0xFF || buffer[1]!=0xFF) return SERVO_STATUS_FAIL;
@@ -780,7 +784,8 @@ int SERVO::reply_frame(u8 & ID, u8 & state, u8 * parameters, size_t parameter_le
     if(buffer[3]!=length) return SERVO_STATUS_FAIL;
     // compute checksum
     u8 chk_sum {0};
-    for(size_t chk_index=2; chk_index<(buffer_size-1); ++chk_index) {
+    for(size_t chk_index=2; chk_index<(buffer_size-1); ++chk_index)
+    {
         chk_sum += buffer[chk_index];
     }   
     // check checksum

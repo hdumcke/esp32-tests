@@ -138,9 +138,9 @@ static void register_servo_cmd_isTorqueEnabled(void)
 static int servo_cmd_scan(int argc, char **argv)
 {
     printf("Servos on the bus:\r\n");
-    for(u8 i = 0; i<13; i++)
+    for(u8 i = 1; i<13; i++)
     {
-        if(servo.ping(i) == i) {
+        if(servo.ping(i) == SERVO_STATUS_OK) {
             printf("%d ", i);
 	}
     }
