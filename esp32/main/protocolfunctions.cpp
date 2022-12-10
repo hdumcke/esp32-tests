@@ -41,7 +41,7 @@ void fn_servo_enable ( PROTOCOL_STAT *s, PARAMSTAT *param, unsigned char cmd, PR
 void fn_servo_disable ( PROTOCOL_STAT *s, PARAMSTAT *param, unsigned char cmd, PROTOCOL_MSG3full *msg ) {
     switch (cmd) {
         case PROTOCOL_CMD_WRITEVAL:
-	    servo.disableTorque();
+	    servo.disable();
             break;
     }
     fn_defaultProcessing(s, param, cmd, msg);
@@ -50,7 +50,7 @@ void fn_servo_disable ( PROTOCOL_STAT *s, PARAMSTAT *param, unsigned char cmd, P
 void fn_servo_torque_enable ( PROTOCOL_STAT *s, PARAMSTAT *param, unsigned char cmd, PROTOCOL_MSG3full *msg ) {
     switch (cmd) {
         case PROTOCOL_CMD_WRITEVAL:
-	    servo.enableTorque();
+	    servo.enable_torque();
             break;
     }
     fn_defaultProcessing(s, param, cmd, msg);
@@ -59,7 +59,7 @@ void fn_servo_torque_enable ( PROTOCOL_STAT *s, PARAMSTAT *param, unsigned char 
 void fn_servo_torque_disable ( PROTOCOL_STAT *s, PARAMSTAT *param, unsigned char cmd, PROTOCOL_MSG3full *msg ) {
     switch (cmd) {
         case PROTOCOL_CMD_WRITEVAL:
-	    servo.disable();
+	    servo.disable_torque();
             break;
     }
     fn_defaultProcessing(s, param, cmd, msg);
@@ -91,13 +91,13 @@ void fn_servo_set_position ( PROTOCOL_STAT *s, PARAMSTAT *param, unsigned char c
 	    if( msg->lenPayload == 4 )
 	    {
                 //ESP_LOGI(TAG, "Position: %u %d", i+1, ((SERVOPARAM*) (param->ptr))->param[i]);
-                servo.setPosition(((SERVOPARAM*) (param->ptr))->param[0], ((SERVOPARAM*) (param->ptr))->param[1]);
+                servo.setPositionAsync(((SERVOPARAM*) (param->ptr))->param[0], ((SERVOPARAM*) (param->ptr))->param[1]);
 	    }
 	    else if(msg->lenPayload == sizeof(servo_data))
 	    {
                 for(u8 i = 0; i<12; i++)
                 {
-		    servoPositions[i] = ((SERVOPARAM*) (param->ptr))->param[i];
+		              servoPositions[i] = ((SERVOPARAM*) (param->ptr))->param[i];
                 }
                 servo.setPosition12Async(servoPositions);
 	    }
@@ -114,23 +114,11 @@ void fn_servo_get_position ( PROTOCOL_STAT *s, PARAMSTAT *param, unsigned char c
     switch (cmd) {
         case PROTOCOL_CMD_READVAL:
             for(u8 i = 0; i<12; i++)
-	    {
-                servo_data.param[i] = servo.ReadPos(i+1);
-                //ESP_LOGI(TAG, "Position: %u %d", i+1, servo_data.param[i]);
-	    }
+	        {
+             servo_data.param[i] = servo.getPositionAsync(i+1);
+              //ESP_LOGI(TAG, "Position: %u %d", i+1, servo_data.param[i]);
+            }
             //ESP_LOG_BUFFER_HEX(TAG, &servo_data, sizeof(servo_data));
-            break;
-    }
-    fn_defaultProcessing(s, param, cmd, msg);
-}
-
-void fn_servo_get_feedback ( PROTOCOL_STAT *s, PARAMSTAT *param, unsigned char cmd, PROTOCOL_MSG3full *msg ) {
-    switch (cmd) {
-        case PROTOCOL_CMD_READVAL:
-            for(u8 i = 0; i<12; i++)
-	    {
-                servo_data.param[i] = servo.FeedBack(i+1);
-	    }
             break;
     }
     fn_defaultProcessing(s, param, cmd, msg);
@@ -141,7 +129,7 @@ void fn_servo_get_speed ( PROTOCOL_STAT *s, PARAMSTAT *param, unsigned char cmd,
         case PROTOCOL_CMD_READVAL:
             for(u8 i = 0; i<12; i++)
 	    {
-                servo_data.param[i] = servo.ReadSpeed(i+1);
+                servo_data.param[i] = servo.getVelocityAsync(i+1);
 	    }
             break;
     }
@@ -153,7 +141,7 @@ void fn_servo_get_load ( PROTOCOL_STAT *s, PARAMSTAT *param, unsigned char cmd, 
         case PROTOCOL_CMD_READVAL:
             for(u8 i = 0; i<12; i++)
 	    {
-                servo_data.param[i] = servo.ReadLoad(i+1);
+                servo_data.param[i] = servo.getLoadAsync(i+1);
 	    }
             break;
     }
@@ -165,7 +153,7 @@ void fn_servo_get_voltage ( PROTOCOL_STAT *s, PARAMSTAT *param, unsigned char cm
         case PROTOCOL_CMD_READVAL:
             for(u8 i = 0; i<12; i++)
 	    {
-                servo_data.param[i] = servo.ReadVoltage(i+1);
+                servo_data.param[i] = servo.getVoltageAsync(i+1);
 	    }
             break;
     }
@@ -177,7 +165,7 @@ void fn_servo_get_temperature ( PROTOCOL_STAT *s, PARAMSTAT *param, unsigned cha
         case PROTOCOL_CMD_READVAL:
             for(u8 i = 0; i<12; i++)
 	    {
-                servo_data.param[i] = servo.ReadTemper(i+1);
+                servo_data.param[i] = servo.getTemperatureAsync(i+1);
 	    }
             break;
     }
@@ -189,7 +177,7 @@ void fn_servo_get_move ( PROTOCOL_STAT *s, PARAMSTAT *param, unsigned char cmd, 
         case PROTOCOL_CMD_READVAL:
             for(u8 i = 0; i<12; i++)
 	    {
-                servo_data.param[i] = servo.ReadMove(i+1);
+                servo_data.param[i] = servo.getMoveAsync(i+1);
 	    }
             break;
     }
@@ -201,7 +189,7 @@ void fn_servo_get_current ( PROTOCOL_STAT *s, PARAMSTAT *param, unsigned char cm
         case PROTOCOL_CMD_READVAL:
             for(u8 i = 0; i<12; i++)
 	    {
-                servo_data.param[i] = servo.ReadCurrent(i+1);
+                servo_data.param[i] = servo.getCurrentAsync(i+1);
 	    }
             break;
     }
@@ -214,7 +202,7 @@ void fn_servo_ping ( PROTOCOL_STAT *s, PARAMSTAT *param, unsigned char cmd, PROT
             for(u8 i = 0; i<12; i++)
 	    {
                 servo_data.param[i] = 0;
-                if(servo.Ping(i+1) == i+1) {
+                if(servo.ping(i+1) == i+1) {
                     servo_data.param[i] = i+1;
                     //ESP_LOGI(TAG, "Ping: %u", i+1);
                 }
@@ -290,9 +278,10 @@ int setup_protocol(PROTOCOL_STAT *s) {
     errors += setParamVariable( s, 0x77, UI_NONE, (void*)&servo_data, sizeof(servo_data) );
     setParamHandler( s, 0x77, fn_servo_get_position );
 
+/* TODO : remove this from Linux API
     errors += setParamVariable( s, 0x78, UI_NONE, (void*)&servo_data, sizeof(servo_data) );
     setParamHandler( s, 0x78, fn_servo_get_feedback );
-
+*/
     errors += setParamVariable( s, 0x79, UI_NONE, (void*)&servo_data, sizeof(servo_data) );
     setParamHandler( s, 0x79, fn_servo_get_speed );
 

@@ -84,17 +84,18 @@ struct SERVO_STATE
     u16 present_position    {0};
     u16 present_velocity    {0};
     u16 present_load        {0};
-    // TODO add torque enable 
-    // TODO add torque enable 
-    // TODO add torque enable 
-
-    // TODO convert load and vel to signed
-    // TODO convert load and vel to signed
-    // TODO convert load and vel to signed
+    u8 present_temperature  {0};
+    u8 present_move         {0};
+    u16 present_current     {0};
     /*
         if(!Err && (Current&(1<<15))){
         Current = -(Current&~(1<<15));
     */
+};
+
+enum {
+    SERVO_STATUS_OK = 0,
+    SERVO_STATUS_FAIL,
 };
 
 class SERVO
@@ -115,10 +116,10 @@ public:
      *
      */
 
-    // one-servo API
+    // single servo API
     int ping(u8 ID);
-    int enable_torque(u8 ID);
-    int disable_torque(u8 ID);
+    int enable_torque(u8 ID = 0xFE);  // not param means ALL servo
+    int disable_torque(u8 ID = 0xFE); // not param means ALL servo
     int set_position(u8 ID, u16 position);
     int get_position(u8 ID, u16 & position);
     int get_velocity(u8 ID, s16 & velocity);
@@ -131,22 +132,18 @@ public:
     int lock_eeprom(u8 ID);
 
     // all-servo API
-    void enable_torque();
-    void disable_torque(); 
     void set_position_all(u16 const servoPositions[]);    
 
     // advanced API
-    void setID(u8 ID, u8 newID);
+    int setID(u8 ID, u8 newID);
 
     // deprecated API
-    void rotate(u8 servoID);
-    void setStartPos(u8 servoID);
-    void setMidPos(u8 servoID);
-    void setEndPos(u8 servoID);
+    int setStartPos(u8 servoID);
+    int setMidPos(u8 servoID);
+    int setEndPos(u8 servoID);
+    int rotate(u8 servoID);
     bool checkPosition(u8 servoID, u16 position, int accuracy);
-    /*int  setPosition(u8 servoID, u16 position, u16 speed = 0); // default maximum speed*/
-    //void setPosition12(u8 const servoIDs[], u16 const servoPositions[]);    
-    
+
     bool isEnabled {false}; 
     bool isTorqueEnabled {false}; 
 
@@ -162,8 +159,12 @@ public:
     void setPosition12Async(u16 const servoPositions[]);    
     
     u16  getPositionAsync(u8 servoID);
-    u16  getVelocityAsync(u8 servoID);
-    u16  getLoadAsync(u8 servoID);
+    s16  getVelocityAsync(u8 servoID);
+    s16  getLoadAsync(u8 servoID);
+    u8   getVoltageAsync(u8 servoID);
+    u8   getTemperatureAsync(u8 servoID);
+    u8   getMoveAsync(u8 servoID);
+    s16  getCurrentAsync(u8 servoID);
 
     // async service enable
     void enableAsyncService(bool enable);
@@ -187,14 +188,13 @@ public:
      */
 
     int write_register_byte(u8 id, u8 reg, u8 value);
-    int write_register_word(u8 id, u8 reg, u8 value);
+    int write_register_word(u8 id, u8 reg, u16 value);
     int write_ack(u8 id, size_t length);
 
     int read_register_byte(u8 id, u8 reg, u8 & value);
     int read_register_word(u8 id, u8 reg, u16 & value);
 
-    int uart_port_num;
-
+    int uart_port_num {1};
 };
 
 extern SERVO servo;
