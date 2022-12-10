@@ -10,9 +10,6 @@ void SERVO_TASK(void * parameters);
 
 SERVO servo;
 
-// number of retries for servo functions
-int retries = 3;
-
 SERVO::SERVO() {
     // setup enable pin
     gpio_config_t io_conf;
@@ -77,12 +74,8 @@ int SERVO::ping(u8 ID)
     // abort if servo not powered on
     if(!isEnabled) return SERVO_STATUS_FAIL;
 
-    // stop sync task and wait a moment
-    if(isSyncRunning)
-    {
-        isSyncRunning = false;
-        vTaskDelay(10 / portTICK_PERIOD_MS);
-    }
+    // suspend sync service
+    enableAsyncService(false);
 
     // abort command when broadcasting
     if(ID==0XFE) return SERVO_STATUS_FAIL;
@@ -110,12 +103,8 @@ int SERVO::enable_torque(u8 ID)
     // abort if servo not powered on
     if(!isEnabled) return SERVO_STATUS_FAIL;
 
-    // stop sync task and wait a moment
-    if(isSyncRunning)
-    {
-        isSyncRunning = false;
-        vTaskDelay(10 / portTICK_PERIOD_MS);
-    }
+    // suspend sync service
+    enableAsyncService(false);
 
     // write instruction
     write_register_byte(ID, SCSCL_TORQUE_ENABLE, 1);
@@ -148,12 +137,8 @@ int SERVO::disable_torque(u8 ID)
     // abort if servo not powered on
     if(!isEnabled) return SERVO_STATUS_FAIL;
 
-    // stop sync task and wait a moment
-    if(isSyncRunning)
-    {
-        isSyncRunning = false;
-        vTaskDelay(10 / portTICK_PERIOD_MS);
-    }
+    // suspend sync service
+    enableAsyncService(false);
 
     // send write frame
     write_register_byte(ID, SCSCL_TORQUE_ENABLE, 0);
@@ -186,12 +171,8 @@ int SERVO::set_position(u8 ID, u16 position)
     // abort if servo not powered on
     if(!isEnabled) return SERVO_STATUS_FAIL;
 
-    // stop sync task and wait a moment
-    if(isSyncRunning)
-    {
-        isSyncRunning = false;
-        vTaskDelay(10 / portTICK_PERIOD_MS);
-    }
+    // suspend sync service
+    enableAsyncService(false);
 
     // abort command when broadcasting
     if(ID==0XFE) return SERVO_STATUS_FAIL;
@@ -219,12 +200,8 @@ int SERVO::get_position(u8 ID, u16 & position)
     // abort if servo not powered on
     if(!isEnabled) return SERVO_STATUS_FAIL;
 
-    // stop sync task and wait a moment
-    if(isSyncRunning)
-    {
-        isSyncRunning = false;
-        vTaskDelay(10 / portTICK_PERIOD_MS);
-    }
+    // suspend sync service
+    enableAsyncService(false);
 
     // send read instruction
     int const status = read_register_word(ID, SCSCL_PRESENT_POSITION_L,position);
@@ -240,12 +217,9 @@ int SERVO::get_velocity(u8 ID, s16 & velocity)
     // abort if servo not powered on
     if(!isEnabled) return SERVO_STATUS_FAIL;
 
-    // stop sync task and wait a moment
-    if(isSyncRunning)
-    {
-        isSyncRunning = false;
-        vTaskDelay(10 / portTICK_PERIOD_MS);
-    }
+    // suspend sync service
+    enableAsyncService(false);
+
 
     // TODO
     // TODO
@@ -259,12 +233,9 @@ int SERVO::get_load(u8 ID, s16 & load)
     // abort if servo not powered on
     if(!isEnabled) return SERVO_STATUS_FAIL;
 
-    // stop sync task and wait a moment
-    if(isSyncRunning)
-    {
-        isSyncRunning = false;
-        vTaskDelay(10 / portTICK_PERIOD_MS);
-    }
+    // suspend sync service
+    enableAsyncService(false);
+
 
     // TODO
     // TODO
@@ -278,12 +249,9 @@ int SERVO::get_voltage(u8 ID, u8 & voltage)
     // abort if servo not powered on
     if(!isEnabled) return SERVO_STATUS_FAIL;
 
-    // stop sync task and wait a moment
-    if(isSyncRunning)
-    {
-        isSyncRunning = false;
-        vTaskDelay(10 / portTICK_PERIOD_MS);
-    }
+    // suspend sync service
+    enableAsyncService(false);
+
 
     // TODO
     // TODO
@@ -297,12 +265,9 @@ int SERVO::get_temperature(u8 ID, u8 & temperature)
     // abort if servo not powered on
     if(!isEnabled) return SERVO_STATUS_FAIL;
 
-    // stop sync task and wait a moment
-    if(isSyncRunning)
-    {
-        isSyncRunning = false;
-        vTaskDelay(10 / portTICK_PERIOD_MS);
-    }
+    // suspend sync service
+    enableAsyncService(false);
+
 
     // TODO
     // TODO
@@ -316,12 +281,9 @@ int SERVO::get_move(u8 ID, u8 & move)
     // abort if servo not powered on
     if(!isEnabled) return SERVO_STATUS_FAIL;
 
-    // stop sync task and wait a moment
-    if(isSyncRunning)
-    {
-        isSyncRunning = false;
-        vTaskDelay(10 / portTICK_PERIOD_MS);
-    }
+    // suspend sync service
+    enableAsyncService(false);
+
 
     // TODO
     // TODO
@@ -335,12 +297,9 @@ int SERVO::get_current(u8 ID, s16 & current)
     // abort if servo not powered on
     if(!isEnabled) return SERVO_STATUS_FAIL;
 
-    // stop sync task and wait a moment
-    if(isSyncRunning)
-    {
-        isSyncRunning = false;
-        vTaskDelay(10 / portTICK_PERIOD_MS);
-    }
+    // suspend sync service
+    enableAsyncService(false);
+
 
     // TODO
     // TODO
@@ -354,12 +313,9 @@ int SERVO::unlock_eeprom(u8 ID)
     // abort if servo not powered on
     if(!isEnabled) return SERVO_STATUS_FAIL;
 
-    // stop sync task and wait a moment
-    if(isSyncRunning)
-    {
-        isSyncRunning = false;
-        vTaskDelay(10 / portTICK_PERIOD_MS);
-    }
+    // suspend sync service
+    enableAsyncService(false);
+
 
     // TODO
     // TODO
@@ -373,12 +329,9 @@ int SERVO::lock_eeprom(u8 ID)
     // abort if servo not powered on
     if(!isEnabled) return SERVO_STATUS_FAIL;
 
-    // stop sync task and wait a moment
-    if(isSyncRunning)
-    {
-        isSyncRunning = false;
-        vTaskDelay(10 / portTICK_PERIOD_MS);
-    }
+    // suspend sync service
+    enableAsyncService(false);
+
 
     // TODO
     // TODO
@@ -389,12 +342,8 @@ int SERVO::lock_eeprom(u8 ID)
 
 void SERVO::set_position_all(u16 const servoPositions[])
 {
-    // stop sync task and wait a moment
-    if(isSyncRunning)
-    {
-        isSyncRunning = false;
-        vTaskDelay(10 / portTICK_PERIOD_MS);
-    }
+    // suspend sync service
+    enableAsyncService(false);
 
     static size_t const L {2};                      // Length of data sent to each servo
     static size_t const N {12};                     // Servo Number
@@ -434,12 +383,8 @@ int SERVO::setID(u8 servoID, u8 newID)
     // abort if servo not powered on
     if(!isEnabled) return SERVO_STATUS_FAIL;
 
-    // stop sync task and wait a moment
-    if(isSyncRunning)
-    {
-        isSyncRunning = false;
-        vTaskDelay(10 / portTICK_PERIOD_MS);
-    }
+    // suspend sync service
+    enableAsyncService(false);
 
     unlock_eeprom(servoID);
     write_register_byte(servoID, SCSCL_ID, newID);
@@ -453,12 +398,8 @@ int SERVO::rotate(u8 servoID)
     // abort if servo not powered on
     if(!isEnabled) return SERVO_STATUS_FAIL;
 
-    // stop sync task and wait a moment
-    if(isSyncRunning)
-    {
-        isSyncRunning = false;
-        vTaskDelay(10 / portTICK_PERIOD_MS);
-    }
+    // suspend sync service
+    enableAsyncService(false);
 
     int i {0};
     set_position(servoID, 0);
@@ -496,12 +437,9 @@ int SERVO::setEndPos(u8 servoID)
 }
 
 bool SERVO::checkPosition(u8 servoID, u16 position, int accuracy = 5) {
-    // stop sync task and wait a moment
-    if(isSyncRunning)
-    {
-        isSyncRunning = false;
-        vTaskDelay(10 / portTICK_PERIOD_MS);
-    }
+    // suspend sync service
+    enableAsyncService(false);
+
 /*
     u16 pos = 0;
     bool ret = false;
@@ -534,26 +472,25 @@ void SERVO::setPositionAsync(u8 servoID, u16 servoPosition)
 {
     if(0<servoID && servoID<=12)
         state[servoID-1].goal_position=servoPosition;
-    // start sync task to enable synchronization from local setpoint database to servo
-    isSyncRunning = true;
+    
+    // (re)start sync service
+    enableAsyncService(true);
 }
 
 void SERVO::setPosition12Async(u16 const servoPositions[])
 {
     for(size_t index=0;index<12;++index)
         state[index].goal_position = servoPositions[index];
-    // start sync task to enable synchronization from local setpoint database to servo
-    isSyncRunning = true;    
+    
+    // (re)start sync service
+    enableAsyncService(true);
 }
 
 u16  SERVO::getPositionAsync(u8 servoID)
 {
-    // start sync task and wait a moment to synchronise local feedback data base
-    if(!isSyncRunning)
-    {
-        isSyncRunning = true; 
-        vTaskDelay(20 / portTICK_PERIOD_MS);   
-    }
+    // (re)start sync service
+    enableAsyncService(true);
+
     if(0<servoID && servoID<=12)
         return state[servoID-1].present_position;
     else
@@ -562,12 +499,9 @@ u16  SERVO::getPositionAsync(u8 servoID)
 
 s16  SERVO::getVelocityAsync(u8 servoID)
 {
-    // start sync task and wait a moment to synchronise local feedback data base
-    if(!isSyncRunning)
-    {
-        isSyncRunning = true; 
-        vTaskDelay(20 / portTICK_PERIOD_MS);   
-    }
+    // (re)start sync service
+    enableAsyncService(true);
+
     if(0<servoID && servoID<=12)
         return state[servoID-1].present_velocity;
     else
@@ -576,12 +510,9 @@ s16  SERVO::getVelocityAsync(u8 servoID)
 
 s16  SERVO::getLoadAsync(u8 servoID)
 {
-    // start sync task and wait a moment to synchronise local feedback data base
-    if(!isSyncRunning)
-    {
-        isSyncRunning = true; 
-        vTaskDelay(20 / portTICK_PERIOD_MS);   
-    }
+    // (re)start sync service
+    enableAsyncService(true);
+
     if(0<servoID && servoID<=12)
         return state[servoID-1].present_load;
     else
@@ -590,12 +521,9 @@ s16  SERVO::getLoadAsync(u8 servoID)
 
 u8  SERVO::getVoltageAsync(u8 servoID)
 {
-    // start sync task and wait a moment to synchronise local feedback data base
-    if(!isSyncRunning)
-    {
-        isSyncRunning = true; 
-        vTaskDelay(20 / portTICK_PERIOD_MS);   
-    }
+    // (re)start sync service
+    enableAsyncService(true);
+
     if(0<servoID && servoID<=12)
         return state[servoID-1].present_load;
     else
@@ -604,12 +532,9 @@ u8  SERVO::getVoltageAsync(u8 servoID)
 
 u8  SERVO::getTemperatureAsync(u8 servoID)
 {
-    // start sync task and wait a moment to synchronise local feedback data base
-    if(!isSyncRunning)
-    {
-        isSyncRunning = true; 
-        vTaskDelay(20 / portTICK_PERIOD_MS);   
-    }
+    // (re)start sync service
+    enableAsyncService(true);
+
     if(0<servoID && servoID<=12)
         return state[servoID-1].present_temperature;
     else
@@ -618,12 +543,9 @@ u8  SERVO::getTemperatureAsync(u8 servoID)
 
 u8  SERVO::getMoveAsync(u8 servoID)
 {
-    // start sync task and wait a moment to synchronise local feedback data base
-    if(!isSyncRunning)
-    {
-        isSyncRunning = true; 
-        vTaskDelay(20 / portTICK_PERIOD_MS);   
-    }
+    // (re)start sync service
+    enableAsyncService(true);
+
     if(0<servoID && servoID<=12)
         return state[servoID-1].present_move;
     else
@@ -632,12 +554,9 @@ u8  SERVO::getMoveAsync(u8 servoID)
 
 s16 SERVO::getCurrentAsync(u8 servoID)
 {
-    // start sync task and wait a moment to synchronise local feedback data base
-    if(!isSyncRunning)
-    {
-        isSyncRunning = true; 
-        vTaskDelay(20 / portTICK_PERIOD_MS);   
-    }
+    // (re)start sync service
+    enableAsyncService(true);
+
     if(0<servoID && servoID<=12)
         return state[servoID-1].present_current;
     else
@@ -646,13 +565,28 @@ s16 SERVO::getCurrentAsync(u8 servoID)
 
 void SERVO::enableAsyncService(bool enable)
 {
-    isSyncRunning = enable;
+    // cannot start is power off
+    if(!isEnabled) return;
 
-    // TODO include delay and call it from other member functions
-    // TODO include delay and call it from other member functions
-    // TODO include delay and call it from other member functions
-    // TODO include delay and call it from other member functions
-    // TODO include delay and call it from other member functions
+    // nothing to do
+    if(isSyncRunning==enable) return;
+
+    // (re)start sync service
+    if(enable)
+    {
+        // (re)start sync task and wait a moment to synchronise local feedback data base
+        isSyncRunning = true; 
+        vTaskDelay(20 / portTICK_PERIOD_MS);   
+    }
+    // suspend sync service
+    else
+    {
+        // suspend sync task and wait a moment
+        isSyncRunning = false;
+        vTaskDelay(10 / portTICK_PERIOD_MS);
+    }
+    // flush RX FIFO
+    uart_flush(uart_port_num);    
 }
 
 void SERVO::sync_all_goal_position()
