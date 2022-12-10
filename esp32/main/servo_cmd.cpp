@@ -17,6 +17,39 @@ static const char *TAG = "SERVOCMD";
 static uint64_t start_time = 0;
 static uint64_t end_time = 0;
 
+static struct
+{
+    struct arg_int *servo_id;
+    struct arg_end *end;
+} servo_id_args;
+
+
+static struct
+{
+    struct arg_int *loop;
+    struct arg_end *end;
+} servo_loop_args;
+
+static struct
+{
+    struct arg_int *servo_id;
+    struct arg_int *start_pos;
+    struct arg_int *end_pos;
+    struct arg_int *accuracy;
+    struct arg_int *speed;
+    struct arg_end *end;
+} servo_perftest_args;
+
+static struct
+{
+    struct arg_int *servo_id;
+    struct arg_int *loop;
+    struct arg_end *end;
+} servo_id_loop_args;
+
+
+
+
 static int servo_cmd_disable(int argc, char **argv)
 {
     servo.disable();
@@ -160,11 +193,6 @@ static void register_servo_cmd_scan(void)
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_servo_scan) );
 }
 
-static struct {
-    struct arg_int *servo_id;
-    struct arg_end *end;
-} servo_id_args;
-
 static int servo_cmd_rotate(int argc, char **argv)
 {
     int nerrors = arg_parse(argc, argv, (void **)&servo_id_args);
@@ -204,19 +232,14 @@ static void register_servo_cmd_rotate(void)
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_servo_rotate) );
 }
 
-static struct {
-    struct arg_int *loop;
-    struct arg_end *end;
-} servo_rotate12_args;
-
 static int servo_cmd_rotate12(int argc, char **argv)
 {
-    int nerrors = arg_parse(argc, argv, (void **)&servo_rotate12_args);
+    int nerrors = arg_parse(argc, argv, (void **)&servo_loop_args);
     if (nerrors != 0) {
-        arg_print_errors(stderr, servo_rotate12_args.end, argv[0]);
+        arg_print_errors(stderr, servo_loop_args.end, argv[0]);
         return 0;
     }
-    int loop = servo_rotate12_args.loop->ival[0];
+    int loop = servo_loop_args.loop->ival[0];
     int i = 0;
     int l = 0;
     static u16 servoPositions[12] {0};
@@ -248,8 +271,8 @@ static int servo_cmd_rotate12(int argc, char **argv)
 
 static void register_servo_cmd_rotate12(void)
 {
-    servo_rotate12_args.loop = arg_int1(NULL, "loop", "<n>", "loop <n> times");
-    servo_rotate12_args.end = arg_end(2);
+    servo_loop_args.loop = arg_int1(NULL, "loop", "<n>", "loop <n> times");
+    servo_loop_args.end = arg_end(2);
     const esp_console_cmd_t cmd_servo_rotate12 = {
         .command = "servo-rotate12",
         .help = "rotate the servos",
@@ -259,15 +282,6 @@ static void register_servo_cmd_rotate12(void)
     };
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_servo_rotate12) );
 }
-
-static struct {
-    struct arg_int *servo_id;
-    struct arg_int *start_pos;
-    struct arg_int *end_pos;
-    struct arg_int *accuracy;
-    struct arg_int *speed;
-    struct arg_end *end;
-} servo_perftest_args;
 
 static int servo_cmd_perftest(int argc, char **argv)
 {
@@ -613,23 +627,17 @@ static void register_servo_cmd_setID(void)
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_servo_setID) );
 }
 
-static struct {
-    struct arg_int *servo_id;
-    struct arg_int *loop;
-    struct arg_end *end;
-} servo_loop_args;
-
 static int servo_cmd_ReadPos(int argc, char **argv)
 {
-    int nerrors = arg_parse(argc, argv, (void **)&servo_loop_args);
+    int nerrors = arg_parse(argc, argv, (void **)&servo_id_loop_args);
     if (nerrors != 0) {
-        arg_print_errors(stderr, servo_loop_args.end, argv[0]);
+        arg_print_errors(stderr, servo_id_loop_args.end, argv[0]);
         return 0;
     }
 
     /* Check servoID "--id" option */
-    int servo_id = servo_loop_args.servo_id->ival[0];
-    int loop = servo_loop_args.loop->ival[0];
+    int servo_id = servo_id_loop_args.servo_id->ival[0];
+    int loop = servo_id_loop_args.loop->ival[0];
     if(servo_id<0) {
         printf("Invalid servo ID\r\n");
         return 0;
@@ -649,9 +657,9 @@ static int servo_cmd_ReadPos(int argc, char **argv)
 
 static void register_servo_cmd_ReadPos(void)
 {
-    servo_loop_args.servo_id = arg_int1(NULL, "id", "<n>", "Servo ID");
-    servo_loop_args.loop = arg_int1(NULL, "loop", "<n>", "loop <n> times");
-    servo_loop_args.end = arg_end(2);
+    servo_id_loop_args.servo_id = arg_int1(NULL, "id", "<n>", "Servo ID");
+    servo_id_loop_args.loop = arg_int1(NULL, "loop", "<n>", "loop <n> times");
+    servo_id_loop_args.end = arg_end(2);
     const esp_console_cmd_t cmd_servo_ReadPos = {
         .command = "servo-ReadPos",
         .help = "return ReadPos",
@@ -664,15 +672,15 @@ static void register_servo_cmd_ReadPos(void)
 
 static int servo_cmd_ReadSpeed(int argc, char **argv)
 {
-    int nerrors = arg_parse(argc, argv, (void **)&servo_loop_args);
+    int nerrors = arg_parse(argc, argv, (void **)&servo_id_loop_args);
     if (nerrors != 0) {
-        arg_print_errors(stderr, servo_loop_args.end, argv[0]);
+        arg_print_errors(stderr, servo_id_loop_args.end, argv[0]);
         return 0;
     }
 
     /* Check servoID "--id" option */
-    int servo_id = servo_loop_args.servo_id->ival[0];
-    int loop = servo_loop_args.loop->ival[0];
+    int servo_id = servo_id_loop_args.servo_id->ival[0];
+    int loop = servo_id_loop_args.loop->ival[0];
     if(servo_id<0) {
         printf("Invalid servo ID\r\n");
         return 0;
@@ -692,9 +700,9 @@ static int servo_cmd_ReadSpeed(int argc, char **argv)
 
 static void register_servo_cmd_ReadSpeed(void)
 {
-    servo_loop_args.servo_id = arg_int1(NULL, "id", "<n>", "Servo ID");
-    servo_loop_args.loop = arg_int1(NULL, "loop", "<n>", "loop <n> times");
-    servo_loop_args.end = arg_end(2);
+    servo_id_loop_args.servo_id = arg_int1(NULL, "id", "<n>", "Servo ID");
+    servo_id_loop_args.loop = arg_int1(NULL, "loop", "<n>", "loop <n> times");
+    servo_id_loop_args.end = arg_end(2);
     const esp_console_cmd_t cmd_servo_ReadSpeed = {
         .command = "servo-ReadSpeed",
         .help = "return ReadSpeed",
@@ -707,15 +715,15 @@ static void register_servo_cmd_ReadSpeed(void)
 
 static int servo_cmd_ReadLoad(int argc, char **argv)
 {
-    int nerrors = arg_parse(argc, argv, (void **)&servo_loop_args);
+    int nerrors = arg_parse(argc, argv, (void **)&servo_id_loop_args);
     if (nerrors != 0) {
-        arg_print_errors(stderr, servo_loop_args.end, argv[0]);
+        arg_print_errors(stderr, servo_id_loop_args.end, argv[0]);
         return 0;
     }
 
     /* Check servoID "--id" option */
-    int servo_id = servo_loop_args.servo_id->ival[0];
-    int loop = servo_loop_args.loop->ival[0];
+    int servo_id = servo_id_loop_args.servo_id->ival[0];
+    int loop = servo_id_loop_args.loop->ival[0];
     if(servo_id<0) {
         printf("Invalid servo ID\r\n");
         return 0;
@@ -735,9 +743,9 @@ static int servo_cmd_ReadLoad(int argc, char **argv)
 
 static void register_servo_cmd_ReadLoad(void)
 {
-    servo_loop_args.servo_id = arg_int1(NULL, "id", "<n>", "Servo ID");
-    servo_loop_args.loop = arg_int1(NULL, "loop", "<n>", "loop <n> times");
-    servo_loop_args.end = arg_end(2);
+    servo_id_loop_args.servo_id = arg_int1(NULL, "id", "<n>", "Servo ID");
+    servo_id_loop_args.loop = arg_int1(NULL, "loop", "<n>", "loop <n> times");
+    servo_id_loop_args.end = arg_end(2);
     const esp_console_cmd_t cmd_servo_ReadLoad = {
         .command = "servo-ReadLoad",
         .help = "return ReadLoad",
@@ -750,15 +758,15 @@ static void register_servo_cmd_ReadLoad(void)
 
 static int servo_cmd_ReadVoltage(int argc, char **argv)
 {
-    int nerrors = arg_parse(argc, argv, (void **)&servo_loop_args);
+    int nerrors = arg_parse(argc, argv, (void **)&servo_id_loop_args);
     if (nerrors != 0) {
-        arg_print_errors(stderr, servo_loop_args.end, argv[0]);
+        arg_print_errors(stderr, servo_id_loop_args.end, argv[0]);
         return 0;
     }
 
     /* Check servoID "--id" option */
-    int servo_id = servo_loop_args.servo_id->ival[0];
-    int loop = servo_loop_args.loop->ival[0];
+    int servo_id = servo_id_loop_args.servo_id->ival[0];
+    int loop = servo_id_loop_args.loop->ival[0];
     if(servo_id<0) {
         printf("Invalid servo ID\r\n");
         return 0;
@@ -778,9 +786,9 @@ static int servo_cmd_ReadVoltage(int argc, char **argv)
 
 static void register_servo_cmd_ReadVoltage(void)
 {
-    servo_loop_args.servo_id = arg_int1(NULL, "id", "<n>", "Servo ID");
-    servo_loop_args.loop = arg_int1(NULL, "loop", "<n>", "loop <n> times");
-    servo_loop_args.end = arg_end(2);
+    servo_id_loop_args.servo_id = arg_int1(NULL, "id", "<n>", "Servo ID");
+    servo_id_loop_args.loop = arg_int1(NULL, "loop", "<n>", "loop <n> times");
+    servo_id_loop_args.end = arg_end(2);
     const esp_console_cmd_t cmd_servo_ReadVoltage = {
         .command = "servo-ReadVoltage",
         .help = "return ReadVoltage",
@@ -793,15 +801,15 @@ static void register_servo_cmd_ReadVoltage(void)
 
 static int servo_cmd_ReadTemper(int argc, char **argv)
 {
-    int nerrors = arg_parse(argc, argv, (void **)&servo_loop_args);
+    int nerrors = arg_parse(argc, argv, (void **)&servo_id_loop_args);
     if (nerrors != 0) {
-        arg_print_errors(stderr, servo_loop_args.end, argv[0]);
+        arg_print_errors(stderr, servo_id_loop_args.end, argv[0]);
         return 0;
     }
 
     /* Check servoID "--id" option */
-    int servo_id = servo_loop_args.servo_id->ival[0];
-    int loop = servo_loop_args.loop->ival[0];
+    int servo_id = servo_id_loop_args.servo_id->ival[0];
+    int loop = servo_id_loop_args.loop->ival[0];
     if(servo_id<0) {
         printf("Invalid servo ID\r\n");
         return 0;
@@ -821,9 +829,9 @@ static int servo_cmd_ReadTemper(int argc, char **argv)
 
 static void register_servo_cmd_ReadTemper(void)
 {
-    servo_loop_args.servo_id = arg_int1(NULL, "id", "<n>", "Servo ID");
-    servo_loop_args.loop = arg_int1(NULL, "loop", "<n>", "loop <n> times");
-    servo_loop_args.end = arg_end(2);
+    servo_id_loop_args.servo_id = arg_int1(NULL, "id", "<n>", "Servo ID");
+    servo_id_loop_args.loop = arg_int1(NULL, "loop", "<n>", "loop <n> times");
+    servo_id_loop_args.end = arg_end(2);
     const esp_console_cmd_t cmd_servo_ReadTemper = {
         .command = "servo-ReadTemper",
         .help = "return ReadTemper",
@@ -836,15 +844,15 @@ static void register_servo_cmd_ReadTemper(void)
 
 static int servo_cmd_ReadMove(int argc, char **argv)
 {
-    int nerrors = arg_parse(argc, argv, (void **)&servo_loop_args);
+    int nerrors = arg_parse(argc, argv, (void **)&servo_id_loop_args);
     if (nerrors != 0) {
-        arg_print_errors(stderr, servo_loop_args.end, argv[0]);
+        arg_print_errors(stderr, servo_id_loop_args.end, argv[0]);
         return 0;
     }
 
     /* Check servoID "--id" option */
-    int servo_id = servo_loop_args.servo_id->ival[0];
-    int loop = servo_loop_args.loop->ival[0];
+    int servo_id = servo_id_loop_args.servo_id->ival[0];
+    int loop = servo_id_loop_args.loop->ival[0];
     if(servo_id<0) {
         printf("Invalid servo ID\r\n");
         return 0;
@@ -864,9 +872,9 @@ static int servo_cmd_ReadMove(int argc, char **argv)
 
 static void register_servo_cmd_ReadMove(void)
 {
-    servo_loop_args.servo_id = arg_int1(NULL, "id", "<n>", "Servo ID");
-    servo_loop_args.loop = arg_int1(NULL, "loop", "<n>", "loop <n> times");
-    servo_loop_args.end = arg_end(2);
+    servo_id_loop_args.servo_id = arg_int1(NULL, "id", "<n>", "Servo ID");
+    servo_id_loop_args.loop = arg_int1(NULL, "loop", "<n>", "loop <n> times");
+    servo_id_loop_args.end = arg_end(2);
     const esp_console_cmd_t cmd_servo_ReadMove = {
         .command = "servo-ReadMove",
         .help = "return ReadMove",
@@ -879,15 +887,15 @@ static void register_servo_cmd_ReadMove(void)
 
 static int servo_cmd_ReadCurrent(int argc, char **argv)
 {
-    int nerrors = arg_parse(argc, argv, (void **)&servo_loop_args);
+    int nerrors = arg_parse(argc, argv, (void **)&servo_id_loop_args);
     if (nerrors != 0) {
-        arg_print_errors(stderr, servo_loop_args.end, argv[0]);
+        arg_print_errors(stderr, servo_id_loop_args.end, argv[0]);
         return 0;
     }
 
     /* Check servoID "--id" option */
-    int servo_id = servo_loop_args.servo_id->ival[0];
-    int loop = servo_loop_args.loop->ival[0];
+    int servo_id = servo_id_loop_args.servo_id->ival[0];
+    int loop = servo_id_loop_args.loop->ival[0];
     if(servo_id<0) {
         printf("Invalid servo ID\r\n");
         return 0;
@@ -907,9 +915,9 @@ static int servo_cmd_ReadCurrent(int argc, char **argv)
 
 static void register_servo_cmd_ReadCurrent(void)
 {
-    servo_loop_args.servo_id = arg_int1(NULL, "id", "<n>", "Servo ID");
-    servo_loop_args.loop = arg_int1(NULL, "loop", "<n>", "loop <n> times");
-    servo_loop_args.end = arg_end(2);
+    servo_id_loop_args.servo_id = arg_int1(NULL, "id", "<n>", "Servo ID");
+    servo_id_loop_args.loop = arg_int1(NULL, "loop", "<n>", "loop <n> times");
+    servo_id_loop_args.end = arg_end(2);
     const esp_console_cmd_t cmd_servo_ReadCurrent = {
         .command = "servo-ReadCurrent",
         .help = "return ReadCurrent",

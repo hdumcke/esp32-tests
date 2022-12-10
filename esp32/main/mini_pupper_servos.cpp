@@ -155,6 +155,7 @@ int SERVO::disable_torque(u8 ID)
         vTaskDelay(10 / portTICK_PERIOD_MS);
     }
 
+    // send write frame
     write_register_byte(ID, SCSCL_TORQUE_ENABLE, 0);
     
     // if broadcast, do not wait for reply
@@ -195,7 +196,7 @@ int SERVO::set_position(u8 ID, u16 position)
     // abort command when broadcasting
     if(ID==0XFE) return SERVO_STATUS_FAIL;
 
-    // send ping instruction
+    // send write instruction
     write_register_word(ID, SCSCL_GOAL_POSITION_L, position);
 
     // wait for reply
@@ -225,9 +226,11 @@ int SERVO::get_position(u8 ID, u16 & position)
         vTaskDelay(10 / portTICK_PERIOD_MS);
     }
 
-    // TODO
-    // TODO
-    // TODO
+    // send read instruction
+    int const status = read_register_word(ID, SCSCL_PRESENT_POSITION_L,position);
+
+    // check reply
+    if(status!=SERVO_STATUS_OK) return SERVO_STATUS_FAIL;
 
     return SERVO_STATUS_OK;
 }
@@ -850,7 +853,7 @@ int SERVO::reply_frame(u8 & ID, u8 & state, u8 * parameters, size_t parameter_le
     {
         for(size_t index=0; index<parameter_length; ++index)
         {
-            buffer[index+5]=parameters[index];
+            parameters[index]=buffer[index+5];
         }
     }
     return SERVO_STATUS_OK;   
@@ -883,12 +886,57 @@ int SERVO::write_ack(u8 id, size_t length)
 
 int SERVO::read_register_byte(u8 id, u8 reg, u8 & value)
 {
+    // abort command when broadcasting
+    if(id==0XFE) return SERVO_STATUS_FAIL;
+
+    // send read instruction
+    u8 const buffer[2] {reg,1};
+    write_frame(id,INST_READ,buffer,2);
+
+    // wait for reply
+    u8 reply_id {0};
+    u8 reply_state {0};
+    u8 data[1] {0};
+    int const status = reply_frame(reply_id,reply_state,data,1);
+    ///printf(" reply_id:%d reply_state:%d status:%d.",reply_id,reply_state,status);
+
+    // check reply
+    if(status!=SERVO_STATUS_OK) return SERVO_STATUS_FAIL;
+
+    // check reply
+    if(reply_id!=id || reply_state!=0) return SERVO_STATUS_FAIL;
+
+    // make byte
+    value = data[0];
 
     return SERVO_STATUS_OK;
 }
 
 int SERVO::read_register_word(u8 id, u8 reg, u16 & value)
 {
+    // abort command when broadcasting
+    if(id==0XFE) return SERVO_STATUS_FAIL;
+
+    // send read instruction
+    u8 const buffer[2] {reg,2};
+    write_frame(id,INST_READ,buffer,2);
+
+    // wait for reply
+    u8 reply_id {0};
+    u8 reply_state {0};
+    u8 data[2] {0};
+    int const status = reply_frame(reply_id,reply_state,data,2);
+    ///printf(" reply_id:%d reply_state:%d status:%d.",reply_id,reply_state,status);
+
+    // check reply
+    if(status!=SERVO_STATUS_OK) return SERVO_STATUS_FAIL;
+
+    // check reply
+    if(reply_id!=id || reply_state!=0) return SERVO_STATUS_FAIL;
+
+    // make word
+    value = (u16)(data[0])<<8 | data[1];
+
     return SERVO_STATUS_OK;
 }
 
