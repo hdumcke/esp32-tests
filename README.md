@@ -39,3 +39,13 @@ Prepare a SD card with Ubuntu 22.04 server. Boot Raspberry Pi and then open a te
 At the end the Raspberry PI will reboot and display the IP address on the LCD. You can now control mini pupper with your PS4 joystick or with a web browser at:
 
 http://&lt;mini pupper IP&gt;:8080
+
+#### Fully automated installation with cloud-init
+
+Flash your SD card with ubuntu-22.04.1-preinstalled-server-arm64+raspi.img.xz
+
+git clone https://github.com/hdumcke/mini_pupper_testig
+./mini_pupper_testig/prepare_sd.py
+
+And answer the questions. At the end eject your SD card, stick it into Mini Pupper, boot Mini Pupper and wait until the IP address is shown on the LCD.
+
