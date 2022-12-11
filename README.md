@@ -24,7 +24,7 @@ In the environment you prepared above:
 - git clone https://github.com/hdumcke/esp32-tests
 - cd esp32-tests/esp32
 - idf.py set-target esp32s3
-- idf.py menuconfig # Mini Pupper Configuration  ---> The device is controlled by Raspi must be checked
+- idf.py menuconfig # optional
 - idf.py build
 - idf.py flash
 
