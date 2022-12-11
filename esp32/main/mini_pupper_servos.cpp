@@ -4,6 +4,9 @@
 #include "hal/gpio_hal.h"
 #include "esp_log.h"
 
+// reference :
+//https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/uart.html
+
 //static const char *TAG = "MINIPUPPERSERVOS";
 
 void SERVO_TASK(void * parameters);
@@ -220,10 +223,17 @@ int SERVO::get_velocity(u8 ID, s16 & velocity)
     // suspend sync service
     enableAsyncService(false);
 
+    // send read instruction
+    u16 present_value {0};
+    int const status = read_register_word(ID, SCSCL_PRESENT_SPEED_L,present_value);
 
-    // TODO
-    // TODO
-    // TODO
+    // check reply
+    if(status!=SERVO_STATUS_OK) return SERVO_STATUS_FAIL;
+
+    // make signed
+    velocity = (s16)present_value;
+    if(velocity&(1<<15))
+        velocity = -(velocity&~(1<<15));
 
     return SERVO_STATUS_OK;
 }
@@ -236,10 +246,17 @@ int SERVO::get_load(u8 ID, s16 & load)
     // suspend sync service
     enableAsyncService(false);
 
+    // send read instruction
+    u16 present_value {0};
+    int const status = read_register_word(ID, SCSCL_PRESENT_LOAD_L,present_value);
 
-    // TODO
-    // TODO
-    // TODO
+    // check reply
+    if(status!=SERVO_STATUS_OK) return SERVO_STATUS_FAIL;
+
+    // make signed
+    load = (s16)present_value;
+    if(load&(1<<10))
+        load = -(load&~(1<<10));
 
     return SERVO_STATUS_OK;
 }
@@ -300,10 +317,17 @@ int SERVO::get_current(u8 ID, s16 & current)
     // suspend sync service
     enableAsyncService(false);
 
+    // send read instruction
+    u16 present_value {0};
+    int const status = read_register_word(ID, SCSCL_PRESENT_CURRENT_L,present_value);
 
-    // TODO
-    // TODO
-    // TODO
+    // check reply
+    if(status!=SERVO_STATUS_OK) return SERVO_STATUS_FAIL;
+
+    // make signed
+    current = (s16)present_value;
+    if(current&(1<<15))
+        current = -(current&~(1<<15));
 
     return SERVO_STATUS_OK;
 }
@@ -316,7 +340,7 @@ int SERVO::unlock_eeprom(u8 ID)
     // suspend sync service
     enableAsyncService(false);
 
-
+    return writeByte(ID, SCSCL_LOCK, 0);
     // TODO
     // TODO
     // TODO
@@ -332,7 +356,7 @@ int SERVO::lock_eeprom(u8 ID)
     // suspend sync service
     enableAsyncService(false);
 
-
+    return writeByte(ID, SCSCL_LOCK, 1);
     // TODO
     // TODO
     // TODO
@@ -679,6 +703,14 @@ void SERVO::ack_feedback_one_servo(SERVO_STATE & servoState)
                 servoState.present_position = (u16)(buffer[5])<<8 | buffer[6];
                 servoState.present_velocity = (u16)(buffer[7])<<8 | buffer[8];
                 servoState.present_load =     (u16)(buffer[9])<<8 | buffer[10];
+
+                // TODO : MORE DATA
+                // TODO : MORE DATA
+                // TODO : MORE DATA
+
+                // MORE : MAKE SIGNED
+                // MORE : MAKE SIGNED
+                // MORE : MAKE SIGNED
             }
         }
     }

@@ -1,3 +1,8 @@
+// FIX TORQUE ENABLE : torque enable when setting position
+// FIX TORQUE ENABLE : torque enable when setting position
+// FIX TORQUE ENABLE : torque enable when setting position
+
+
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 
@@ -87,10 +92,6 @@ struct SERVO_STATE
     u8 present_temperature  {0};
     u8 present_move         {0};
     u16 present_current     {0};
-    /*
-        if(!Err && (Current&(1<<15))){
-        Current = -(Current&~(1<<15));
-    */
 };
 
 enum {
