@@ -44,7 +44,12 @@ http://&lt;mini pupper IP&gt;:8080
 
 Flash your SD card with ubuntu-22.04.1-preinstalled-server-arm64+raspi.img.xz
 
+On the same PC where you flashed your SD card:
+
 git clone https://github.com/hdumcke/mini_pupper_testig
+
+And then execute 
+
 ./mini_pupper_testig/prepare_sd.py
 
 And answer the questions. At the end eject your SD card, stick it into Mini Pupper, boot Mini Pupper and wait until the IP address is shown on the LCD.
