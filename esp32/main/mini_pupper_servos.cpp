@@ -269,10 +269,14 @@ int SERVO::get_voltage(u8 ID, u8 & voltage)
     // suspend sync service
     enableAsyncService(false);
 
+    // send read instruction
+    u8 present_value {0};
+    int const status = read_register_byte(ID, SCSCL_PRESENT_VOLTAGE,present_value);
 
-    // TODO
-    // TODO
-    // TODO
+    // check reply
+    if(status!=SERVO_STATUS_OK) return SERVO_STATUS_FAIL;
+
+    voltage = present_value;
 
     return SERVO_STATUS_OK;
 }
@@ -285,10 +289,14 @@ int SERVO::get_temperature(u8 ID, u8 & temperature)
     // suspend sync service
     enableAsyncService(false);
 
+    // send read instruction
+    u8 present_value {0};
+    int const status = read_register_byte(ID, SCSCL_PRESENT_TEMPERATURE,present_value);
 
-    // TODO
-    // TODO
-    // TODO
+    // check reply
+    if(status!=SERVO_STATUS_OK) return SERVO_STATUS_FAIL;
+
+    temperature = present_value;
 
     return SERVO_STATUS_OK;
 }
@@ -301,10 +309,14 @@ int SERVO::get_move(u8 ID, u8 & move)
     // suspend sync service
     enableAsyncService(false);
 
+    // send read instruction
+    u8 present_value {0};
+    int const status = read_register_byte(ID, SCSCL_MOVING,present_value);
 
-    // TODO
-    // TODO
-    // TODO
+    // check reply
+    if(status!=SERVO_STATUS_OK) return SERVO_STATUS_FAIL;
+
+    move = present_value;
 
     return SERVO_STATUS_OK;
 }
@@ -340,12 +352,22 @@ int SERVO::unlock_eeprom(u8 ID)
     // suspend sync service
     enableAsyncService(false);
 
-    return writeByte(ID, SCSCL_LOCK, 0);
-    // TODO
-    // TODO
-    // TODO
+    // write instruction
+    write_register_byte(ID, SCSCL_LOCK, 0);
 
-    return SERVO_STATUS_OK;
+    // wait for reply
+    u8 reply_id {0};
+    u8 reply_state {0};
+    int const status = reply_frame(reply_id,reply_state,nullptr,0);
+    ///printf(" reply_id:%d reply_state:%d status:%d.",reply_id,reply_state,status);
+
+    // check reply
+    if(status!=SERVO_STATUS_OK) return SERVO_STATUS_FAIL;
+
+    // check reply
+    if(reply_id!=ID || reply_state!=0) return SERVO_STATUS_FAIL;
+
+    return SERVO_STATUS_OK;  
 }
 
 int SERVO::lock_eeprom(u8 ID)
@@ -356,12 +378,22 @@ int SERVO::lock_eeprom(u8 ID)
     // suspend sync service
     enableAsyncService(false);
 
-    return writeByte(ID, SCSCL_LOCK, 1);
-    // TODO
-    // TODO
-    // TODO
+    // write instruction
+    write_register_byte(ID, SCSCL_LOCK, 1);
 
-    return SERVO_STATUS_OK;
+    // wait for reply
+    u8 reply_id {0};
+    u8 reply_state {0};
+    int const status = reply_frame(reply_id,reply_state,nullptr,0);
+    ///printf(" reply_id:%d reply_state:%d status:%d.",reply_id,reply_state,status);
+
+    // check reply
+    if(status!=SERVO_STATUS_OK) return SERVO_STATUS_FAIL;
+
+    // check reply
+    if(reply_id!=ID || reply_state!=0) return SERVO_STATUS_FAIL;
+
+    return SERVO_STATUS_OK; 
 }
 
 void SERVO::set_position_all(u16 const servoPositions[])
@@ -460,9 +492,14 @@ int SERVO::setEndPos(u8 servoID)
     return set_position(servoID, 1023);
 }
 
-bool SERVO::checkPosition(u8 servoID, u16 position, int accuracy = 5) {
+bool SERVO::checkPosition(u8 servoID, u16 position, int accuracy = 5)
+{
+    // abort if servo not powered on
+    if(!isEnabled) return SERVO_STATUS_FAIL;
+
     // suspend sync service
     enableAsyncService(false);
+
 
 /*
     u16 pos = 0;
