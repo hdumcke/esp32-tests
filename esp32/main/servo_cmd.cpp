@@ -699,7 +699,7 @@ static void register_servo_cmd_setID(void)
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_servo_setID) );
 }
 
-static int servo_cmd_ReadPos(int argc, char **argv)
+static int servo_cmd_getPosition(int argc, char **argv)
 {
     int nerrors = arg_parse(argc, argv, (void **)&servo_id_loop_args);
     if (nerrors != 0) {
@@ -727,22 +727,22 @@ static int servo_cmd_ReadPos(int argc, char **argv)
     return 0;
 }
 
-static void register_servo_cmd_ReadPos(void)
+static void register_servo_cmd_getPosition(void)
 {
     servo_id_loop_args.servo_id = arg_int1(NULL, "id", "<n>", "Servo ID");
     servo_id_loop_args.loop = arg_int1(NULL, "loop", "<n>", "loop <n> times");
     servo_id_loop_args.end = arg_end(2);
-    const esp_console_cmd_t cmd_servo_ReadPos = {
-        .command = "servo-ReadPos",
-        .help = "return ReadPos",
+    const esp_console_cmd_t cmd_servo = {
+        .command = "servo-getPosition",
+        .help = "return position",
         .hint = "--id <servoID> --loop <n>",
-        .func = &servo_cmd_ReadPos,
-        .argtable = NULL
+        .func = &servo_cmd_getPosition,
+        .argtable = &servo_id_loop_args
     };
-    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_servo_ReadPos) );
+    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_servo) );
 }
 
-static int servo_cmd_ReadSpeed(int argc, char **argv)
+static int servo_cmd_getSpeed(int argc, char **argv)
 {
     int nerrors = arg_parse(argc, argv, (void **)&servo_id_loop_args);
     if (nerrors != 0) {
@@ -762,27 +762,27 @@ static int servo_cmd_ReadSpeed(int argc, char **argv)
         return 0;
     }
     for(int i=0; i<loop; i++){
-        s16 velocity {0};
-        servo.get_velocity((u8)servo_id,velocity);
-        printf("ReadSpeed: %d\r\n", velocity);
+        s16 speed {0};
+        servo.get_speed((u8)servo_id,speed);
+        printf("Speed: %d\r\n", speed);
         vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
     return 0;
 }
 
-static void register_servo_cmd_ReadSpeed(void)
+static void register_servo_cmd_getSpeed(void)
 {
     servo_id_loop_args.servo_id = arg_int1(NULL, "id", "<n>", "Servo ID");
     servo_id_loop_args.loop = arg_int1(NULL, "loop", "<n>", "loop <n> times");
     servo_id_loop_args.end = arg_end(2);
-    const esp_console_cmd_t cmd_servo_ReadSpeed = {
-        .command = "servo-ReadSpeed",
-        .help = "return ReadSpeed",
+    const esp_console_cmd_t cmd_servo_getSpeed = {
+        .command = "servo-getSpeed",
+        .help = "return speed",
         .hint = "--id <servoID> --loop <n>",
-        .func = &servo_cmd_ReadSpeed,
+        .func = &servo_cmd_getSpeed,
         .argtable = NULL
     };
-    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_servo_ReadSpeed) );
+    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_servo_getSpeed) );
 }
 
 static int servo_cmd_ReadLoad(int argc, char **argv)
@@ -1135,7 +1135,7 @@ static int servo_cmd_ReadVelAsync(int argc, char **argv)
         printf("Invalid servo ID\r\n");
         return 0;
     }
-    printf("ReadVel: %d\r\n", servo.getVelocityAsync((u8)servo_id));
+    printf("ReadVel: %d\r\n", servo.getSpeedAsync((u8)servo_id));
     return 0;
 }
 
@@ -1207,8 +1207,8 @@ void register_servo_cmds(void)
     register_servo_cmd_setPosition();
     register_servo_cmd_setPosition12();
     register_servo_cmd_setID();
-    register_servo_cmd_ReadPos();
-    register_servo_cmd_ReadSpeed();
+    register_servo_cmd_getPosition();
+    register_servo_cmd_getSpeed();
     register_servo_cmd_ReadLoad();
     register_servo_cmd_ReadVoltage();
     register_servo_cmd_ReadTemper();

@@ -137,7 +137,7 @@ void fn_servo_get_speed ( PROTOCOL_STAT *s, PARAMSTAT *param, unsigned char cmd,
         case PROTOCOL_CMD_READVAL:
             for(u8 i = 0; i<12; i++)
 	    {
-                servo_data.param[i] = servo.getVelocityAsync(i+1);
+                servo_data.param[i] = servo.getSpeedAsync(i+1);
 	    }
             break;
     }

@@ -202,7 +202,7 @@ int SERVO::get_position(u8 ID, u16 & position)
     return SERVO_STATUS_OK;
 }
 
-int SERVO::get_velocity(u8 ID, s16 & velocity)
+int SERVO::get_speed(u8 ID, s16 & speed)
 {
     // abort if servo not powered on
     if(!isEnabled) return SERVO_STATUS_FAIL;
@@ -218,9 +218,9 @@ int SERVO::get_velocity(u8 ID, s16 & velocity)
     if(status!=SERVO_STATUS_OK) return SERVO_STATUS_FAIL;
 
     // make signed
-    velocity = (s16)present_value;
-    if(velocity&(1<<15))
-        velocity = -(velocity&~(1<<15));
+    speed = (s16)present_value;
+    if(speed&(1<<15))
+        speed = -(speed&~(1<<15));
 
     return SERVO_STATUS_OK;
 }
@@ -451,7 +451,6 @@ void SERVO::set_position_all(u16 const servoPositions[])
     uart_write_bytes(uart_port_num, buffer, buffer_size);
 }
 
-
 int SERVO::setID(u8 servoID, u8 newID)
 {
     // abort if servo not powered on
@@ -576,13 +575,13 @@ u16  SERVO::getPositionAsync(u8 servoID)
         return 0;
 }
 
-s16  SERVO::getVelocityAsync(u8 servoID)
+s16  SERVO::getSpeedAsync(u8 servoID)
 {
     // (re)start sync service
     enableAsyncService(true);
 
     if(0<servoID && servoID<=12)
-        return state[servoID-1].present_velocity;
+        return state[servoID-1].present_speed;
     else
         return 0;
 }
@@ -756,7 +755,7 @@ void SERVO::ack_feedback_one_servo(SERVO_STATE & servoState)
             {
                 // decode parameters and update feedback local data base for this servo
                 servoState.present_position = (u16)(buffer[5])<<8 | buffer[6];
-                servoState.present_velocity = (u16)(buffer[7])<<8 | buffer[8];
+                servoState.present_speed = (u16)(buffer[7])<<8 | buffer[8];
                 servoState.present_load =     (u16)(buffer[9])<<8 | buffer[10];
 
                 // TODO : MORE DATA

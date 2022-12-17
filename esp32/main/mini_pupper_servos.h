@@ -5,8 +5,8 @@
 
 /* Manual : 
  * 
- *  Configure servo 1 to 12 : 
- *  -------------------------
+ *  I. Configure servo 1 to 12 : 
+ *  ----------------------------
  *   For each servo from N = 2 to 12 :
  *    a. Connect a SCS 0009 servo to the main board (facotry default ID is 1).
  *    b. CLI > servo-enable
@@ -17,10 +17,26 @@
  *   Finish by connecting SCS 0009 servo #1 on the main board. It does not require any ID change.
  *   Final check of servo IDs :
  *    x. CLI > servo-enable
- *    y. CLI > servo-scan (check reply : "Servos on the bus:1 2 3 4 5 6 7 8 9 10 11 12")
+ *    y. CLI > servo-scan (shall reply: "Servos on the bus:1 2 3 4 5 6 7 8 9 10 11 12")
  *    z. CLI > servo-disable
  *
  *
+ *  II. Control one servo at a time (test) :
+ *  ----------------------------------------
+ *   a. Power ON :
+ *    CLI > servo-enable
+ *   b. Change position setpoint
+ *    CLI > servo-setPosition --id <ID:1..12> --pos <POS:0..1023>
+ *   c. Check torque is enabled
+ *    CLI > servo-isTorqueEnable --id <ID:1..12> (shall reply: "servos torque is enable")
+ *   d. Disable torque
+ *    CLI > servo-disableTorque --id <ID:1..12> 
+ *   e. Rotate servo horn by hand
+ *   f. Get position from servo
+ *    CLI > servo-getPosition --id <ID:1..12> --loop 3 (shall reply position data)
+ *   g. Enable torque
+ *    CLI > servo-enableTorque --id <ID:1..12> 
+ *   h. Try to rotate servo horn by hand (should not rotate)
  *
  */
 
@@ -119,7 +135,7 @@ struct SERVO_STATE
     u8 ID                   {0};
     u16 goal_position       {512}; // middle position
     u16 present_position    {0};
-    s16 present_velocity    {0};
+    s16 present_speed    {0};
     s16 present_load        {0};
     u8 present_voltage      {0};
     u8 present_temperature  {0};
@@ -158,7 +174,7 @@ public:
     int is_torque_enable(u8 ID, u8 & enable);
     int set_position(u8 ID, u16 position);
     int get_position(u8 ID, u16 & position);
-    int get_velocity(u8 ID, s16 & velocity);
+    int get_speed(u8 ID, s16 & speed);
     int get_load(u8 ID, s16 & load);
     int get_voltage(u8 ID, u8 & voltage);           // return 0 with SCS 0009
     int get_temperature(u8 ID, u8 & temperature);   // return 0 with SCS 0009
@@ -194,7 +210,7 @@ public:
     void setPosition12Async(u16 const servoPositions[]);    
     
     u16  getPositionAsync(u8 servoID);
-    s16  getVelocityAsync(u8 servoID);
+    s16  getSpeedAsync(u8 servoID);
     s16  getLoadAsync(u8 servoID);
     u8   getVoltageAsync(u8 servoID);       // return 0 with SCS 0009 and SCS Generic (future functionality)
     u8   getTemperatureAsync(u8 servoID);   // return 0 with SCS 0009 and SCS Generic (future functionality)
