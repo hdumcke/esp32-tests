@@ -11,10 +11,16 @@ static const char *TAG = "PROTOCOLFUNCTIONS";
 PROTOCOL_STAT sUSART2;
 
 uint8_t data[2];
-struct SERVOPARAM {
+struct SERVOPARAM_U16 {
     u16 param[12];
 };
-SERVOPARAM servo_data;
+SERVOPARAM_U16 servo_data_unsigned;
+
+struct SERVOPARAM_S16 {
+    s16 param[12];
+};
+SERVOPARAM_S16 servo_data_signed;
+
 struct IMU6DOFPARAM {
     vec3_t acc;
     vec3_t gyro;
@@ -99,13 +105,13 @@ void fn_servo_set_position ( PROTOCOL_STAT *s, PARAMSTAT *param, unsigned char c
 	    if( msg->lenPayload == 4 )
 	    {
                 //ESP_LOGI(TAG, "Position: %u %d", i+1, ((SERVOPARAM*) (param->ptr))->param[i]);
-                servo.setPositionAsync(((SERVOPARAM*) (param->ptr))->param[0], ((SERVOPARAM*) (param->ptr))->param[1]);
+                servo.setPositionAsync(((SERVOPARAM_U16*) (param->ptr))->param[0], ((SERVOPARAM_U16*) (param->ptr))->param[1]);
 	    }
-	    else if(msg->lenPayload == sizeof(servo_data))
+	    else if(msg->lenPayload == sizeof(servo_data_unsigned))
 	    {
                 for(u8 i = 0; i<12; i++)
                 {
-		              servoPositions[i] = ((SERVOPARAM*) (param->ptr))->param[i];
+		              servoPositions[i] = ((SERVOPARAM_U16*) (param->ptr))->param[i];
                 }
                 servo.setPosition12Async(servoPositions);
 	    }
@@ -123,7 +129,7 @@ void fn_servo_get_position ( PROTOCOL_STAT *s, PARAMSTAT *param, unsigned char c
         case PROTOCOL_CMD_READVAL:
             for(u8 i = 0; i<12; i++)
 	        {
-             servo_data.param[i] = servo.getPositionAsync(i+1);
+             servo_data_unsigned.param[i] = servo.getPositionAsync(i+1);
               //ESP_LOGI(TAG, "Position: %u %d", i+1, servo_data.param[i]);
             }
             //ESP_LOG_BUFFER_HEX(TAG, &servo_data, sizeof(servo_data));
@@ -137,7 +143,7 @@ void fn_servo_get_speed ( PROTOCOL_STAT *s, PARAMSTAT *param, unsigned char cmd,
         case PROTOCOL_CMD_READVAL:
             for(u8 i = 0; i<12; i++)
 	    {
-                servo_data.param[i] = servo.getSpeedAsync(i+1);
+                servo_data_signed.param[i] = servo.getSpeedAsync(i+1);
 	    }
             break;
     }
@@ -149,7 +155,7 @@ void fn_servo_get_load ( PROTOCOL_STAT *s, PARAMSTAT *param, unsigned char cmd, 
         case PROTOCOL_CMD_READVAL:
             for(u8 i = 0; i<12; i++)
 	    {
-                servo_data.param[i] = servo.getLoadAsync(i+1);
+                servo_data_signed.param[i] = servo.getLoadAsync(i+1);
 	    }
             break;
     }
@@ -161,7 +167,7 @@ void fn_servo_get_voltage ( PROTOCOL_STAT *s, PARAMSTAT *param, unsigned char cm
         case PROTOCOL_CMD_READVAL:
             for(u8 i = 0; i<12; i++)
 	    {
-                servo_data.param[i] = servo.getVoltageAsync(i+1);
+                servo_data_unsigned.param[i] = servo.getVoltageAsync(i+1);
 	    }
             break;
     }
@@ -173,7 +179,7 @@ void fn_servo_get_temperature ( PROTOCOL_STAT *s, PARAMSTAT *param, unsigned cha
         case PROTOCOL_CMD_READVAL:
             for(u8 i = 0; i<12; i++)
 	    {
-                servo_data.param[i] = servo.getTemperatureAsync(i+1);
+                servo_data_unsigned.param[i] = servo.getTemperatureAsync(i+1);
 	    }
             break;
     }
@@ -185,7 +191,7 @@ void fn_servo_get_move ( PROTOCOL_STAT *s, PARAMSTAT *param, unsigned char cmd, 
         case PROTOCOL_CMD_READVAL:
             for(u8 i = 0; i<12; i++)
 	    {
-                servo_data.param[i] = servo.getMoveAsync(i+1);
+                servo_data_unsigned.param[i] = servo.getMoveAsync(i+1);
 	    }
             break;
     }
@@ -197,7 +203,7 @@ void fn_servo_get_current ( PROTOCOL_STAT *s, PARAMSTAT *param, unsigned char cm
         case PROTOCOL_CMD_READVAL:
             for(u8 i = 0; i<12; i++)
 	    {
-                servo_data.param[i] = servo.getCurrentAsync(i+1);
+                servo_data_signed.param[i] = servo.getCurrentAsync(i+1);
 	    }
             break;
     }
@@ -209,9 +215,9 @@ void fn_servo_ping ( PROTOCOL_STAT *s, PARAMSTAT *param, unsigned char cmd, PROT
         case PROTOCOL_CMD_READVAL:
             for(u8 i = 0; i<12; i++)
 	    {
-                servo_data.param[i] = 0;
+                servo_data_unsigned.param[i] = 0;
                 if(servo.ping(i+1) == i+1) {
-                    servo_data.param[i] = i+1;
+                    servo_data_unsigned.param[i] = i+1;
                     //ESP_LOGI(TAG, "Ping: %u", i+1);
                 }
 	    }
@@ -280,35 +286,35 @@ int setup_protocol(PROTOCOL_STAT *s) {
     errors += setParamVariable( s, 0x75, UI_NONE, &isEnabled, sizeof(isEnabled) );
     setParamHandler( s, 0x75, fn_servo_is_torque_enabled );
 
-    errors += setParamVariable( s, 0x76, UI_NONE, (void*)&servo_data, sizeof(servo_data) );
+    errors += setParamVariable( s, 0x76, UI_NONE, (void*)&servo_data_unsigned, sizeof(servo_data_unsigned) );
     setParamHandler( s, 0x76, fn_servo_set_position );
 
-    errors += setParamVariable( s, 0x77, UI_NONE, (void*)&servo_data, sizeof(servo_data) );
+    errors += setParamVariable( s, 0x77, UI_NONE, (void*)&servo_data_unsigned, sizeof(servo_data_unsigned) );
     setParamHandler( s, 0x77, fn_servo_get_position );
 
 /* TODO : remove this from Linux API
     errors += setParamVariable( s, 0x78, UI_NONE, (void*)&servo_data, sizeof(servo_data) );
     setParamHandler( s, 0x78, fn_servo_get_feedback );
 */
-    errors += setParamVariable( s, 0x79, UI_NONE, (void*)&servo_data, sizeof(servo_data) );
+    errors += setParamVariable( s, 0x79, UI_NONE, (void*)&servo_data_signed, sizeof(servo_data_signed) );
     setParamHandler( s, 0x79, fn_servo_get_speed );
 
-    errors += setParamVariable( s, 0x7A, UI_NONE, (void*)&servo_data, sizeof(servo_data) );
+    errors += setParamVariable( s, 0x7A, UI_NONE, (void*)&servo_data_signed, sizeof(servo_data_signed) );
     setParamHandler( s, 0x7A, fn_servo_get_load );
 
-    errors += setParamVariable( s, 0x7B, UI_NONE, (void*)&servo_data, sizeof(servo_data) );
+    errors += setParamVariable( s, 0x7B, UI_NONE, (void*)&servo_data_unsigned, sizeof(servo_data_unsigned) );
     setParamHandler( s, 0x7B, fn_servo_get_voltage );
 
-    errors += setParamVariable( s, 0x7C, UI_NONE, (void*)&servo_data, sizeof(servo_data) );
+    errors += setParamVariable( s, 0x7C, UI_NONE, (void*)&servo_data_unsigned, sizeof(servo_data_unsigned) );
     setParamHandler( s, 0x7C, fn_servo_get_temperature );
 
-    errors += setParamVariable( s, 0x7D, UI_NONE, (void*)&servo_data, sizeof(servo_data) );
+    errors += setParamVariable( s, 0x7D, UI_NONE, (void*)&servo_data_unsigned, sizeof(servo_data_unsigned) );
     setParamHandler( s, 0x7D, fn_servo_get_move );
 
-    errors += setParamVariable( s, 0x7E, UI_NONE, (void*)&servo_data, sizeof(servo_data) );
+    errors += setParamVariable( s, 0x7E, UI_NONE, (void*)&servo_data_signed, sizeof(servo_data_signed) );
     setParamHandler( s, 0x7E, fn_servo_get_current );
 
-    errors += setParamVariable( s, 0x7F, UI_NONE, (void*)&servo_data, sizeof(servo_data) );
+    errors += setParamVariable( s, 0x7F, UI_NONE, (void*)&servo_data_unsigned, sizeof(servo_data_unsigned) );
     setParamHandler( s, 0x7F, fn_servo_ping );
 
     errors += setParamVariable( s, 0x60, UI_NONE, (void*)&imu_6dof_data, sizeof(imu_6dof_data) );
