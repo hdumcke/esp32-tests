@@ -1,20 +1,22 @@
+/* Authors : 
+ * - Hdumcke
+ * - Pat92fr
+ */
+
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 
-/*
- *
- * IMPORTANT : Mini Servo API requires to setup FreeRTOS frequency at 1000Hz.
- *             MENUCONFIG > COMPONENTS > FREERTOS > KERNEL > 1000Hz
+/* IMPORTANT : Mini Servo API requires to setup FreeRTOS frequency at 1000Hz.
+ *             Use IDF ESP32 : MENUCONFIG > COMPONENTS > FREERTOS > KERNEL > 1000Hz
  *
  */
 
-/*
- * Select servo model :
- *
+/* Select servo model :
+ * - SCS 0009 : Mini Pupper V2
+ * - Generic : to be defined
  */
 #define SERVO_USE_SCS_0009
 //#define SERVO_USE_SCS_GENERIC
-
 
 #ifndef _mini_pupper_servos_H
 #define _mini_pupper_servos_H
@@ -96,13 +98,12 @@ struct SERVO_STATE
     u8 ID                   {0};
     u16 goal_position       {512}; // middle position
     u16 present_position    {0};
-    u16 present_velocity    {0};
-    u16 present_load        {0};
-#ifdef SERVO_USE_SCS_GENERIC
+    s16 present_velocity    {0};
+    s16 present_load        {0};
+    u8 present_voltage      {0};
     u8 present_temperature  {0};
     u8 present_move         {0};
-    u16 present_current     {0};
-#endif
+    s16 present_current     {0};
 };
 
 enum {
@@ -138,10 +139,10 @@ public:
     int get_position(u8 ID, u16 & position);
     int get_velocity(u8 ID, s16 & velocity);
     int get_load(u8 ID, s16 & load);
-    int get_voltage(u8 ID, u8 & voltage);
-    int get_temperature(u8 ID, u8 & temperature);
+    int get_voltage(u8 ID, u8 & voltage);           // return 0 with SCS 0009
+    int get_temperature(u8 ID, u8 & temperature);   // return 0 with SCS 0009
     int get_move(u8 ID, u8 & move);
-    int get_current(u8 ID, s16 & current);
+    int get_current(u8 ID, s16 & current);          // return 0 with SCS 0009
     int unlock_eeprom(u8 ID);
     int lock_eeprom(u8 ID);
 
@@ -174,10 +175,10 @@ public:
     u16  getPositionAsync(u8 servoID);
     s16  getVelocityAsync(u8 servoID);
     s16  getLoadAsync(u8 servoID);
-    u8   getVoltageAsync(u8 servoID);
-    u8   getTemperatureAsync(u8 servoID);
-    u8   getMoveAsync(u8 servoID);
-    s16  getCurrentAsync(u8 servoID);
+    u8   getVoltageAsync(u8 servoID);       // return 0 with SCS 0009 and SCS Generic (future functionality)
+    u8   getTemperatureAsync(u8 servoID);   // return 0 with SCS 0009 and SCS Generic (future functionality)
+    u8   getMoveAsync(u8 servoID);          // return 0 with SCS 0009 and SCS Generic (future functionality)
+    s16  getCurrentAsync(u8 servoID);       // return 0 with SCS 0009 and SCS Generic (future functionality)
 
     // async service enable
     void enableAsyncService(bool enable);

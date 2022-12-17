@@ -1,3 +1,8 @@
+/* Authors : 
+ * - Hdumcke
+ * - Pat92fr
+ */
+
 #include "mini_pupper_servos.h"
 #include "driver/uart.h"
 #include "driver/gpio.h"
@@ -243,10 +248,10 @@ int SERVO::get_load(u8 ID, s16 & load)
     return SERVO_STATUS_OK;
 }
 
-#ifdef SERVO_USE_SCS_GENERIC
-
 int SERVO::get_voltage(u8 ID, u8 & voltage)
 {
+#ifdef SERVO_USE_SCS_GENERIC
+
     // abort if servo not powered on
     if(!isEnabled) return SERVO_STATUS_FAIL;
 
@@ -263,10 +268,20 @@ int SERVO::get_voltage(u8 ID, u8 & voltage)
     voltage = present_value;
 
     return SERVO_STATUS_OK;
+
+#endif //SERVO_USE_SCS_GENERIC
+#ifdef SERVO_USE_SCS_0009
+
+    voltage = 0;
+    return SERVO_STATUS_OK;
+
+#endif //SERVO_USE_SCS_0009
 }
 
 int SERVO::get_temperature(u8 ID, u8 & temperature)
 {
+#ifdef SERVO_USE_SCS_GENERIC
+
     // abort if servo not powered on
     if(!isEnabled) return SERVO_STATUS_FAIL;
 
@@ -283,9 +298,16 @@ int SERVO::get_temperature(u8 ID, u8 & temperature)
     temperature = present_value;
 
     return SERVO_STATUS_OK;
-}
 
 #endif //SERVO_USE_SCS_GENERIC
+#ifdef SERVO_USE_SCS_0009
+
+    temperature = 0;
+    return SERVO_STATUS_OK;
+
+#endif //SERVO_USE_SCS_0009    
+}
+
 
 int SERVO::get_move(u8 ID, u8 & move)
 {
@@ -307,10 +329,10 @@ int SERVO::get_move(u8 ID, u8 & move)
     return SERVO_STATUS_OK;
 }
 
-#ifdef SERVO_USE_SCS_GENERIC
-
 int SERVO::get_current(u8 ID, s16 & current)
 {
+#ifdef SERVO_USE_SCS_GENERIC
+
     // abort if servo not powered on
     if(!isEnabled) return SERVO_STATUS_FAIL;
 
@@ -330,9 +352,15 @@ int SERVO::get_current(u8 ID, s16 & current)
         current = -(current&~(1<<15));
 
     return SERVO_STATUS_OK;
-}
 
 #endif //SERVO_USE_SCS_GENERIC
+#ifdef SERVO_USE_SCS_0009
+
+    current = 0;
+    return SERVO_STATUS_OK;
+
+#endif //SERVO_USE_SCS_0009       
+}
 
 int SERVO::unlock_eeprom(u8 ID)
 {

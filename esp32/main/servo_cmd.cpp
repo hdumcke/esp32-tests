@@ -14,15 +14,12 @@
 #include "nvs_flash.h"
 
 static const char *TAG = "SERVOCMD";
-static uint64_t start_time = 0;
-static uint64_t end_time = 0;
 
 static struct
 {
     struct arg_int *servo_id;
     struct arg_end *end;
 } servo_id_args;
-
 
 static struct
 {
@@ -36,7 +33,6 @@ static struct
     struct arg_int *start_pos;
     struct arg_int *end_pos;
     struct arg_int *accuracy;
-    struct arg_int *speed;
     struct arg_end *end;
 } servo_perftest_args;
 
@@ -47,8 +43,19 @@ static struct
     struct arg_end *end;
 } servo_id_loop_args;
 
+static struct
+{
+    struct arg_int *servo_pos12;
+    struct arg_end *end;
+} servo_pos12_args;
 
+static uint64_t start_time = 0;
+static uint64_t end_time = 0;
 
+/*
+ * Switch ON/OFF servo power supply
+ *
+ */
 
 static int servo_cmd_disable(int argc, char **argv)
 {
@@ -100,7 +107,7 @@ static int servo_cmd_isEnabled(int argc, char **argv)
 static void register_servo_cmd_isEnabled(void)
 {
     const esp_console_cmd_t cmd_servo_isEnabled = {
-        .command = "servo-is-enabled",
+        .command = "servo-isEnabled",
         .help = "check if the servos are enabled",
         .hint = NULL,
         .func = &servo_cmd_isEnabled,
@@ -109,45 +116,109 @@ static void register_servo_cmd_isEnabled(void)
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_servo_isEnabled) );
 }
 
+/*
+ * Switch ON/OFF servo torque
+ *
+ */
+
 static int servo_cmd_disableTorque(int argc, char **argv)
 {
-    servo.disable_torque();
+    int nerrors = arg_parse(argc, argv, (void **)&servo_id_args);
+    if (nerrors != 0) {
+        arg_print_errors(stderr, servo_id_args.end, argv[0]);
+        return 0;
+    }
+
+    int servo_id = servo_id_args.servo_id->ival[0];
+    if(servo_id<0) {
+        printf("Invalid servo ID\r\n");
+        return 0;
+    }
+    if( servo_id>12 && servo_id != 254 ) {
+        printf("Invalid servo ID\r\n");
+        return 0;
+    }
+    if( servo_id == 254) {
+        printf("Warning: your servo ID is the broadcast ID\r\n");
+    }
+    servo.disable_torque((u8)servo_id);
     return 0;
 }
 
 static void register_servo_cmd_disableTorque(void)
 {
-    const esp_console_cmd_t cmd_servo_disableTorque = {
+    servo_id_args.servo_id = arg_int1(NULL, "id", "<n>", "Servo ID");
+    servo_id_args.end = arg_end(2);
+    const esp_console_cmd_t cmd_servo = {
         .command = "servo-disableTorque",
-        .help = "disabing torque on the servos",
-        .hint = NULL,
+        .help = "disable torque",
+        .hint = "--id <servoID>",
         .func = &servo_cmd_disableTorque,
-        .argtable = NULL
+        .argtable = &servo_id_args
     };
-    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_servo_disableTorque) );
+    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_servo) );
 }
+
 
 static int servo_cmd_enableTorque(int argc, char **argv)
 {
-    servo.enable_torque();
+    int nerrors = arg_parse(argc, argv, (void **)&servo_id_args);
+    if (nerrors != 0) {
+        arg_print_errors(stderr, servo_id_args.end, argv[0]);
+        return 0;
+    }
+
+    int servo_id = servo_id_args.servo_id->ival[0];
+    if(servo_id<0) {
+        printf("Invalid servo ID\r\n");
+        return 0;
+    }
+    if( servo_id>12 && servo_id != 254 ) {
+        printf("Invalid servo ID\r\n");
+        return 0;
+    }
+    if( servo_id == 254) {
+        printf("Warning: your servo ID is the broadcast ID\r\n");
+    }
+    servo.enable_torque((u8)servo_id);
     return 0;
 }
 
 static void register_servo_cmd_enableTorque(void)
 {
-    const esp_console_cmd_t cmd_servo_enableTorque = {
+    servo_id_args.servo_id = arg_int1(NULL, "id", "<n>", "Servo ID");
+    servo_id_args.end = arg_end(2);
+    const esp_console_cmd_t cmd_servo = {
         .command = "servo-enableTorque",
-        .help = "enabling torque on the servos",
-        .hint = NULL,
+        .help = "enable torque",
+        .hint = "--id <servoID>",
         .func = &servo_cmd_enableTorque,
-        .argtable = NULL
+        .argtable = &servo_id_args
     };
-    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_servo_enableTorque) );
+    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_servo) );
 }
+
 
 static int servo_cmd_isTorqueEnabled(int argc, char **argv)
 {
-    if(servo.isTorqueEnabled) {
+    int nerrors = arg_parse(argc, argv, (void **)&servo_id_args);
+    if (nerrors != 0) {
+        arg_print_errors(stderr, servo_id_args.end, argv[0]);
+        return 0;
+    }
+
+    int servo_id = servo_id_args.servo_id->ival[0];
+    if(servo_id<0) {
+        printf("Invalid servo ID\r\n");
+        return 0;
+    }
+    if( servo_id>12) {
+        printf("Invalid servo ID\r\n");
+        return 0;
+    }
+    u8 enable {0};
+    servo.is_torque_enable((u8)servo_id,enable);
+    if(enable) {
         printf("servos torque is enabled\r\n");
     }
     else{
@@ -158,24 +229,32 @@ static int servo_cmd_isTorqueEnabled(int argc, char **argv)
 
 static void register_servo_cmd_isTorqueEnabled(void)
 {
-    const esp_console_cmd_t cmd_servo_isTorqueEnabled = {
-        .command = "servo-is-torque-enabled",
-        .help = "check if the servos torque is enabled",
-        .hint = NULL,
+    servo_id_args.servo_id = arg_int1(NULL, "id", "<n>", "Servo ID");
+    servo_id_args.end = arg_end(2);
+    const esp_console_cmd_t cmd_servo = {
+        .command = "servo-isTorqueEnable",
+        .help = "check torque switch",
+        .hint = "--id <servoID>",
         .func = &servo_cmd_isTorqueEnabled,
-	.argtable = NULL
+        .argtable = &servo_id_args
     };
-    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_servo_isTorqueEnabled) );
+    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_servo) );
 }
+
+/*
+ * Ping servo
+ *
+ */
 
 static int servo_cmd_scan(int argc, char **argv)
 {
     printf("Servos on the bus:\r\n");
     for(u8 i = 1; i<13; i++)
     {
-        if(servo.ping(i) == SERVO_STATUS_OK) {
+        if(servo.ping(i) == SERVO_STATUS_OK)
+        {
             printf("%d ", i);
-	}
+	   }
     }
     printf("\r\n");
     return 0;
@@ -188,7 +267,7 @@ static void register_servo_cmd_scan(void)
         .help = "scan the bus for servos",
         .hint = NULL,
         .func = &servo_cmd_scan,
-	.argtable = NULL
+	   .argtable = NULL
     };
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_servo_scan) );
 }
@@ -305,7 +384,6 @@ static int servo_cmd_perftest(int argc, char **argv)
     int start_pos = servo_perftest_args.start_pos->ival[0];
     int end_pos = servo_perftest_args.end_pos->ival[0];
     int accuracy = servo_perftest_args.accuracy->ival[0];
-    int speed = servo_perftest_args.speed->ival[0];
     int start_range = 0;
     int end_range = 0;
 
@@ -356,12 +434,11 @@ static void register_servo_cmd_perftest(void)
     servo_perftest_args.start_pos = arg_int1(NULL, "start", "<n>", "Start Position");
     servo_perftest_args.end_pos = arg_int1(NULL, "end", "<n>", "End Position");
     servo_perftest_args.accuracy = arg_int1(NULL, "acc", "<n>", "Read Accuracy");
-    servo_perftest_args.speed = arg_int1(NULL, "speed", "<n>", "Speed");
     servo_perftest_args.end = arg_end(2);
     const esp_console_cmd_t cmd_servo_perftest = {
         .command = "servo-perftest",
         .help = "servo performance test",
-        .hint = "--id <servoID> --start <startpos> --end <endpos>  --acc <n> --speed <n># id=999: servos 1-12; acc>1023: we do not read position",
+        .hint = "--id <servoID> --start <startpos> --end <endpos>  --acc <n> # id=999: servos 1-12; acc>1023: we do not read position",
         .func = &servo_cmd_perftest,
 	.argtable = NULL
     };
@@ -538,11 +615,6 @@ static void register_servo_cmd_setPosition(void)
     };
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_servo_setPosition) );
 }
-
-static struct {
-    struct arg_int *servo_pos12;
-    struct arg_end *end;
-} servo_pos12_args;
 
 static int servo_cmd_setPosition12(int argc, char **argv)
 {

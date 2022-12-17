@@ -75,9 +75,17 @@ void fn_servo_is_enabled ( PROTOCOL_STAT *s, PARAMSTAT *param, unsigned char cmd
 }
 
 void fn_servo_is_torque_enabled ( PROTOCOL_STAT *s, PARAMSTAT *param, unsigned char cmd, PROTOCOL_MSG3full *msg ) {
+
+ // TODO : pass ID as argument ==> Hdumcke
+  // TODO : pass ID as argument ==> Hdumcke
+   // TODO : pass ID as argument ==> Hdumcke
+
     switch (cmd) {
         case PROTOCOL_CMD_READVAL:
-            isEnabled = servo.isTorqueEnabled;
+            u8 ID {1};
+            u8 enable {0};
+            servo.is_torque_enable(ID,enable);
+            isEnabled = (enable == 1);
             break;
     }
     fn_defaultProcessing(s, param, cmd, msg);
