@@ -37,6 +37,10 @@
  *   g. Enable torque
  *    CLI > servo-enableTorque --id <ID:1..12> 
  *   h. Try to rotate servo horn by hand (should not rotate)
+ *   i. Get load from servo
+ *    CLI > servo-getLoad --id <ID:1..12> --loop 12 (shall reply load data : positive / zero / negative)
+ *   j. Power OFF :
+ *    CLI > servo-disable
  *
  */
 

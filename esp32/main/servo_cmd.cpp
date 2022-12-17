@@ -721,7 +721,7 @@ static int servo_cmd_getPosition(int argc, char **argv)
     for(int i=0; i<loop; i++){
         u16 position {0};
         servo.get_position((u8)servo_id, position);
-        printf("ReadPos: %d\r\n", position);
+        printf("Pos: %d\r\n", position);
         vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
     return 0;
@@ -785,7 +785,7 @@ static void register_servo_cmd_getSpeed(void)
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_servo_getSpeed) );
 }
 
-static int servo_cmd_ReadLoad(int argc, char **argv)
+static int servo_cmd_getLoad(int argc, char **argv)
 {
     int nerrors = arg_parse(argc, argv, (void **)&servo_id_loop_args);
     if (nerrors != 0) {
@@ -807,28 +807,28 @@ static int servo_cmd_ReadLoad(int argc, char **argv)
     for(int i=0; i<loop; i++){
         s16 load {0};
         servo.get_load((u8)servo_id,load);
-        printf("ReadLoad: %d\r\n", load);
+        printf("Load: %d\r\n", load);
         vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
     return 0;
 }
 
-static void register_servo_cmd_ReadLoad(void)
+static void register_servo_cmd_getLoad(void)
 {
     servo_id_loop_args.servo_id = arg_int1(NULL, "id", "<n>", "Servo ID");
     servo_id_loop_args.loop = arg_int1(NULL, "loop", "<n>", "loop <n> times");
     servo_id_loop_args.end = arg_end(2);
-    const esp_console_cmd_t cmd_servo_ReadLoad = {
-        .command = "servo-ReadLoad",
-        .help = "return ReadLoad",
+    const esp_console_cmd_t cmd_servo_getLoad = {
+        .command = "servo-getLoad",
+        .help = "return load",
         .hint = "--id <servoID> --loop <n>",
-        .func = &servo_cmd_ReadLoad,
+        .func = &servo_cmd_getLoad,
         .argtable = NULL
     };
-    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_servo_ReadLoad) );
+    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_servo_getLoad) );
 }
 
-static int servo_cmd_ReadVoltage(int argc, char **argv)
+static int servo_cmd_getVoltage(int argc, char **argv)
 {
     int nerrors = arg_parse(argc, argv, (void **)&servo_id_loop_args);
     if (nerrors != 0) {
@@ -850,28 +850,28 @@ static int servo_cmd_ReadVoltage(int argc, char **argv)
     for(int i=0; i<loop; i++){
         u8 voltage {0};
         servo.get_voltage((u8)servo_id,voltage);
-        printf("ReadVoltage: %d\r\n", voltage);
+        printf("Voltage: %d\r\n", voltage);
         vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
     return 0;
 }
 
-static void register_servo_cmd_ReadVoltage(void)
+static void register_servo_cmd_getVoltage(void)
 {
     servo_id_loop_args.servo_id = arg_int1(NULL, "id", "<n>", "Servo ID");
     servo_id_loop_args.loop = arg_int1(NULL, "loop", "<n>", "loop <n> times");
     servo_id_loop_args.end = arg_end(2);
-    const esp_console_cmd_t cmd_servo_ReadVoltage = {
-        .command = "servo-ReadVoltage",
-        .help = "return ReadVoltage",
+    const esp_console_cmd_t cmd_servo_getVoltage = {
+        .command = "servo-getVoltage",
+        .help = "return voltage",
         .hint = "--id <servoID> --loop <n>",
-        .func = &servo_cmd_ReadVoltage,
+        .func = &servo_cmd_getVoltage,
         .argtable = NULL
     };
-    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_servo_ReadVoltage) );
+    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_servo_getVoltage) );
 }
 
-static int servo_cmd_ReadTemper(int argc, char **argv)
+static int servo_cmd_getTemperature(int argc, char **argv)
 {
     int nerrors = arg_parse(argc, argv, (void **)&servo_id_loop_args);
     if (nerrors != 0) {
@@ -893,28 +893,28 @@ static int servo_cmd_ReadTemper(int argc, char **argv)
     for(int i=0; i<loop; i++){
         u8 temperature {0};
         servo.get_temperature((u8)servo_id,temperature);
-        printf("ReadTemper: %d\r\n", temperature);
+        printf("Temp: %d\r\n", temperature);
         vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
     return 0;
 }
 
-static void register_servo_cmd_ReadTemper(void)
+static void register_servo_cmd_getTemperature(void)
 {
     servo_id_loop_args.servo_id = arg_int1(NULL, "id", "<n>", "Servo ID");
     servo_id_loop_args.loop = arg_int1(NULL, "loop", "<n>", "loop <n> times");
     servo_id_loop_args.end = arg_end(2);
-    const esp_console_cmd_t cmd_servo_ReadTemper = {
-        .command = "servo-ReadTemper",
-        .help = "return ReadTemper",
+    const esp_console_cmd_t cmd_servo_getTemperature = {
+        .command = "servo-getTemperature",
+        .help = "return temperature",
         .hint = "--id <servoID> --loop <n>",
-        .func = &servo_cmd_ReadTemper,
+        .func = &servo_cmd_getTemperature,
         .argtable = NULL
     };
-    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_servo_ReadTemper) );
+    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_servo_getTemperature) );
 }
 
-static int servo_cmd_ReadMove(int argc, char **argv)
+static int servo_cmd_getMove(int argc, char **argv)
 {
     int nerrors = arg_parse(argc, argv, (void **)&servo_id_loop_args);
     if (nerrors != 0) {
@@ -936,28 +936,28 @@ static int servo_cmd_ReadMove(int argc, char **argv)
     for(int i=0; i<loop; i++){
         u8 move {0};
         servo.get_move((u8)servo_id,move);
-        printf("ReadMove: %d\r\n", move);
+        printf("Move: %d\r\n", move);
         vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
     return 0;
 }
 
-static void register_servo_cmd_ReadMove(void)
+static void register_servo_cmd_getMove(void)
 {
     servo_id_loop_args.servo_id = arg_int1(NULL, "id", "<n>", "Servo ID");
     servo_id_loop_args.loop = arg_int1(NULL, "loop", "<n>", "loop <n> times");
     servo_id_loop_args.end = arg_end(2);
-    const esp_console_cmd_t cmd_servo_ReadMove = {
-        .command = "servo-ReadMove",
-        .help = "return ReadMove",
+    const esp_console_cmd_t cmd_servo_getMove = {
+        .command = "servo-getMove",
+        .help = "return move",
         .hint = "--id <servoID> --loop <n>",
-        .func = &servo_cmd_ReadMove,
+        .func = &servo_cmd_getMove,
         .argtable = NULL
     };
-    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_servo_ReadMove) );
+    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_servo_getMove) );
 }
 
-static int servo_cmd_ReadCurrent(int argc, char **argv)
+static int servo_cmd_getCurrent(int argc, char **argv)
 {
     int nerrors = arg_parse(argc, argv, (void **)&servo_id_loop_args);
     if (nerrors != 0) {
@@ -979,25 +979,25 @@ static int servo_cmd_ReadCurrent(int argc, char **argv)
     for(int i=0; i<loop; i++){
         s16 current {0};
         servo.get_current((u8)servo_id,current);
-        printf("ReadCurrent: %d\r\n", current);
+        printf("Current: %d\r\n", current);
         vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
     return 0;
 }
 
-static void register_servo_cmd_ReadCurrent(void)
+static void register_servo_cmd_getCurrent(void)
 {
     servo_id_loop_args.servo_id = arg_int1(NULL, "id", "<n>", "Servo ID");
     servo_id_loop_args.loop = arg_int1(NULL, "loop", "<n>", "loop <n> times");
     servo_id_loop_args.end = arg_end(2);
-    const esp_console_cmd_t cmd_servo_ReadCurrent = {
-        .command = "servo-ReadCurrent",
-        .help = "return ReadCurrent",
+    const esp_console_cmd_t cmd_servo_getCurrent = {
+        .command = "servo-getCurrent",
+        .help = "return current",
         .hint = "--id <servoID> --loop <n>",
-        .func = &servo_cmd_ReadCurrent,
+        .func = &servo_cmd_getCurrent,
         .argtable = NULL
     };
-    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_servo_ReadCurrent) );
+    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_servo_getCurrent) );
 }
 
 static int servo_cmd_setPositionAsync(int argc, char **argv)
@@ -1038,7 +1038,7 @@ static void register_servo_cmd_setPositionAsync(void)
     servo_pos_args.servo_pos = arg_int1(NULL, "pos", "<n>", "Servo Position");
     servo_pos_args.end = arg_end(2);
     const esp_console_cmd_t cmd_servo_setPosition = {
-        .command = "servo-setPosAsync",
+        .command = "servo-setPositionAsync",
         .help = "rotate the servos to a given position",
         .hint = "--id <servoID> --pos <position>",
         .func = &servo_cmd_setPositionAsync,
@@ -1072,7 +1072,7 @@ static void register_servo_cmd_setPosition12Async(void)
     servo_pos12_args.servo_pos12 = arg_intn(NULL,NULL,"<pos>",12,12,"Servo position array (x12)");
     servo_pos12_args.end = arg_end(1);
     const esp_console_cmd_t cmd_servo_setPosition12 = {
-        .command = "servo-setPos12Async",
+        .command = "servo-setPosition12Async",
         .help = "rotate the servos to a given position",
         .hint = "<pos> (x12)",
         .func = &servo_cmd_setPosition12Async,
@@ -1081,7 +1081,7 @@ static void register_servo_cmd_setPosition12Async(void)
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_servo_setPosition12) );
 }
 
-static int servo_cmd_ReadPosAsync(int argc, char **argv)
+static int servo_cmd_getPositionAsync(int argc, char **argv)
 {
     int nerrors = arg_parse(argc, argv, (void **)&servo_id_args);
     if (nerrors != 0) {
@@ -1099,25 +1099,25 @@ static int servo_cmd_ReadPosAsync(int argc, char **argv)
         printf("Invalid servo ID\r\n");
         return 0;
     }
-    printf("ReadPos: %d\r\n", servo.getPositionAsync((u8)servo_id));
+    printf("Pos: %d\r\n", servo.getPositionAsync((u8)servo_id));
     return 0;
 }
 
-static void register_servo_cmd_ReadPosAsync(void)
+static void register_servo_cmd_getPositionAsync(void)
 {
     servo_id_args.servo_id = arg_int1(NULL, "id", "<n>", "Servo ID");
     servo_id_args.end = arg_end(2);
     const esp_console_cmd_t cmd_servo_ReadPos = {
-        .command = "servo-ReadPosAsync",
-        .help = "return ReadPos",
+        .command = "servo-getPositionAsync",
+        .help = "return position",
         .hint = "--id <servoID>",
-        .func = &servo_cmd_ReadPosAsync,
+        .func = &servo_cmd_getPositionAsync,
         .argtable = &servo_id_args
     };
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_servo_ReadPos) );
 }
 
-static int servo_cmd_ReadVelAsync(int argc, char **argv)
+static int servo_cmd_getSpeedAsync(int argc, char **argv)
 {
     int nerrors = arg_parse(argc, argv, (void **)&servo_id_args);
     if (nerrors != 0) {
@@ -1139,21 +1139,21 @@ static int servo_cmd_ReadVelAsync(int argc, char **argv)
     return 0;
 }
 
-static void register_servo_cmd_ReadVelAsync(void)
+static void register_servo_cmd_getSpeedAsync(void)
 {
     servo_id_args.servo_id = arg_int1(NULL, "id", "<n>", "Servo ID");
     servo_id_args.end = arg_end(2);
     const esp_console_cmd_t cmd_servo_ReadVel = {
-        .command = "servo-ReadVelAsync",
-        .help = "return ReadVel",
+        .command = "servo-getSpeedAsync",
+        .help = "return speed",
         .hint = "--id <servoID>",
-        .func = &servo_cmd_ReadVelAsync,
+        .func = &servo_cmd_getSpeedAsync,
         .argtable = &servo_id_args
     };
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_servo_ReadVel) );
 }
 
-static int servo_cmd_ReadLoadAsync(int argc, char **argv)
+static int servo_cmd_getLoadAsync(int argc, char **argv)
 {
     int nerrors = arg_parse(argc, argv, (void **)&servo_id_args);
     if (nerrors != 0) {
@@ -1171,22 +1171,22 @@ static int servo_cmd_ReadLoadAsync(int argc, char **argv)
         printf("Invalid servo ID\r\n");
         return 0;
     }
-    printf("ReadLoad: %d\r\n", servo.getLoadAsync((u8)servo_id));
+    printf("Load: %d\r\n", servo.getLoadAsync((u8)servo_id));
     return 0;
 }
 
-static void register_servo_cmd_ReadLoadAsync(void)
+static void register_servo_cmd_getLoadAsync(void)
 {
     servo_id_args.servo_id = arg_int1(NULL, "id", "<n>", "Servo ID");
     servo_id_args.end = arg_end(2);
-    const esp_console_cmd_t cmd_servo_ReadLoad = {
-        .command = "servo-ReadLoadAsync",
-        .help = "return ReadLoad",
+    const esp_console_cmd_t cmd_servo_getLoad = {
+        .command = "servo-getLoadAsync",
+        .help = "return load",
         .hint = "--id <servoID>",
-        .func = &servo_cmd_ReadLoadAsync,
+        .func = &servo_cmd_getLoadAsync,
         .argtable = &servo_id_args
     };
-    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_servo_ReadLoad) );
+    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_servo_getLoad) );
 }
 
 void register_servo_cmds(void)
@@ -1209,15 +1209,14 @@ void register_servo_cmds(void)
     register_servo_cmd_setID();
     register_servo_cmd_getPosition();
     register_servo_cmd_getSpeed();
-    register_servo_cmd_ReadLoad();
-    register_servo_cmd_ReadVoltage();
-    register_servo_cmd_ReadTemper();
-    register_servo_cmd_ReadMove();
-    register_servo_cmd_ReadCurrent();
-
+    register_servo_cmd_getLoad();
+    register_servo_cmd_getVoltage();
+    register_servo_cmd_getTemperature();
+    register_servo_cmd_getMove();
+    register_servo_cmd_getCurrent();
     register_servo_cmd_setPositionAsync();
     register_servo_cmd_setPosition12Async();
-    register_servo_cmd_ReadPosAsync();
-    register_servo_cmd_ReadVelAsync();
-    register_servo_cmd_ReadLoadAsync();
+    register_servo_cmd_getPositionAsync();
+    register_servo_cmd_getSpeedAsync();
+    register_servo_cmd_getLoadAsync();
 }
