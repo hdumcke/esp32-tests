@@ -1,23 +1,25 @@
+/* Authors : 
+ * - Hdumcke
+ * - Pat92fr
+ */
+
 #include "mini_pupper_servos.h"
 #include "driver/uart.h"
 #include "driver/gpio.h"
 #include "hal/gpio_hal.h"
 #include "esp_log.h"
-#include <freertos/FreeRTOS.h>
-#include <freertos/task.h>
 
-// MENUCONFIG > COMPONENTS > FREERTOS > KERNEL > 1000Hz
-// MENUCONFIG > COMPONENTS > FREERTOS > KERNEL > 1000Hz
-// MENUCONFIG > COMPONENTS > FREERTOS > KERNEL > 1000Hz
+// reference :
+//https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/uart.html
 
-static const char *TAG = "MINIPUPPERSERVOS";
+//static const char *TAG = "MINIPUPPERSERVOS";
+
+void SERVO_TASK(void * parameters);
 
 SERVO servo;
 
-// number of retries for servo functions
-int retries = 3;
-
-SERVO::SERVO() {
+SERVO::SERVO()
+{
     // setup enable pin
     gpio_config_t io_conf;
     io_conf.intr_type = GPIO_INTR_DISABLE;//disable interrupt
@@ -26,6 +28,10 @@ SERVO::SERVO() {
     io_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;//disable pull-down mode
     io_conf.pull_up_en = GPIO_PULLUP_DISABLE;//disable pull-up mode
     ESP_ERROR_CHECK(gpio_config(&io_conf));//configure GPIO with the given settings
+
+    // power off servo system
+    disable();
+
     // set UART port
     uart_config_t uart_config;
     uart_config.baud_rate = 500000;
@@ -39,14 +45,12 @@ SERVO::SERVO() {
 #elif SOC_UART_SUPPORT_XTAL_CLK
     uart_config.source_clk = UART_SCLK_XTAL;
 #endif
-    ESP_ERROR_CHECK(uart_driver_install(UART_NUM_1, 1024, 1024, 0, NULL, 0));
-    ESP_ERROR_CHECK(uart_param_config(UART_NUM_1, &uart_config));
-    ESP_ERROR_CHECK(uart_set_pin(UART_NUM_1, 4, 5, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
-    this->uart_port_num = UART_NUM_1;
-    this->disable();
-    this->disableTorque();
+    uart_port_num = UART_NUM_1;
+    ESP_ERROR_CHECK(uart_driver_install(uart_port_num, 1024, 1024, 0, NULL, 0));
+    ESP_ERROR_CHECK(uart_param_config(uart_port_num, &uart_config));
+    ESP_ERROR_CHECK(uart_set_pin(uart_port_num, 4, 5, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
 
-    /*** ASYNC API Work In Progress ***/
+    /*** ASYNC API service ***/
 
     xTaskCreate(
         SERVO_TASK,                 /* Function that implements the task. */
@@ -57,151 +61,363 @@ SERVO::SERVO() {
         &task_handle                /* Used to pass out the created task's handle. */
     );
 
-    /*** ASYNC API Work In Progress ***/
+    /*** ASYNC API service ***/
 }
 
-void SERVO::disable() {
+void SERVO::disable()
+{
     gpio_set_level(GPIO_NUM_8, 0);
     isEnabled = false;
     isSyncRunning = false;
 }
 
-void SERVO::enable() {
+void SERVO::enable()
+{
     gpio_set_level(GPIO_NUM_8, 1);
     isEnabled = true;
     isSyncRunning = false;
 }
 
-void SERVO::enableTorque() {
-    // stop sync task and wait a moment
-    if(isSyncRunning)
-    {
-        isSyncRunning = false;
-        vTaskDelay(10 / portTICK_PERIOD_MS);
-    }
-    // enable torque
-    this->EnableTorque(0xFE, 1);
-    isTorqueEnabled = true;
-}
-
-void SERVO::disableTorque() {
-    // stop sync task and wait a moment
-    if(isSyncRunning)
-    {
-        isSyncRunning = false;
-        vTaskDelay(10 / portTICK_PERIOD_MS);
-    }
-    // disable torque..
-    this->EnableTorque(0xFE, 0);
-    isTorqueEnabled = false;
-}
-
-void SERVO::rotate(u8 servoID) {
-    // stop sync task and wait a moment
-    if(isSyncRunning)
-    {
-        isSyncRunning = false;
-        vTaskDelay(10 / portTICK_PERIOD_MS);
-    }
-
-    int i {0};
-    setPosition(servoID, 0);
-   
-    for(int l=0; l<5; l++) {	
-      printf("Start of Cycle!\n");
-      for(i = 0; i<1024; i++)
-      {
-        setPosition(servoID,i);
-        printf("Position: %d\n", i);
-      }
-      for(i = 1023; i > 0; i--)
-      {
-        setPosition(servoID,i);
-        printf("Position: %d\n", i);
-      }
-    }
-}
-
-void SERVO::setStartPos(u8 servoID) {
-    // stop sync task and wait a moment
-    if(isSyncRunning)
-    {
-        isSyncRunning = false;
-        vTaskDelay(10 / portTICK_PERIOD_MS);
-    }
-
-    setPosition(servoID, 0);
-}
-
-void SERVO::setMidPos(u8 servoID) {
-    // stop sync task and wait a moment
-    if(isSyncRunning)
-    {
-        isSyncRunning = false;
-        vTaskDelay(10 / portTICK_PERIOD_MS);
-    }
-
-    setPosition(servoID, 511);
-}
-
-void SERVO::setEndPos(u8 servoID) {
-    // stop sync task and wait a moment
-    if(isSyncRunning)
-    {
-        isSyncRunning = false;
-        vTaskDelay(10 / portTICK_PERIOD_MS);
-    }
-
-    setPosition(servoID, 1023);
-}
-
-int SERVO::setPosition(u8 servoID, u16 position, u16 speed) {
-    // stop sync task and wait a moment
-    if(isSyncRunning)
-    {
-        isSyncRunning = false;
-        vTaskDelay(10 / portTICK_PERIOD_MS);
-    }
-
-    int retry_counter = retries;
-
-    for( int i=0; i<retry_counter; i++) {
-        WritePos(servoID, position, 0, speed); // fixed pat92fr
-    	if(!Err) { 
-    	    return i;
-            }
-    	else {
-            ESP_LOGI(TAG, "Retrying WritePos((%d)", servoID);
-            vTaskDelay(20 / portTICK_PERIOD_MS);
-    	}
-    }
-    return 999; //too many retries
-}
-
-int SERVO::setPositionFast(u8 servoID, u16 servoPosition)
+int SERVO::ping(u8 ID)
 {
-    // stop sync task and wait a moment
-    if(isSyncRunning)
-    {
-        isSyncRunning = false;
-        vTaskDelay(10 / portTICK_PERIOD_MS);
-    }
+    // abort if servo not powered on
+    if(!isEnabled) return SERVO_STATUS_FAIL;
 
-    u8 buffer[] {
-        (u8)(servoPosition>>8),
-        (u8)(servoPosition&0xff)
-    };
-    return genWrite(servoID, SCSCL_GOAL_POSITION_L,buffer,2);
+    // suspend sync service
+    enableAsyncService(false);
+
+    // abort command when broadcasting
+    if(ID==0XFE) return SERVO_STATUS_FAIL;
+
+    // send ping instruction
+    write_frame(ID,INST_PING,nullptr,0);
+
+    // wait for reply
+    return check_reply_frame_no_parameter(ID);
 }
 
-void SERVO::setPosition12(u8 const servoIDs[], u16 const servoPositions[])
+int SERVO::recovery(u8 ID)
 {
-    // stop sync task and wait a moment
-    if(isSyncRunning)
-    {
-        isSyncRunning = false;
-        vTaskDelay(10 / portTICK_PERIOD_MS);
-    }
+    // abort if servo not powered on
+    if(!isEnabled) return SERVO_STATUS_FAIL;
+
+    // suspend sync service
+    enableAsyncService(false);
+
+    // abort command when broadcasting
+    if(ID==0XFE) return SERVO_STATUS_FAIL;
+
+    // send ping instruction
+    write_frame(ID,INST_RECOVERY,nullptr,0);
+
+    // wait for reply
+    return check_reply_frame_no_parameter(ID);
+}
+
+int SERVO::enable_torque(u8 ID)
+{
+    // abort if servo not powered on
+    if(!isEnabled) return SERVO_STATUS_FAIL;
+
+    // suspend sync service
+    enableAsyncService(false);
+
+    // write instruction
+    write_register_byte(ID, SERVO_TORQUE_ENABLE, 1);
+
+    // if broadcast, do not wait for reply
+    if(ID==0XFE) return SERVO_STATUS_OK;    
+
+    // wait for reply
+    return check_reply_frame_no_parameter(ID);
+}
+
+int SERVO::disable_torque(u8 ID)
+{
+    // abort if servo not powered on
+    if(!isEnabled) return SERVO_STATUS_FAIL;
+
+    // suspend sync service
+    enableAsyncService(false);
+
+    // send write frame
+    write_register_byte(ID, SERVO_TORQUE_ENABLE, 0);
+    
+    // if broadcast, do not wait for reply
+    if(ID==0XFE) return SERVO_STATUS_OK;    
+
+    // wait for reply
+    return check_reply_frame_no_parameter(ID);
+}
+
+int SERVO::is_torque_enable(u8 ID, u8 & enable)
+{
+    // abort if servo not powered on
+    if(!isEnabled) return SERVO_STATUS_FAIL;
+
+    // suspend sync service
+    enableAsyncService(false);
+
+    // send read instruction
+    int const status = read_register_byte(ID, SERVO_TORQUE_ENABLE,enable);
+
+    // check reply
+    if(status!=SERVO_STATUS_OK) return SERVO_STATUS_FAIL;
+
+    return SERVO_STATUS_OK;    
+}
+
+int SERVO::set_position(u8 ID, u16 position)
+{
+    // abort if servo not powered on
+    if(!isEnabled) return SERVO_STATUS_FAIL;
+
+    // suspend sync service
+    enableAsyncService(false);
+
+    // abort command when broadcasting
+    if(ID==0XFE) return SERVO_STATUS_FAIL;
+
+    // send write instruction
+    write_register_word(ID, SERVO_GOAL_POSITION_L, position);
+
+    // wait for reply
+    return check_reply_frame_no_parameter(ID);
+}
+
+int SERVO::get_position(u8 ID, u16 & position)
+{
+    // abort if servo not powered on
+    if(!isEnabled) return SERVO_STATUS_FAIL;
+
+    // suspend sync service
+    enableAsyncService(false);
+
+    // send read instruction
+    int const status = read_register_word(ID, SERVO_PRESENT_POSITION_L,position);
+
+    // check reply
+    if(status!=SERVO_STATUS_OK) return SERVO_STATUS_FAIL;
+
+    return SERVO_STATUS_OK;
+}
+
+int SERVO::get_speed(u8 ID, s16 & speed)
+{
+    // abort if servo not powered on
+    if(!isEnabled) return SERVO_STATUS_FAIL;
+
+    // suspend sync service
+    enableAsyncService(false);
+
+    // send read instruction
+    u16 present_value {0};
+    int const status = read_register_word(ID, SERVO_PRESENT_SPEED_L,present_value);
+
+    // check reply
+    if(status!=SERVO_STATUS_OK) return SERVO_STATUS_FAIL;
+
+    // make signed
+    speed = (s16)present_value;
+    if(speed&(1<<15))
+        speed = -(speed&~(1<<15));
+
+    return SERVO_STATUS_OK;
+}
+
+int SERVO::get_load(u8 ID, s16 & load)
+{
+    // abort if servo not powered on
+    if(!isEnabled) return SERVO_STATUS_FAIL;
+
+    // suspend sync service
+    enableAsyncService(false);
+
+    // send read instruction
+    u16 present_value {0};
+    int const status = read_register_word(ID, SERVO_PRESENT_LOAD_L,present_value);
+
+    // check reply
+    if(status!=SERVO_STATUS_OK) return SERVO_STATUS_FAIL;
+
+    // make signed
+    load = (s16)present_value;
+    if(load&(1<<10))
+        load = -(load&~(1<<10));
+
+    return SERVO_STATUS_OK;
+}
+
+int SERVO::get_voltage(u8 ID, u8 & voltage)
+{
+#ifdef SERVO_USE_SCS_GENERIC
+
+    // abort if servo not powered on
+    if(!isEnabled) return SERVO_STATUS_FAIL;
+
+    // suspend sync service
+    enableAsyncService(false);
+
+    // send read instruction
+    u8 present_value {0};
+    int const status = read_register_byte(ID, SERVO_PRESENT_VOLTAGE,present_value);
+
+    // check reply
+    if(status!=SERVO_STATUS_OK) return SERVO_STATUS_FAIL;
+
+    voltage = present_value;
+
+    return SERVO_STATUS_OK;
+
+#endif //SERVO_USE_SCS_GENERIC
+#ifdef SERVO_USE_SCS_0009
+
+    voltage = 0;
+    return SERVO_STATUS_OK;
+
+#endif //SERVO_USE_SCS_0009
+}
+
+int SERVO::get_temperature(u8 ID, u8 & temperature)
+{
+#ifdef SERVO_USE_SCS_GENERIC
+
+    // abort if servo not powered on
+    if(!isEnabled) return SERVO_STATUS_FAIL;
+
+    // suspend sync service
+    enableAsyncService(false);
+
+    // send read instruction
+    u8 present_value {0};
+    int const status = read_register_byte(ID, SERVO_PRESENT_TEMPERATURE,present_value);
+
+    // check reply
+    if(status!=SERVO_STATUS_OK) return SERVO_STATUS_FAIL;
+
+    temperature = present_value;
+
+    return SERVO_STATUS_OK;
+
+#endif //SERVO_USE_SCS_GENERIC
+#ifdef SERVO_USE_SCS_0009
+
+    temperature = 0;
+    return SERVO_STATUS_OK;
+
+#endif //SERVO_USE_SCS_0009    
+}
+
+
+int SERVO::get_move(u8 ID, u8 & move)
+{
+    // abort if servo not powered on
+    if(!isEnabled) return SERVO_STATUS_FAIL;
+
+    // suspend sync service
+    enableAsyncService(false);
+
+    // send read instruction
+    u8 present_value {0};
+    int const status = read_register_byte(ID, SERVO_MOVING,present_value);
+
+    // check reply
+    if(status!=SERVO_STATUS_OK) return SERVO_STATUS_FAIL;
+
+    move = present_value;
+
+    return SERVO_STATUS_OK;
+}
+
+int SERVO::get_current(u8 ID, s16 & current)
+{
+#ifdef SERVO_USE_SCS_GENERIC
+
+    // abort if servo not powered on
+    if(!isEnabled) return SERVO_STATUS_FAIL;
+
+    // suspend sync service
+    enableAsyncService(false);
+
+    // send read instruction
+    u16 present_value {0};
+    int const status = read_register_word(ID, SERVO_PRESENT_CURRENT_L,present_value);
+
+    // check reply
+    if(status!=SERVO_STATUS_OK) return SERVO_STATUS_FAIL;
+
+    // make signed
+    current = (s16)present_value;
+    if(current&(1<<15))
+        current = -(current&~(1<<15));
+
+    return SERVO_STATUS_OK;
+
+#endif //SERVO_USE_SCS_GENERIC
+#ifdef SERVO_USE_SCS_0009
+
+    current = 0;
+    return SERVO_STATUS_OK;
+
+#endif //SERVO_USE_SCS_0009       
+}
+
+int SERVO::unlock_eeprom(u8 ID)
+{
+    // abort if servo not powered on
+    if(!isEnabled) return SERVO_STATUS_FAIL;
+
+    // suspend sync service
+    enableAsyncService(false);
+
+    // write instruction
+    write_register_byte(ID, SERVO_LOCK, 0);
+
+    // wait for reply
+    u8 reply_id {0};
+    u8 reply_state {0};
+    int const status = reply_frame(reply_id,reply_state,nullptr,0);
+    ///printf(" reply_id:%d reply_state:%d status:%d.",reply_id,reply_state,status);
+
+    // check reply
+    if(status!=SERVO_STATUS_OK) return SERVO_STATUS_FAIL;
+
+    // check reply
+    if(reply_id!=ID || reply_state!=0) return SERVO_STATUS_FAIL;
+
+    return SERVO_STATUS_OK;  
+}
+
+int SERVO::lock_eeprom(u8 ID)
+{
+    // abort if servo not powered on
+    if(!isEnabled) return SERVO_STATUS_FAIL;
+
+    // suspend sync service
+    enableAsyncService(false);
+
+    // write instruction
+    write_register_byte(ID, SERVO_LOCK, 1);
+
+    // wait for reply
+    u8 reply_id {0};
+    u8 reply_state {0};
+    int const status = reply_frame(reply_id,reply_state,nullptr,0);
+    ///printf(" reply_id:%d reply_state:%d status:%d.",reply_id,reply_state,status);
+
+    // check reply
+    if(status!=SERVO_STATUS_OK) return SERVO_STATUS_FAIL;
+
+    // check reply
+    if(reply_id!=ID || reply_state!=0) return SERVO_STATUS_FAIL;
+
+    return SERVO_STATUS_OK; 
+}
+
+void SERVO::set_position_all(u16 const servoPositions[])
+{
+    // suspend sync service
+    enableAsyncService(false);
 
     static size_t const L {2};                      // Length of data sent to each servo
     static size_t const N {12};                     // Servo Number
@@ -214,11 +430,12 @@ void SERVO::setPosition12(u8 const servoIDs[], u16 const servoPositions[])
         0xFE,                                       // ID
         Length,                                     // Length
         INST_SYNC_WRITE,                            // Instruction
-        SCSCL_GOAL_POSITION_L,                      // Parameter 1 : Register address
+        SERVO_GOAL_POSITION_L,                      // Parameter 1 : Register address
         L                                           // Parameter 2 : L
     };
     // build frame payload
     size_t index {7};
+    static u8 const servoIDs[] {1,2,3,4,5,6,7,8,9,10,11,12};
     for(size_t servo_index=0; servo_index<N; ++servo_index) {
         buffer[index++] = servoIDs[servo_index];            // Parameter 3 = Servo Number
         buffer[index++] = (servoPositions[servo_index]>>8); // Write the first data of the first servo
@@ -234,21 +451,80 @@ void SERVO::setPosition12(u8 const servoIDs[], u16 const servoPositions[])
     uart_write_bytes(uart_port_num, buffer, buffer_size);
 }
 
+int SERVO::setID(u8 servoID, u8 newID)
+{
+    // abort if servo not powered on
+    if(!isEnabled) return SERVO_STATUS_FAIL;
 
-bool SERVO::checkPosition(u8 servoID, u16 position, int accuracy = 5) {
-    // stop sync task and wait a moment
-    if(isSyncRunning)
-    {
-        isSyncRunning = false;
-        vTaskDelay(10 / portTICK_PERIOD_MS);
+    // suspend sync service
+    enableAsyncService(false);
+
+    unlock_eeprom(servoID);
+    write_register_byte(servoID, SERVO_ID, newID);
+    lock_eeprom(newID);
+
+    return SERVO_STATUS_OK;
+}
+
+int SERVO::rotate(u8 servoID)
+{
+    // abort if servo not powered on
+    if(!isEnabled) return SERVO_STATUS_FAIL;
+
+    // suspend sync service
+    enableAsyncService(false);
+
+    int i {0};
+    set_position(servoID, 0);
+   
+    for(int l=0; l<5; l++) {    
+      printf("Start of Cycle!\n");
+      for(i = 0; i<1024; i++)
+      {
+        set_position(servoID,i);
+        printf("Position: %d\n", i);
+      }
+      for(i = 1023; i > 0; i--)
+      {
+        set_position(servoID,i);
+        printf("Position: %d\n", i);
+      }
     }
 
-    int pos = 0;
+    return SERVO_STATUS_OK;
+}
+
+int SERVO::setStartPos(u8 servoID)
+{
+    return set_position(servoID, 0);
+}
+
+int SERVO::setMidPos(u8 servoID)
+{
+    return set_position(servoID, 511);
+}
+
+int SERVO::setEndPos(u8 servoID)
+{
+    return set_position(servoID, 1023);
+}
+
+bool SERVO::checkPosition(u8 servoID, u16 position, int accuracy = 5)
+{
+    // abort if servo not powered on
+    if(!isEnabled) return SERVO_STATUS_FAIL;
+
+    // suspend sync service
+    enableAsyncService(false);
+
+
+/*
+    u16 pos = 0;
     bool ret = false;
     int retry_counter = retries;
     
     for( int i=0; i<retry_counter; i++) {
-        pos = this->ReadPos(servoID);
+        get_position(servoID,pos);
 	if(!this->Err) { 
 	    retry_counter = 0;
         }
@@ -266,82 +542,129 @@ bool SERVO::checkPosition(u8 servoID, u16 position, int accuracy = 5) {
     //ESP_LOGI(TAG, "Position: %d Move %d Servo: %d %d", pos, this->ReadSpeed(servoID), servoID, ret);
     //ESP_LOGI(TAG, "Position: %d Current %d Servo: %d %d", pos, this->ReadSpeed(servoID), servoID, ret);
     return ret;
-}
-
-void SERVO::setID(u8 servoID, u8 newID) {
-    // stop sync task and wait a moment
-    if(isSyncRunning)
-    {
-        isSyncRunning = false;
-        vTaskDelay(10 / portTICK_PERIOD_MS);
-    }
-
-	unLockEprom(servoID);
-	writeByte(servoID, SCSCL_ID, newID);
-	LockEprom(newID);
+    */
+    return false;
 }
 
 void SERVO::setPositionAsync(u8 servoID, u16 servoPosition)
 {
     if(0<servoID && servoID<=12)
         state[servoID-1].goal_position=servoPosition;
-    // start sync task to enable synchronization from local setpoint database to servo
-    isSyncRunning = true;
+    
+    // (re)start sync service
+    enableAsyncService(true);
 }
 
 void SERVO::setPosition12Async(u16 const servoPositions[])
 {
     for(size_t index=0;index<12;++index)
         state[index].goal_position = servoPositions[index];
-    // start sync task to enable synchronization from local setpoint database to servo
-    isSyncRunning = true;    
+    
+    // (re)start sync service
+    enableAsyncService(true);
 }
 
 u16  SERVO::getPositionAsync(u8 servoID)
 {
-    // start sync task and wait a moment to synchronise local feedback data base
-    if(!isSyncRunning)
-    {
-        isSyncRunning = true; 
-        vTaskDelay(20 / portTICK_PERIOD_MS);   
-    }
+    // (re)start sync service
+    enableAsyncService(true);
+
     if(0<servoID && servoID<=12)
         return state[servoID-1].present_position;
     else
         return 0;
 }
 
-u16  SERVO::getVelocityAsync(u8 servoID)
+s16  SERVO::getSpeedAsync(u8 servoID)
 {
-    // start sync task and wait a moment to synchronise local feedback data base
-    if(!isSyncRunning)
-    {
-        isSyncRunning = true; 
-        vTaskDelay(20 / portTICK_PERIOD_MS);   
-    }
+    // (re)start sync service
+    enableAsyncService(true);
+
     if(0<servoID && servoID<=12)
-        return state[servoID-1].present_velocity;
+        return state[servoID-1].present_speed;
     else
         return 0;
 }
 
-u16  SERVO::getLoadAsync(u8 servoID)
+s16  SERVO::getLoadAsync(u8 servoID)
 {
-    // start sync task and wait a moment to synchronise local feedback data base
-    if(!isSyncRunning)
-    {
-        isSyncRunning = true; 
-        vTaskDelay(20 / portTICK_PERIOD_MS);   
-    }
+    // (re)start sync service
+    enableAsyncService(true);
+
     if(0<servoID && servoID<=12)
         return state[servoID-1].present_load;
     else
         return 0;
 }
 
+u8  SERVO::getVoltageAsync(u8 servoID)
+{
+    // (re)start sync service
+    enableAsyncService(true);
+
+    if(0<servoID && servoID<=12)
+        return state[servoID-1].present_load;
+    else
+        return 0;
+}
+
+u8  SERVO::getTemperatureAsync(u8 servoID)
+{
+    // (re)start sync service
+    enableAsyncService(true);
+
+    if(0<servoID && servoID<=12)
+        return state[servoID-1].present_temperature;
+    else
+        return 0;
+}
+
+u8  SERVO::getMoveAsync(u8 servoID)
+{
+    // (re)start sync service
+    enableAsyncService(true);
+
+    if(0<servoID && servoID<=12)
+        return state[servoID-1].present_move;
+    else
+        return 0;
+}
+
+s16 SERVO::getCurrentAsync(u8 servoID)
+{
+    // (re)start sync service
+    enableAsyncService(true);
+
+    if(0<servoID && servoID<=12)
+        return state[servoID-1].present_current;
+    else
+        return 0;
+}
+
 void SERVO::enableAsyncService(bool enable)
 {
-    isSyncRunning = enable;
+    // cannot start is power off
+    if(!isEnabled) return;
+
+    // nothing to do
+    if(isSyncRunning==enable) return;
+
+    // (re)start sync service
+    if(enable)
+    {
+        // (re)start sync task and wait a moment to synchronise local feedback data base
+        isSyncRunning = true; 
+        vTaskDelay(20 / portTICK_PERIOD_MS);   
+    }
+    // suspend sync service
+    else
+    {
+        // suspend sync task and wait a moment
+        isSyncRunning = false;
+        vTaskDelay(10 / portTICK_PERIOD_MS);
+    }
+    // flush RX FIFO
+    uart_flush(uart_port_num);    
 }
 
 void SERVO::sync_all_goal_position()
@@ -358,7 +681,7 @@ void SERVO::sync_all_goal_position()
         0xFE,                                       // ID
         Length,                                     // Length
         INST_SYNC_WRITE,                            // Instruction
-        SCSCL_GOAL_POSITION_L,                      // Parameter 1 : Register address
+        SERVO_GOAL_POSITION_L,                      // Parameter 1 : Register address
         L                                           // Parameter 2 : L
     };
     // build frame payload
@@ -388,7 +711,7 @@ void SERVO::cmd_feedback_one_servo(SERVO_STATE & servoState)
         servoState.ID,                              // ID
         0x04,                                       // Length of read instruction
         INST_READ,                                  // Read instruction
-        SCSCL_PRESENT_POSITION_L,                   // Parameter 1 : Register address
+        SERVO_PRESENT_POSITION_L,                   // Parameter 1 : Register address
         0x06,                                       // Parameter 2 : 6 bytes (position, speed, load)
         0x00                                        // checksum
     };
@@ -432,8 +755,17 @@ void SERVO::ack_feedback_one_servo(SERVO_STATE & servoState)
             {
                 // decode parameters and update feedback local data base for this servo
                 servoState.present_position = (u16)(buffer[5])<<8 | buffer[6];
-                servoState.present_velocity = (u16)(buffer[7])<<8 | buffer[8];
-                servoState.present_load =     (u16)(buffer[9])<<8 | buffer[10];
+                u16 const speed  = (u16)(buffer[7])<<8 | buffer[8];
+                u16 const load   = (u16)(buffer[9])<<8 | buffer[10];
+
+                // .. to signed values
+                servoState.present_speed = (s16)speed;
+                if(servoState.present_speed&(1<<15))
+                    servoState.present_speed = -(servoState.present_speed&~(1<<15));
+
+                servoState.present_load =  (s16)load;
+                if(servoState.present_load&(1<<10))
+                    servoState.present_load = -(servoState.present_load&~(1<<10));
             }
         }
     }
@@ -441,24 +773,12 @@ void SERVO::ack_feedback_one_servo(SERVO_STATE & servoState)
     uart_flush(uart_port_num); 
 }
 
-
 void SERVO_TASK(void * parameters)
 {
     SERVO * servo = reinterpret_cast<SERVO*>(parameters);
     u8 servoID {0};
-    //unsigned int counter {0};
     for(;;)
     {
-        /*
-        ++counter;
-        if((counter%250)==0)
-        {
-            printf(" pos:%d pos:%d \r\n",
-                servo->state[1].present_position,
-                servo->state[1].present_load
-            );
-        }
-        */
         if(servo->isEnabled && servo->isSyncRunning)
         {
             // process read ack from one servo
@@ -475,4 +795,180 @@ void SERVO_TASK(void * parameters)
         // - about 80Hz refresh frequency for read/ack servo feedbacks
         vTaskDelay(1 / portTICK_PERIOD_MS);
     }
+}
+
+int SERVO::write_frame(u8 ID, u8 instruction, u8 const * parameters, size_t parameter_length)
+{
+    // prepare frame to one servo
+    size_t const length {parameter_length+2};       // Length : instruction + params + checksum
+    size_t const buffer_size {2+1+1+length};        // 0xFF 0xFF ID LENGTH (INSTR PARAM... CHK)    
+    u8 buffer[buffer_size] {
+        0xFF,                                       // Start of Frame
+        0xFF,                                       // Start of Frame
+        ID,                                         // ID
+        (u8)length,                                 // Length of payload
+        instruction                                 // Instruction
+    };
+    // fill payload
+    if(parameters)
+    {
+        for(size_t index=0; index<parameter_length; ++index)
+        {
+            buffer[index+5]=parameters[index];
+        }
+    }
+    else
+    {
+        for(size_t index=0; index<parameter_length; ++index)
+        {
+            buffer[index+5]=0;
+        }        
+    }
+    // compute checksum and fill payload
+    u8 chk_sum {0};
+    for(size_t chk_index=2; chk_index<(buffer_size-1); ++chk_index)
+    {
+        chk_sum += buffer[chk_index];
+    }
+    buffer[buffer_size-1] = ~chk_sum;
+    // flush RX FIFO
+    uart_flush(uart_port_num);  
+    // send frame to servo
+    uart_write_bytes(uart_port_num,buffer,buffer_size);
+
+    return SERVO_STATUS_OK;
+}
+
+int SERVO::reply_frame(u8 & ID, u8 & state, u8 * parameters, size_t parameter_length)
+{
+    // a buffer to process reply packet from one servo
+    // prepare frame to one servo
+    size_t const length {parameter_length+2};       // Length : state + params + checksum
+    size_t const buffer_size {2+1+1+length};        // 0xFF 0xFF ID LENGTH (STATE PARAM... CHK)    
+    u8 buffer[buffer_size] {0};
+    // copy RX fifo into local buffer
+    int const read_length = uart_read_bytes(uart_port_num,buffer,buffer_size,2);
+    // flush RX FIFO
+    uart_flush(uart_port_num);    
+    // check expected frame size
+    ///printf("   buffer_size:%d read_length:%d.",buffer_size,read_length);
+    if(read_length!=buffer_size) return SERVO_STATUS_FAIL;
+    // check frame header
+    if(buffer[0]!=0xFF || buffer[1]!=0xFF) return SERVO_STATUS_FAIL;
+    // check length
+    if(buffer[3]!=length) return SERVO_STATUS_FAIL;
+    // compute checksum
+    u8 chk_sum {0};
+    for(size_t chk_index=2; chk_index<(buffer_size-1); ++chk_index)
+    {
+        chk_sum += buffer[chk_index];
+    }   
+    // check checksum
+    if(buffer[buffer_size-1]!=(u8)(~chk_sum)) return SERVO_STATUS_FAIL;
+    // extract servo ID
+    ID = buffer[2];
+    // extract state
+    state = buffer[4];
+    // extract parameters
+    if(parameters)
+    {
+        for(size_t index=0; index<parameter_length; ++index)
+        {
+            parameters[index]=buffer[index+5];
+        }
+    }
+    return SERVO_STATUS_OK;   
+}
+
+int SERVO::write_register_byte(u8 id, u8 reg, u8 value)
+{
+    u8 const buffer[2] {reg,value};
+    write_frame(id,INST_WRITE,buffer,2);
+
+    return SERVO_STATUS_OK;
+}
+
+int SERVO::write_register_word(u8 id, u8 reg, u16 value)
+{
+    u8 const buffer[3] {
+        reg,
+        (u8)(value>>8),
+        (u8)(value&0xff)
+    };
+    write_frame(id,INST_WRITE,buffer,3);
+
+    return SERVO_STATUS_OK;
+}
+
+int SERVO::read_register_byte(u8 id, u8 reg, u8 & value)
+{
+    // abort command when broadcasting
+    if(id==0XFE) return SERVO_STATUS_FAIL;
+
+    // send read instruction
+    u8 const buffer[2] {reg,1};
+    write_frame(id,INST_READ,buffer,2);
+
+    // wait for reply
+    u8 reply_id {0};
+    u8 reply_state {0};
+    u8 data[1] {0};
+    int const status = reply_frame(reply_id,reply_state,data,1);
+    ///printf(" reply_id:%d reply_state:%d status:%d.",reply_id,reply_state,status);
+
+    // check reply
+    if(status!=SERVO_STATUS_OK) return SERVO_STATUS_FAIL;
+
+    // check reply
+    if(reply_id!=id || reply_state!=0) return SERVO_STATUS_FAIL;
+
+    // make byte
+    value = data[0];
+
+    return SERVO_STATUS_OK;
+}
+
+int SERVO::read_register_word(u8 id, u8 reg, u16 & value)
+{
+    // abort command when broadcasting
+    if(id==0XFE) return SERVO_STATUS_FAIL;
+
+    // send read instruction
+    u8 const buffer[2] {reg,2};
+    write_frame(id,INST_READ,buffer,2);
+
+    // wait for reply
+    u8 reply_id {0};
+    u8 reply_state {0};
+    u8 data[2] {0};
+    int const status = reply_frame(reply_id,reply_state,data,2);
+    ///printf(" reply_id:%d reply_state:%d status:%d.",reply_id,reply_state,status);
+
+    // check reply
+    if(status!=SERVO_STATUS_OK) return SERVO_STATUS_FAIL;
+
+    // check reply
+    if(reply_id!=id || reply_state!=0) return SERVO_STATUS_FAIL;
+
+    // make word
+    value = (u16)(data[0])<<8 | data[1];
+
+    return SERVO_STATUS_OK;
+}
+
+int SERVO::check_reply_frame_no_parameter(u8 & ID)
+{
+    // wait for reply
+    u8 reply_id {0};
+    u8 reply_state {0};
+    int const status = reply_frame(reply_id,reply_state,nullptr,0);
+    ///printf(" reply_id:%d reply_state:%d status:%d.",reply_id,reply_state,status);
+
+    // check reply
+    if(status!=SERVO_STATUS_OK) return SERVO_STATUS_FAIL;
+
+    // check reply
+    if(reply_id!=ID || reply_state!=0) return SERVO_STATUS_FAIL;
+
+    return SERVO_STATUS_OK;    
 }
