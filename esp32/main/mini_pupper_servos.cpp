@@ -101,6 +101,35 @@ int SERVO::ping(u8 ID)
     return SERVO_STATUS_OK;
 }
 
+int SERVO::recovery(u8 ID)
+{
+    // abort if servo not powered on
+    if(!isEnabled) return SERVO_STATUS_FAIL;
+
+    // suspend sync service
+    enableAsyncService(false);
+
+    // abort command when broadcasting
+    if(ID==0XFE) return SERVO_STATUS_FAIL;
+
+    // send ping instruction
+    write_frame(ID,INST_RECOVERY,nullptr,0);
+
+    // wait for reply
+    u8 reply_id {0};
+    u8 reply_state {0};
+    int const status = reply_frame(reply_id,reply_state,nullptr,0);
+    ///printf(" reply_id:%d reply_state:%d status:%d.",reply_id,reply_state,status);
+
+    // check reply
+    if(status!=SERVO_STATUS_OK) return SERVO_STATUS_FAIL;
+
+    // check reply
+    if(reply_id!=ID || reply_state!=0) return SERVO_STATUS_FAIL;
+
+    return SERVO_STATUS_OK;
+}
+
 int SERVO::enable_torque(u8 ID)
 {
     // abort if servo not powered on
@@ -110,7 +139,7 @@ int SERVO::enable_torque(u8 ID)
     enableAsyncService(false);
 
     // write instruction
-    write_register_byte(ID, SCSCL_TORQUE_ENABLE, 1);
+    write_register_byte(ID, SERVO_TORQUE_ENABLE, 1);
 
     // if broadcast, do not wait for reply
     if(ID==0XFE)
@@ -144,7 +173,7 @@ int SERVO::disable_torque(u8 ID)
     enableAsyncService(false);
 
     // send write frame
-    write_register_byte(ID, SCSCL_TORQUE_ENABLE, 0);
+    write_register_byte(ID, SERVO_TORQUE_ENABLE, 0);
     
     // if broadcast, do not wait for reply
     if(ID==0XFE)
@@ -181,7 +210,7 @@ int SERVO::set_position(u8 ID, u16 position)
     if(ID==0XFE) return SERVO_STATUS_FAIL;
 
     // send write instruction
-    write_register_word(ID, SCSCL_GOAL_POSITION_L, position);
+    write_register_word(ID, SERVO_GOAL_POSITION_L, position);
 
     // wait for reply
     u8 reply_id {0};
@@ -207,7 +236,7 @@ int SERVO::get_position(u8 ID, u16 & position)
     enableAsyncService(false);
 
     // send read instruction
-    int const status = read_register_word(ID, SCSCL_PRESENT_POSITION_L,position);
+    int const status = read_register_word(ID, SERVO_PRESENT_POSITION_L,position);
 
     // check reply
     if(status!=SERVO_STATUS_OK) return SERVO_STATUS_FAIL;
@@ -225,7 +254,7 @@ int SERVO::get_velocity(u8 ID, s16 & velocity)
 
     // send read instruction
     u16 present_value {0};
-    int const status = read_register_word(ID, SCSCL_PRESENT_SPEED_L,present_value);
+    int const status = read_register_word(ID, SERVO_PRESENT_SPEED_L,present_value);
 
     // check reply
     if(status!=SERVO_STATUS_OK) return SERVO_STATUS_FAIL;
@@ -248,7 +277,7 @@ int SERVO::get_load(u8 ID, s16 & load)
 
     // send read instruction
     u16 present_value {0};
-    int const status = read_register_word(ID, SCSCL_PRESENT_LOAD_L,present_value);
+    int const status = read_register_word(ID, SERVO_PRESENT_LOAD_L,present_value);
 
     // check reply
     if(status!=SERVO_STATUS_OK) return SERVO_STATUS_FAIL;
@@ -271,7 +300,7 @@ int SERVO::get_voltage(u8 ID, u8 & voltage)
 
     // send read instruction
     u8 present_value {0};
-    int const status = read_register_byte(ID, SCSCL_PRESENT_VOLTAGE,present_value);
+    int const status = read_register_byte(ID, SERVO_PRESENT_VOLTAGE,present_value);
 
     // check reply
     if(status!=SERVO_STATUS_OK) return SERVO_STATUS_FAIL;
@@ -291,7 +320,7 @@ int SERVO::get_temperature(u8 ID, u8 & temperature)
 
     // send read instruction
     u8 present_value {0};
-    int const status = read_register_byte(ID, SCSCL_PRESENT_TEMPERATURE,present_value);
+    int const status = read_register_byte(ID, SERVO_PRESENT_TEMPERATURE,present_value);
 
     // check reply
     if(status!=SERVO_STATUS_OK) return SERVO_STATUS_FAIL;
@@ -311,7 +340,7 @@ int SERVO::get_move(u8 ID, u8 & move)
 
     // send read instruction
     u8 present_value {0};
-    int const status = read_register_byte(ID, SCSCL_MOVING,present_value);
+    int const status = read_register_byte(ID, SERVO_MOVING,present_value);
 
     // check reply
     if(status!=SERVO_STATUS_OK) return SERVO_STATUS_FAIL;
@@ -331,7 +360,7 @@ int SERVO::get_current(u8 ID, s16 & current)
 
     // send read instruction
     u16 present_value {0};
-    int const status = read_register_word(ID, SCSCL_PRESENT_CURRENT_L,present_value);
+    int const status = read_register_word(ID, SERVO_PRESENT_CURRENT_L,present_value);
 
     // check reply
     if(status!=SERVO_STATUS_OK) return SERVO_STATUS_FAIL;
@@ -353,7 +382,7 @@ int SERVO::unlock_eeprom(u8 ID)
     enableAsyncService(false);
 
     // write instruction
-    write_register_byte(ID, SCSCL_LOCK, 0);
+    write_register_byte(ID, SERVO_LOCK, 0);
 
     // wait for reply
     u8 reply_id {0};
@@ -379,7 +408,7 @@ int SERVO::lock_eeprom(u8 ID)
     enableAsyncService(false);
 
     // write instruction
-    write_register_byte(ID, SCSCL_LOCK, 1);
+    write_register_byte(ID, SERVO_LOCK, 1);
 
     // wait for reply
     u8 reply_id {0};
@@ -412,7 +441,7 @@ void SERVO::set_position_all(u16 const servoPositions[])
         0xFE,                                       // ID
         Length,                                     // Length
         INST_SYNC_WRITE,                            // Instruction
-        SCSCL_GOAL_POSITION_L,                      // Parameter 1 : Register address
+        SERVO_GOAL_POSITION_L,                      // Parameter 1 : Register address
         L                                           // Parameter 2 : L
     };
     // build frame payload
@@ -443,7 +472,7 @@ int SERVO::setID(u8 servoID, u8 newID)
     enableAsyncService(false);
 
     unlock_eeprom(servoID);
-    write_register_byte(servoID, SCSCL_ID, newID);
+    write_register_byte(servoID, SERVO_ID, newID);
     lock_eeprom(newID);
 
     return SERVO_STATUS_OK;
@@ -664,7 +693,7 @@ void SERVO::sync_all_goal_position()
         0xFE,                                       // ID
         Length,                                     // Length
         INST_SYNC_WRITE,                            // Instruction
-        SCSCL_GOAL_POSITION_L,                      // Parameter 1 : Register address
+        SERVO_GOAL_POSITION_L,                      // Parameter 1 : Register address
         L                                           // Parameter 2 : L
     };
     // build frame payload
@@ -694,7 +723,7 @@ void SERVO::cmd_feedback_one_servo(SERVO_STATE & servoState)
         servoState.ID,                              // ID
         0x04,                                       // Length of read instruction
         INST_READ,                                  // Read instruction
-        SCSCL_PRESENT_POSITION_L,                   // Parameter 1 : Register address
+        SERVO_PRESENT_POSITION_L,                   // Parameter 1 : Register address
         0x06,                                       // Parameter 2 : 6 bytes (position, speed, load)
         0x00                                        // checksum
     };

@@ -45,39 +45,39 @@ typedef long s32;
 #define _4800 11
 
 // servo EEPROM register address (configuration)
-#define SCSCL_VERSION_L 3
-#define SCSCL_VERSION_H 4
-#define SCSCL_ID 5
-#define SCSCL_BAUD_RATE 6
-#define SCSCL_MIN_ANGLE_LIMIT_L 9
-#define SCSCL_MIN_ANGLE_LIMIT_H 10
-#define SCSCL_MAX_ANGLE_LIMIT_L 11
-#define SCSCL_MAX_ANGLE_LIMIT_H 12
-#define SCSCL_CW_DEAD 26
-#define SCSCL_CCW_DEAD 27
+#define SERVO_VERSION_L 3
+#define SERVO_VERSION_H 4
+#define SERVO_ID 5
+#define SERVO_BAUD_RATE 6
+#define SERVO_MIN_ANGLE_LIMIT_L 9
+#define SERVO_MIN_ANGLE_LIMIT_H 10
+#define SERVO_MAX_ANGLE_LIMIT_L 11
+#define SERVO_MAX_ANGLE_LIMIT_H 12
+#define SERVO_CW_DEAD 26
+#define SERVO_CCW_DEAD 27
 
 // servo SRAM register address (setpoints)
-#define SCSCL_TORQUE_ENABLE 40
-#define SCSCL_GOAL_POSITION_L 42
-#define SCSCL_GOAL_POSITION_H 43
-#define SCSCL_GOAL_TIME_L 44
-#define SCSCL_GOAL_TIME_H 45
-#define SCSCL_GOAL_SPEED_L 46
-#define SCSCL_GOAL_SPEED_H 47
-#define SCSCL_LOCK 48
+#define SERVO_TORQUE_ENABLE 40
+#define SERVO_GOAL_POSITION_L 42
+#define SERVO_GOAL_POSITION_H 43
+#define SERVO_GOAL_TIME_L 44
+#define SERVO_GOAL_TIME_H 45
+#define SERVO_GOAL_SPEED_L 46
+#define SERVO_GOAL_SPEED_H 47
+#define SERVO_LOCK 48
 
 // servo SRAM register address (feedback)
-#define SCSCL_PRESENT_POSITION_L 56
-#define SCSCL_PRESENT_POSITION_H 57
-#define SCSCL_PRESENT_SPEED_L 58
-#define SCSCL_PRESENT_SPEED_H 59
-#define SCSCL_PRESENT_LOAD_L 60
-#define SCSCL_PRESENT_LOAD_H 61
-#define SCSCL_PRESENT_VOLTAGE 62
-#define SCSCL_PRESENT_TEMPERATURE 63
-#define SCSCL_MOVING 66
-#define SCSCL_PRESENT_CURRENT_L 69
-#define SCSCL_PRESENT_CURRENT_H 70
+#define SERVO_PRESENT_POSITION_L 56
+#define SERVO_PRESENT_POSITION_H 57
+#define SERVO_PRESENT_SPEED_L 58
+#define SERVO_PRESENT_SPEED_H 59
+#define SERVO_PRESENT_LOAD_L 60
+#define SERVO_PRESENT_LOAD_H 61
+#define SERVO_PRESENT_VOLTAGE 62
+#define SERVO_PRESENT_TEMPERATURE 63
+#define SERVO_MOVING 66
+#define SERVO_PRESENT_CURRENT_L 69
+#define SERVO_PRESENT_CURRENT_H 70
 
 struct SERVO_STATE
 {
@@ -119,6 +119,7 @@ public:
 
     // single servo API
     int ping(u8 ID);
+    int recovery(u8 ID);
     int enable_torque(u8 ID = 0xFE);  // not param means ALL servo
     int disable_torque(u8 ID = 0xFE); // not param means ALL servo
     int set_position(u8 ID, u16 position);
