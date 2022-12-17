@@ -14,10 +14,14 @@
  *    d. CLI > servo-setID --id 1 --newid N
  *    e. CLI > servo-scan (check new servo ID=N is listed)
  *    f. CLI > servo-disable
- *   Finish by connecting servo #1, that doesnt require any ID change.
+ *   Finish by connecting SCS 0009 servo #1 on the main board. It does not require any ID change.
+ *   Final check of servo IDs :
  *    x. CLI > servo-enable
  *    y. CLI > servo-scan (check reply : "Servos on the bus:1 2 3 4 5 6 7 8 9 10 11 12")
  *    z. CLI > servo-disable
+ *
+ *
+ *
  */
 
 #include <freertos/FreeRTOS.h>
