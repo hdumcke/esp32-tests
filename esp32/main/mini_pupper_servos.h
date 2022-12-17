@@ -1,18 +1,25 @@
-// FIX TORQUE ENABLE : torque enable when setting position
-// FIX TORQUE ENABLE : torque enable when setting position
-// FIX TORQUE ENABLE : torque enable when setting position
-
-
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 
-// MENUCONFIG > COMPONENTS > FREERTOS > KERNEL > 1000Hz
-// MENUCONFIG > COMPONENTS > FREERTOS > KERNEL > 1000Hz
-// MENUCONFIG > COMPONENTS > FREERTOS > KERNEL > 1000Hz
+/*
+ *
+ * IMPORTANT : Mini Servo API requires to setup FreeRTOS frequency at 1000Hz.
+ *             MENUCONFIG > COMPONENTS > FREERTOS > KERNEL > 1000Hz
+ *
+ */
+
+/*
+ * Select servo model :
+ *
+ */
+#define SERVO_USE_SCS_0009
+//#define SERVO_USE_SCS_GENERIC
+
 
 #ifndef _mini_pupper_servos_H
 #define _mini_pupper_servos_H
 
+// types
 typedef char s8;
 typedef unsigned char u8;   
 typedef unsigned short u16; 
@@ -30,7 +37,7 @@ typedef long s32;
 #define INST_SYNC_WRITE 0x83
 #define INST_RECOVERY 0x06
 
-// servo data rate (register value)
+// servo data rate (baud rate register values)
 #define _1M 0
 #define _0_5M 1
 #define _250K 2
@@ -73,25 +80,29 @@ typedef long s32;
 #define SERVO_PRESENT_SPEED_H 59
 #define SERVO_PRESENT_LOAD_L 60
 #define SERVO_PRESENT_LOAD_H 61
+// SCS 0009 registers :
+#define SERVO_STATUS 65
+#define SERVO_MOVING 66
+// SCS generic registers :
 #define SERVO_PRESENT_VOLTAGE 62
 #define SERVO_PRESENT_TEMPERATURE 63
-#define SERVO_MOVING 66
 #define SERVO_PRESENT_CURRENT_L 69
 #define SERVO_PRESENT_CURRENT_H 70
+
 
 struct SERVO_STATE
 {
     SERVO_STATE(u8 id) : ID(id) {}
-
     u8 ID                   {0};
-    u8 torque_switch        {0};
     u16 goal_position       {512}; // middle position
     u16 present_position    {0};
     u16 present_velocity    {0};
     u16 present_load        {0};
+#ifdef SERVO_USE_SCS_GENERIC
     u8 present_temperature  {0};
     u8 present_move         {0};
     u16 present_current     {0};
+#endif
 };
 
 enum {
@@ -122,6 +133,7 @@ public:
     int recovery(u8 ID);
     int enable_torque(u8 ID = 0xFE);  // not param means ALL servo
     int disable_torque(u8 ID = 0xFE); // not param means ALL servo
+    int is_torque_enable(u8 ID, u8 & enable);
     int set_position(u8 ID, u16 position);
     int get_position(u8 ID, u16 & position);
     int get_velocity(u8 ID, s16 & velocity);
@@ -147,7 +159,6 @@ public:
     bool checkPosition(u8 servoID, u16 position, int accuracy);
 
     bool isEnabled {false}; 
-    bool isTorqueEnabled {false}; 
 
     /* ASYNC API 
      *
@@ -196,6 +207,8 @@ public:
 
     int read_register_byte(u8 id, u8 reg, u8 & value);
     int read_register_word(u8 id, u8 reg, u16 & value);
+
+    int check_reply_frame_no_parameter(u8 & ID);
 
     int uart_port_num {1};
 };

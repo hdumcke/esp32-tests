@@ -13,7 +13,8 @@ void SERVO_TASK(void * parameters);
 
 SERVO servo;
 
-SERVO::SERVO() {
+SERVO::SERVO()
+{
     // setup enable pin
     gpio_config_t io_conf;
     io_conf.intr_type = GPIO_INTR_DISABLE;//disable interrupt
@@ -58,17 +59,17 @@ SERVO::SERVO() {
     /*** ASYNC API service ***/
 }
 
-void SERVO::disable() {
+void SERVO::disable()
+{
     gpio_set_level(GPIO_NUM_8, 0);
     isEnabled = false;
-    isTorqueEnabled = false;
     isSyncRunning = false;
 }
 
-void SERVO::enable() {
+void SERVO::enable()
+{
     gpio_set_level(GPIO_NUM_8, 1);
     isEnabled = true;
-    isTorqueEnabled = false;
     isSyncRunning = false;
 }
 
@@ -87,18 +88,7 @@ int SERVO::ping(u8 ID)
     write_frame(ID,INST_PING,nullptr,0);
 
     // wait for reply
-    u8 reply_id {0};
-    u8 reply_state {0};
-    int const status = reply_frame(reply_id,reply_state,nullptr,0);
-    ///printf(" reply_id:%d reply_state:%d status:%d.",reply_id,reply_state,status);
-
-    // check reply
-    if(status!=SERVO_STATUS_OK) return SERVO_STATUS_FAIL;
-
-    // check reply
-    if(reply_id!=ID || reply_state!=0) return SERVO_STATUS_FAIL;
-
-    return SERVO_STATUS_OK;
+    return check_reply_frame_no_parameter(ID);
 }
 
 int SERVO::recovery(u8 ID)
@@ -116,18 +106,7 @@ int SERVO::recovery(u8 ID)
     write_frame(ID,INST_RECOVERY,nullptr,0);
 
     // wait for reply
-    u8 reply_id {0};
-    u8 reply_state {0};
-    int const status = reply_frame(reply_id,reply_state,nullptr,0);
-    ///printf(" reply_id:%d reply_state:%d status:%d.",reply_id,reply_state,status);
-
-    // check reply
-    if(status!=SERVO_STATUS_OK) return SERVO_STATUS_FAIL;
-
-    // check reply
-    if(reply_id!=ID || reply_state!=0) return SERVO_STATUS_FAIL;
-
-    return SERVO_STATUS_OK;
+    return check_reply_frame_no_parameter(ID);
 }
 
 int SERVO::enable_torque(u8 ID)
@@ -142,26 +121,10 @@ int SERVO::enable_torque(u8 ID)
     write_register_byte(ID, SERVO_TORQUE_ENABLE, 1);
 
     // if broadcast, do not wait for reply
-    if(ID==0XFE)
-    {
-        isTorqueEnabled = true;
-        return SERVO_STATUS_OK;    
-    }
+    if(ID==0XFE) return SERVO_STATUS_OK;    
 
     // wait for reply
-    u8 reply_id {0};
-    u8 reply_state {0};
-    int const status = reply_frame(reply_id,reply_state,nullptr,0);
-    ///printf(" reply_id:%d reply_state:%d status:%d.",reply_id,reply_state,status);
-
-    // check reply
-    if(status!=SERVO_STATUS_OK) return SERVO_STATUS_FAIL;
-
-    // check reply
-    if(reply_id!=ID || reply_state!=0) return SERVO_STATUS_FAIL;
-
-    isTorqueEnabled = true;
-    return SERVO_STATUS_OK;    
+    return check_reply_frame_no_parameter(ID);
 }
 
 int SERVO::disable_torque(u8 ID)
@@ -176,26 +139,27 @@ int SERVO::disable_torque(u8 ID)
     write_register_byte(ID, SERVO_TORQUE_ENABLE, 0);
     
     // if broadcast, do not wait for reply
-    if(ID==0XFE)
-    {
-        isTorqueEnabled = true;
-        return SERVO_STATUS_OK;    
-    }
+    if(ID==0XFE) return SERVO_STATUS_OK;    
 
     // wait for reply
-    u8 reply_id {0};
-    u8 reply_state {0};
-    int const status = reply_frame(reply_id,reply_state,nullptr,0);
-    ///printf(" reply_id:%d reply_state:%d status:%d.",reply_id,reply_state,status);
+    return check_reply_frame_no_parameter(ID);
+}
+
+int SERVO::is_torque_enable(u8 ID, u8 & enable)
+{
+    // abort if servo not powered on
+    if(!isEnabled) return SERVO_STATUS_FAIL;
+
+    // suspend sync service
+    enableAsyncService(false);
+
+    // send read instruction
+    int const status = read_register_byte(ID, SERVO_TORQUE_ENABLE,enable);
 
     // check reply
     if(status!=SERVO_STATUS_OK) return SERVO_STATUS_FAIL;
 
-    // check reply
-    if(reply_id!=ID || reply_state!=0) return SERVO_STATUS_FAIL;
-
-    isTorqueEnabled = false;
-    return SERVO_STATUS_OK; 
+    return SERVO_STATUS_OK;    
 }
 
 int SERVO::set_position(u8 ID, u16 position)
@@ -213,18 +177,7 @@ int SERVO::set_position(u8 ID, u16 position)
     write_register_word(ID, SERVO_GOAL_POSITION_L, position);
 
     // wait for reply
-    u8 reply_id {0};
-    u8 reply_state {0};
-    int const status = reply_frame(reply_id,reply_state,nullptr,0);
-    ///printf(" reply_id:%d reply_state:%d status:%d.",reply_id,reply_state,status);
-
-    // check reply
-    if(status!=SERVO_STATUS_OK) return SERVO_STATUS_FAIL;
-
-    // check reply
-    if(reply_id!=ID || reply_state!=0) return SERVO_STATUS_FAIL;
-
-    return SERVO_STATUS_OK;
+    return check_reply_frame_no_parameter(ID);
 }
 
 int SERVO::get_position(u8 ID, u16 & position)
@@ -290,6 +243,8 @@ int SERVO::get_load(u8 ID, s16 & load)
     return SERVO_STATUS_OK;
 }
 
+#ifdef SERVO_USE_SCS_GENERIC
+
 int SERVO::get_voltage(u8 ID, u8 & voltage)
 {
     // abort if servo not powered on
@@ -330,6 +285,8 @@ int SERVO::get_temperature(u8 ID, u8 & temperature)
     return SERVO_STATUS_OK;
 }
 
+#endif //SERVO_USE_SCS_GENERIC
+
 int SERVO::get_move(u8 ID, u8 & move)
 {
     // abort if servo not powered on
@@ -349,6 +306,8 @@ int SERVO::get_move(u8 ID, u8 & move)
 
     return SERVO_STATUS_OK;
 }
+
+#ifdef SERVO_USE_SCS_GENERIC
 
 int SERVO::get_current(u8 ID, s16 & current)
 {
@@ -372,6 +331,8 @@ int SERVO::get_current(u8 ID, s16 & current)
 
     return SERVO_STATUS_OK;
 }
+
+#endif //SERVO_USE_SCS_GENERIC
 
 int SERVO::unlock_eeprom(u8 ID)
 {
@@ -967,3 +928,19 @@ int SERVO::read_register_word(u8 id, u8 reg, u16 & value)
     return SERVO_STATUS_OK;
 }
 
+int SERVO::check_reply_frame_no_parameter(u8 & ID)
+{
+    // wait for reply
+    u8 reply_id {0};
+    u8 reply_state {0};
+    int const status = reply_frame(reply_id,reply_state,nullptr,0);
+    ///printf(" reply_id:%d reply_state:%d status:%d.",reply_id,reply_state,status);
+
+    // check reply
+    if(status!=SERVO_STATUS_OK) return SERVO_STATUS_FAIL;
+
+    // check reply
+    if(reply_id!=ID || reply_state!=0) return SERVO_STATUS_FAIL;
+
+    return SERVO_STATUS_OK;    
+}
