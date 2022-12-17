@@ -21,8 +21,8 @@
  *    z. CLI > servo-disable
  *
  *
- *  II. Control one servo at a time (test) :
- *  ----------------------------------------
+ *  II. Control one servo at once (test) :
+ *  --------------------------------------
  *   a. Power ON :
  *    CLI > servo-enable
  *   b. Change position setpoint
@@ -41,6 +41,28 @@
  *    CLI > servo-getLoad --id <ID:1..12> --loop 12 (shall reply load data : positive / zero / negative)
  *   j. Power OFF :
  *    CLI > servo-disable
+ *
+ *
+ *  III. Control all servo at once (async service) :
+ *  ------------------------------------------------
+ *   a. Power ON :
+ *    CLI > servo-enable
+ *   b. Change position setpoints
+ *    CLI > servo-setPosition12Async <POS:0..1023> [x12]
+        example : servo-setPosition12Async 500 500 500 600 600 600 400 400 400 700 700 700
+ *   c. Get feedback from one servo :
+ *    CLI > servo-setPositionAsync --id <ID:1..12> (shall reply position data)
+ *    CLI > servo-setSpeedAsync --id <ID:1..12> (shall reply speed data)
+ *    CLI > servo-setLoadAsync --id <ID:1..12> (shall reply load data)
+ *   d. Power OFF :
+ *    CLI > servo-disable
+ *
+ *   Note about performance of Async service :
+ *   - position setpoints are update using "sync write" instruction, every 2 ms. 
+ *       ==> 500Hz setpoint frequency.
+ *   - feedback is update using "read" instruction (one servo at a time), every 2 ms. Updating 12 servo takes about 24ms. 
+ *       ==> 40Hz feedback frequency
+ *   - R/W access to setpoints/feedback, through async API, is not bloking. Servo bus read/write access is handled by a dedicated RTOS task.
  *
  */
 

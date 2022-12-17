@@ -755,16 +755,17 @@ void SERVO::ack_feedback_one_servo(SERVO_STATE & servoState)
             {
                 // decode parameters and update feedback local data base for this servo
                 servoState.present_position = (u16)(buffer[5])<<8 | buffer[6];
-                servoState.present_speed = (u16)(buffer[7])<<8 | buffer[8];
-                servoState.present_load =     (u16)(buffer[9])<<8 | buffer[10];
+                u16 const speed  = (u16)(buffer[7])<<8 | buffer[8];
+                u16 const load   = (u16)(buffer[9])<<8 | buffer[10];
 
-                // TODO : MORE DATA
-                // TODO : MORE DATA
-                // TODO : MORE DATA
+                // .. to signed values
+                servoState.present_speed = (s16)speed;
+                if(servoState.present_speed&(1<<15))
+                    servoState.present_speed = -(servoState.present_speed&~(1<<15));
 
-                // MORE : MAKE SIGNED
-                // MORE : MAKE SIGNED
-                // MORE : MAKE SIGNED
+                servoState.present_load =  (s16)load;
+                if(servoState.present_load&(1<<10))
+                    servoState.present_load = -(servoState.present_load&~(1<<10));
             }
         }
     }
