@@ -33,13 +33,13 @@
  *
  * REQUEST SETPOINT exchange :
  *
- *  1) HOST send a REQUEST SETPOINT instruction.
+ *  1) HOST sends a REQUEST SETPOINT instruction.
  *     ID = 0x01
  *     Length = 26 bytes
  *     Instruction code = 0x01
  *     Parameters = 12 x position (u16) [0..1023]
  *
- *  2) ESP32 replies a REQUEST SETPOINT acknowledge.
+ *  2) ESP32 replies a REQUEST SETPOINT acknowledge in less than 2ms.
  *     ID = 0x01
  *     Length = 50 bytes
  *     Status code = 0x00
@@ -69,6 +69,7 @@ enum {
     HOST_STATUS_FAIL,
 };
 
+void HOST_TASK(void * parameters);
 
 struct HOST
 {
@@ -79,6 +80,7 @@ private:
     
     // background host serial bus service
     TaskHandle_t _task_handle {NULL};    
+    friend void HOST_TASK(void * parameters);
 };
 
 

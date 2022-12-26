@@ -53,5 +53,38 @@ void HOST_TASK(void * parameters)
         // - about 1KHz refresh frequency for sync write servo setpoints
         // - about 80Hz refresh frequency for read/ack servo feedbacks
         vTaskDelay(1 / portTICK_PERIOD_MS);
+
+        // wait for a frame from host
+        size_t static rx_buffer_size {128};
+        u8 rx_buffer[rx_buffer_size] {0};
+        // copy RX fifo into local buffer (4 bytes : Header + ID + Length)
+        int const read_length {uart_read_bytes(host->_uart_port_num,rx_buffer,rx_buffer_size,2)};
+
+        if(read_length != 4) 
+        {
+            // flush RX FIFO
+            uart_flush(host->_uart_port_num);    
+            // next
+            continue;
+        }
+
+        bool const rx_header_check { 
+                    (rx_buffer[0]==0xFF) 
+                &&  (rx_buffer[1]==0xFF) 
+                &&  (rx_buffer[2]==0x01) // my ID
+                &&  (rx_buffer[3]<64)
+        };  
+        
+        if(!rx_header_check) 
+        {
+            // flush RX FIFO
+            uart_flush(host->_uart_port_num);    
+            // next
+            continue;
+        }
+
+        size_t const rx_payload_length {(size_t)rx_buffer[3]};
+
+
     }    
 }
