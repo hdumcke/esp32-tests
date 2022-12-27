@@ -144,13 +144,33 @@ void HOST_TASK(void * parameters)
         servo.enable();
         servo.setPosition12Async(parameters.goal_position);
 
+        // servo feedback
+        parameters_control_acknowledge_format feedback_parameters;
+        servo.getPosition12Async(feedback_parameters.present_position);
+        servo.getLoad12Async(feedback_parameters.present_load);
 
-        // TODO : feedback
-        // TODO : feedback
-        // TODO : feedback
-        // TODO : feedback
+        // build acknowledge frame
+        static size_t const tx_payload_length {1+sizeof(parameters_control_acknowledge_format)+1};            
+        static size_t const tx_buffer_size {4+tx_payload_length};            
+        u8 tx_buffer[tx_buffer_size] {
+            0xFF,                                       // Start of Frame
+            0xFF,                                       // Start of Frame
+            0x01,                                       // ID
+            tx_payload_length,                          // Length
+            0x00,                                       // Status
+        };
+        memcpy(tx_buffer+5,&feedback_parameters,sizeof(parameters_control_acknowledge_format));
+
+        // compute checksum
+        chk_sum = 0;
+        for(size_t chk_index=2; chk_index<(tx_buffer_size-1); ++chk_index) {
+            chk_sum += tx_buffer[chk_index];
+        }
+        tx_buffer[tx_buffer_size-1] = (u8)(~chk_sum);
+        // send frame to host
+        uart_write_bytes(host->_uart_port_num,tx_buffer,tx_buffer_size);
 
         // flush RX FIFO
-        uart_flush(host->_uart_port_num);    
+        uart_flush(host->_uart_port_num);  
     }    
 }

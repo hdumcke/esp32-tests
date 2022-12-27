@@ -564,6 +564,33 @@ void SERVO::setPosition12Async(u16 const servoPositions[])
     enableAsyncService(true);
 }
 
+void SERVO::getPosition12Async(u16 servoPositions[])
+{
+    // (re)start sync service
+    enableAsyncService(true);
+
+    for(size_t index=0;index<12;++index)
+        servoPositions[index] = state[index].present_position;
+}
+
+void SERVO::getSpeed12Async(s16 servoSpeeds[])
+{
+    // (re)start sync service
+    enableAsyncService(true);
+
+    for(size_t index=0;index<12;++index)
+        servoSpeeds[index] = state[index].present_speed;
+}
+
+void SERVO::getLoad12Async(s16 servoLoads[])
+{
+    // (re)start sync service
+    enableAsyncService(true);
+
+    for(size_t index=0;index<12;++index)
+        servoLoads[index] = state[index].present_load;
+}
+
 u16  SERVO::getPositionAsync(u8 servoID)
 {
     // (re)start sync service

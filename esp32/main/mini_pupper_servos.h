@@ -236,6 +236,10 @@ struct SERVO
     u8   getMoveAsync(u8 servoID);          // return 0 with SCS 0009 and SCS Generic (future functionality)
     s16  getCurrentAsync(u8 servoID);       // return 0 with SCS 0009 and SCS Generic (future functionality)
 
+    void getPosition12Async(u16 servoPositions[]);    
+    void getSpeed12Async(s16 servoSpeeds[]);    
+    void getLoad12Async(s16 servoLoads[]);    
+
     // async service enable
     void enableAsyncService(bool enable);
 
