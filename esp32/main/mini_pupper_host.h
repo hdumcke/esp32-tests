@@ -31,15 +31,15 @@
  *  Parameters     (N bytes) : [0..64]
  *
  *
- * REQUEST SETPOINT exchange :
+ * CONTROL exchange :
  *
- *  1) HOST sends a REQUEST SETPOINT instruction.
+ *  1) HOST sends a CONTROL instruction.
  *     ID = 0x01
  *     Length = 26 bytes
  *     Instruction code = 0x01
  *     Parameters = 12 x position (u16) [0..1023]
  *
- *  2) ESP32 replies a REQUEST SETPOINT acknowledge in less than 2ms.
+ *  2) ESP32 replies a CONTROL acknowledge in less than 2ms.
  *     ID = 0x01
  *     Length = 50 bytes
  *     Status code = 0x00
@@ -52,15 +52,15 @@
 
 
 // host instruction code
-#define INST_REQUEST_SETPOINT 0x01
+#define INST_CONTROL 0x01
 
 
-// host parameter format for request setpoint instruction
-struct parameters_request_setpoint_instruction_format
+// host parameter format for control instruction
+struct parameters_control_instruction_format
 {
     u16 goal_position[12];
 };
-struct parameters_request_setpoint_acknowledge_format
+struct parameters_control_acknowledge_format
 {
     u16 present_position[12];
     s16 present_load[12];
@@ -88,6 +88,8 @@ void HOST_TASK(void * parameters);
 struct HOST
 {
     HOST();
+
+    void start();
 
 private:
     int _uart_port_num {2};

@@ -14,6 +14,8 @@
 #include "nvs.h"
 #include "nvs_flash.h"
 #include "driver/i2c.h"
+#include "mini_pupper_servos.h"
+#include "mini_pupper_host.h"
 
 static const char* TAG = "servo_tests";
 
@@ -111,6 +113,12 @@ extern "C" void app_main(void)
 #else
 #error Unsupported console type
 #endif
+
+    // start SERVO interface
+    servo.start();
+
+    // start HOST interface
+    host.start();
 
     ESP_ERROR_CHECK(esp_console_start_repl(repl));
 

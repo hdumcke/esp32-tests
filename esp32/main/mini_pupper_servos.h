@@ -223,6 +223,7 @@ struct SERVO
      * Members functions allow changing setpoint (pos) and reading feedback (pos,speed,load)
      *
      */
+    void start();
 
     void setPositionAsync(u8 servoID, u16 servoPosition);
     void setPosition12Async(u16 const servoPositions[]);    
