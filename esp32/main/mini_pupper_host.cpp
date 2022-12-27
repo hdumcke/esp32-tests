@@ -60,6 +60,7 @@ void HOST_TASK(void * parameters)
         // copy RX fifo into local buffer (4 bytes : Header + ID + Length)
         int const read_length {uart_read_bytes(host->_uart_port_num,rx_buffer,rx_buffer_size,2)};
 
+        // waiting for a header...
         if(read_length != 4) 
         {
             // flush RX FIFO
@@ -68,13 +69,13 @@ void HOST_TASK(void * parameters)
             continue;
         }
 
+        // waiting for a valid frame header with my ID...
         bool const rx_header_check { 
                     (rx_buffer[0]==0xFF) 
                 &&  (rx_buffer[1]==0xFF) 
                 &&  (rx_buffer[2]==0x01) // my ID
                 &&  (rx_buffer[3]<64)
         };  
-        
         if(!rx_header_check) 
         {
             // flush RX FIFO
@@ -83,8 +84,15 @@ void HOST_TASK(void * parameters)
             continue;
         }
 
+        // read payalod length from frame header
         size_t const rx_payload_length {(size_t)rx_buffer[3]};
 
 
+
+
+
+
+        // flush RX FIFO
+        uart_flush(host->_uart_port_num);    
     }    
 }
