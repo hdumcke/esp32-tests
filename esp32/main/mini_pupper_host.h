@@ -54,6 +54,20 @@
 // host instruction code
 #define INST_REQUEST_SETPOINT 0x01
 
+
+// host parameter format for request setpoint instruction
+struct parameters_request_setpoint_instruction_format
+{
+    u16 goal_position[12];
+};
+struct parameters_request_setpoint_acknowledge_format
+{
+    u16 present_position[12];
+    s16 present_load[12];
+    // IMU data
+};
+
+
 struct HOST_STATE
 {
     HOST_STATE(u8 id) : ID(id) {}

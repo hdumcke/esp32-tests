@@ -58,7 +58,7 @@ void HOST_TASK(void * parameters)
         size_t static rx_buffer_size {128};
         u8 rx_buffer[rx_buffer_size] {0};
         // copy RX fifo into local buffer (4 bytes : Header + ID + Length)
-        int const read_length {uart_read_bytes(host->_uart_port_num,rx_buffer,rx_buffer_size,2)};
+        int read_length {uart_read_bytes(host->_uart_port_num,rx_buffer,rx_buffer_size,2)};
 
         // waiting for a header...
         if(read_length != 4) 
@@ -74,7 +74,7 @@ void HOST_TASK(void * parameters)
                     (rx_buffer[0]==0xFF) 
                 &&  (rx_buffer[1]==0xFF) 
                 &&  (rx_buffer[2]==0x01) // my ID
-                &&  (rx_buffer[3]<64)
+                &&  (rx_buffer[3]<=(rx_buffer_size-4)) // keep the header in the rx buffer
         };  
         if(!rx_header_check) 
         {
@@ -86,6 +86,47 @@ void HOST_TASK(void * parameters)
 
         // read payalod length from frame header
         size_t const rx_payload_length {(size_t)rx_buffer[3]};
+
+        // copy RX fifo into local buffer (L bytes : Payload + Checksum)
+        read_length = uart_read_bytes(host->_uart_port_num,rx_buffer+4,rx_payload_length,2);
+
+        // waiting for a (full) payload...
+        if(read_length != rx_payload_length) 
+        {
+            // flush RX FIFO
+            uart_flush(host->_uart_port_num);    
+            // next
+            continue;
+        }
+
+        // compute checksum
+        u8 chk_sum {0};
+        for(size_t chk_index=2; chk_index<(rx_payload_length+4-1); ++chk_index)
+        {
+            chk_sum += rx_buffer[chk_index];
+        }   
+        bool const rx_checksum_check { rx_buffer[rx_payload_length+4-1] == (u8)(~chk_sum) };
+
+
+        // waiting for a valid instruction and checksum...
+        bool const rx_payload_checksum_check { 
+                    (rx_buffer[5]==INST_REQUEST_SETPOINT) 
+                &&  rx_checksum_check
+        };  
+        if(!rx_payload_checksum_check) 
+        {
+            // flush RX FIFO
+            uart_flush(host->_uart_port_num);    
+            // next
+            continue;
+        }
+
+        // dcode : struct parameters_request_setpoint_instruction_format
+        // dcode : struct parameters_request_setpoint_instruction_format
+        // dcode : struct parameters_request_setpoint_instruction_format
+
+
+
 
 
 
