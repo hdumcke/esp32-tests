@@ -135,13 +135,20 @@ void HOST_TASK(void * parameters)
         //printf(" (4) payload and checksum valid! ");
 
         // decode parameters
-        parameters_control_instruction_format data {0};
-        memcpy(&data,rx_buffer+5,sizeof(parameters_control_instruction_format));
+        parameters_control_instruction_format parameters {0};
+        memcpy(&parameters,rx_buffer+5,sizeof(parameters_control_instruction_format));
 
-        //printf(" (5) goal_position[0]:%d. ", data.goal_position[0]);
+        //printf(" (5) goal_position[0]:%d. ", parameters.goal_position[0]);
 
+        // control servo
         servo.enable();
-        servo.setPosition12Async(data.goal_position);
+        servo.setPosition12Async(parameters.goal_position);
+
+
+        // TODO : feedback
+        // TODO : feedback
+        // TODO : feedback
+        // TODO : feedback
 
         // flush RX FIFO
         uart_flush(host->_uart_port_num);    
