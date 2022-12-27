@@ -39,6 +39,16 @@
  *     Instruction code = 0x01
  *     Parameters = 12 x position (u16) [0..1023]
  *
+ *     Test frame with all servo to neutral :
+ *          0xff 0xff 0x01 0x1a     Header, ID=1, Length=26
+ *          0x01 0x00 0x02 0x00     Instruction=1(CONTROL), goal_position[0]=512...
+ *          0x02 0x00 0x02 0x00
+ *          0x02 0x00 0x02 0x00
+ *          0x02 0x00 0x02 0x00
+ *          0x02 0x00 0x02 0x00
+ *          0x02 0x00 0x02 0x00     ...goal_position[11]=512
+ *          0x02 0xcb               Checksum
+ *
  *  2) ESP32 replies a CONTROL acknowledge in less than 2ms.
  *     ID = 0x01
  *     Length = 50 bytes
@@ -52,7 +62,7 @@
 
 
 // host instruction code
-#define INST_CONTROL 0x01
+#define INST_CONTROL 0x01   // Host sends servo position setpoints, ESP32 replies with servo feedback, attitude, ....
 
 
 // host parameter format for control instruction
@@ -100,6 +110,6 @@ private:
 };
 
 
-extern HOST host;
+extern HOST host; 
 
 #endif //_mini_pupper_host_H
