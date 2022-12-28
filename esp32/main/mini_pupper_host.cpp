@@ -3,6 +3,8 @@
  * - Pat92fr
  */
 
+static const char* TAG = "HOST";
+
 #include "mini_pupper_host.h"
 #include "mini_pupper_servos.h"
 #include "driver/uart.h"
@@ -56,21 +58,19 @@ void HOST_TASK(void * parameters)
         // delay 1ms
         // - about 1KHz refresh frequency for sync write servo setpoints
         // - about 80Hz refresh frequency for read/ack servo feedbacks
-        vTaskDelay(10 / portTICK_PERIOD_MS);
+        vTaskDelay(1 / portTICK_PERIOD_MS);
 
         // wait for a frame from host
-        size_t static rx_buffer_size {128};
+        size_t const rx_buffer_size {128};
         u8 rx_buffer[rx_buffer_size] {0};
         // copy RX fifo into local buffer (4 bytes : Header + ID + Length)
         int read_length {uart_read_bytes(host->_uart_port_num,rx_buffer,4,0)}; // timeout = 0
 
-        // trace
-        //if(read_length>0)
-        //    printf(" (1) read_length:%d. ",read_length);
-
         // waiting for a header...
         if(read_length != 4) 
         {
+            // log
+            ESP_LOGI(TAG, "RX frame error : truncated header [expected:%d, received:%d]!",4,read_length);
             // flush RX FIFO
             uart_flush(host->_uart_port_num);    
             // next
@@ -86,24 +86,25 @@ void HOST_TASK(void * parameters)
         };  
         if(!rx_header_check) 
         {
+            // log
+            ESP_LOGI(TAG, "RX frame error : header invalid!");
             // flush RX FIFO
             uart_flush(host->_uart_port_num);    
             // next
             continue;
         }
 
-        //printf(" (2) header valid! ");
-
         // read payalod length from frame header
         size_t const rx_payload_length {(size_t)rx_buffer[3]};
 
         // copy RX fifo into local buffer (L bytes : Payload + Checksum)
         read_length = uart_read_bytes(host->_uart_port_num,rx_buffer+4,rx_payload_length,2);
-        //printf(" (3) read_length:%d. ",read_length);
 
         // waiting for a (full) payload...
         if(read_length != rx_payload_length) 
         {
+            // log
+            ESP_LOGI(TAG, "RX frame error : truncated payload [expected:%d, received:%d]!",rx_payload_length,read_length);
             // flush RX FIFO
             uart_flush(host->_uart_port_num);    
             // next
@@ -117,7 +118,6 @@ void HOST_TASK(void * parameters)
             chk_sum += rx_buffer[chk_index];
         }   
         bool const rx_checksum_check { rx_buffer[rx_payload_length+4-1] == (u8)(~chk_sum) };
-        //printf(" (4.0) checksum recv:%d comp:%d. ",(int)rx_buffer[rx_payload_length+4-1],(int)(u8)(~chk_sum));
 
         // waiting for a valid instruction and checksum...
         bool const rx_payload_checksum_check { 
@@ -126,23 +126,32 @@ void HOST_TASK(void * parameters)
         };  
         if(!rx_payload_checksum_check) 
         {
+            // log
+            ESP_LOGI(TAG, "RX frame error : bad instruction [%d] or checksum [received:%d,expected:%d]!",rx_buffer[4],rx_buffer[rx_payload_length+4-1],(u8)(~chk_sum));
             // flush RX FIFO
             uart_flush(host->_uart_port_num);    
             // next
             continue;
         }
 
-        //printf(" (4) payload and checksum valid! ");
-
         // decode parameters
         parameters_control_instruction_format parameters {0};
         memcpy(&parameters,rx_buffer+5,sizeof(parameters_control_instruction_format));
 
-        //printf(" (5) goal_position[0]:%d. ", parameters.goal_position[0]);
+        // log
+        ESP_LOGD(TAG, "Goal Position: %d %d %d %d %d %d %d %d %d %d %d %d",
+            parameters.goal_position[0],parameters.goal_position[1],parameters.goal_position[2],
+            parameters.goal_position[3],parameters.goal_position[4],parameters.goal_position[5],
+            parameters.goal_position[6],parameters.goal_position[7],parameters.goal_position[8],
+            parameters.goal_position[9],parameters.goal_position[10],parameters.goal_position[11]
+        );
 
         // control servo
         servo.enable();
         servo.setPosition12Async(parameters.goal_position);
+
+        // flush RX FIFO
+        uart_flush(host->_uart_port_num);  
 
         // servo feedback
         parameters_control_acknowledge_format feedback_parameters;
@@ -170,7 +179,8 @@ void HOST_TASK(void * parameters)
         // send frame to host
         uart_write_bytes(host->_uart_port_num,tx_buffer,tx_buffer_size);
 
-        // flush RX FIFO
-        uart_flush(host->_uart_port_num);  
+        // Wait for packet to be sent
+        ESP_ERROR_CHECK(uart_wait_tx_done(host->_uart_port_num, 10)); // wait timeout is 10 RTOS ticks (TickType_t)
+
     }    
 }
