@@ -70,7 +70,7 @@ void HOST_TASK(void * parameters)
         if(read_length != 4) 
         {
             // log
-            ESP_LOGI(TAG, "RX frame error : truncated header [expected:%d, received:%d]!",4,read_length);
+            //ESP_LOGI(TAG, "RX frame error : truncated header [expected:%d, received:%d]!",4,read_length);
             // flush RX FIFO
             uart_flush(host->_uart_port_num);    
             // next
@@ -98,7 +98,7 @@ void HOST_TASK(void * parameters)
         size_t const rx_payload_length {(size_t)rx_buffer[3]};
 
         // copy RX fifo into local buffer (L bytes : Payload + Checksum)
-        read_length = uart_read_bytes(host->_uart_port_num,rx_buffer+4,rx_payload_length,2);
+        read_length = uart_read_bytes(host->_uart_port_num,rx_buffer+4,rx_payload_length,0);
 
         // waiting for a (full) payload...
         if(read_length != rx_payload_length) 
@@ -180,7 +180,7 @@ void HOST_TASK(void * parameters)
         uart_write_bytes(host->_uart_port_num,tx_buffer,tx_buffer_size);
 
         // Wait for packet to be sent
-        ESP_ERROR_CHECK(uart_wait_tx_done(host->_uart_port_num, 10)); // wait timeout is 10 RTOS ticks (TickType_t)
+        //ESP_ERROR_CHECK(uart_wait_tx_done(host->_uart_port_num, 10)); // wait timeout is 10 RTOS ticks (TickType_t)
 
     }    
 }
