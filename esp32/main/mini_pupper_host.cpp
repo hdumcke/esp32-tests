@@ -5,6 +5,7 @@
 
 static const char* TAG = "HOST";
 
+#include "mini_pupper_protocol.h"
 #include "mini_pupper_host.h"
 #include "mini_pupper_servos.h"
 #include "driver/uart.h"
@@ -111,23 +112,19 @@ void HOST_TASK(void * parameters)
             continue;
         }
 
-        // compute checksum
-        u8 chk_sum {0};
-        for(size_t chk_index=2; chk_index<(rx_payload_length+4-1); ++chk_index)
-        {
-            chk_sum += rx_buffer[chk_index];
-        }   
-        bool const rx_checksum_check { rx_buffer[rx_payload_length+4-1] == (u8)(~chk_sum) };
+        // checksum
+        u8 expected_checksum {0};
+        bool const rx_checksum {checksum(rx_buffer,expected_checksum)};
 
         // waiting for a valid instruction and checksum...
         bool const rx_payload_checksum_check { 
                     (rx_buffer[4]==INST_CONTROL) 
-                &&  rx_checksum_check
+                &&  rx_checksum
         };  
         if(!rx_payload_checksum_check) 
         {
             // log
-            ESP_LOGI(TAG, "RX frame error : bad instruction [%d] or checksum [received:%d,expected:%d]!",rx_buffer[4],rx_buffer[rx_payload_length+4-1],(u8)(~chk_sum));
+            ESP_LOGI(TAG, "RX frame error : bad instruction [%d] or checksum [received:%d,expected:%d]!",rx_buffer[4],rx_buffer[rx_payload_length+4-1],expected_checksum);
             // flush RX FIFO
             uart_flush(host->_uart_port_num);    
             // next
@@ -171,11 +168,8 @@ void HOST_TASK(void * parameters)
         memcpy(tx_buffer+5,&feedback_parameters,sizeof(parameters_control_acknowledge_format));
 
         // compute checksum
-        chk_sum = 0;
-        for(size_t chk_index=2; chk_index<(tx_buffer_size-1); ++chk_index) {
-            chk_sum += tx_buffer[chk_index];
-        }
-        tx_buffer[tx_buffer_size-1] = (u8)(~chk_sum);
+        tx_buffer[tx_buffer_size-1] = compute_checksum(tx_buffer);
+
         // send frame to host
         uart_write_bytes(host->_uart_port_num,tx_buffer,tx_buffer_size);
 
