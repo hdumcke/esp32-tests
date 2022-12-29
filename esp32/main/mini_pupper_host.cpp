@@ -74,23 +74,17 @@ void HOST_TASK(void * parameters)
             // next
             continue;
         } 
+        // log
         ESP_LOGD(TAG, "RX uart event size: %d", event.size);
 
-        // wait for a frame from host
-        size_t available_length {0};
-        uart_get_buffered_data_len(host->_uart_port_num,&available_length);
-
-        if(available_length<4)
-            continue;
-
-        // read a frame header from host
+        // read a frame from host
         size_t const rx_buffer_size {128};
         u8 rx_buffer[rx_buffer_size] {0};
-        // copy RX fifo into local buffer (4 bytes : Header + ID + Length)
-        int read_length {uart_read_bytes(host->_uart_port_num,rx_buffer,4,0)}; // timeout = 0
+        // copy RX fifo into local buffer
+        int const read_length {uart_read_bytes(host->_uart_port_num,rx_buffer,event.size,portMAX_DELAY)};
 
         // waiting for a header...
-        if(read_length != 4) 
+        if(read_length < 4) 
         {
             // log
             ESP_LOGI(TAG, "RX frame error : truncated header [expected:%d, received:%d]!",4,read_length);
@@ -120,19 +114,8 @@ void HOST_TASK(void * parameters)
         // read paylaod length from frame header
         size_t const rx_payload_length {(size_t)rx_buffer[3]};
 
-        // wait for a frame payload from host
-        uart_get_buffered_data_len(host->_uart_port_num,&available_length);
-        if(available_length<rx_payload_length)
-        {
-            // wait one ms
-            vTaskDelay(1 / portTICK_PERIOD_MS);
-        }
-
-        // copy RX fifo into local buffer (L bytes : Payload + Checksum)
-        read_length = uart_read_bytes(host->_uart_port_num,rx_buffer+4,rx_payload_length,0);
-
         // waiting for a (full) payload...
-        if(read_length != rx_payload_length) 
+        if(read_length != (rx_payload_length+4))
         {
             // log
             ESP_LOGI(TAG, "RX frame error : truncated payload [expected:%d, received:%d]!",rx_payload_length,read_length);
