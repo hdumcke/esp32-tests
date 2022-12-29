@@ -49,9 +49,11 @@ SERVO::SERVO()
     ESP_ERROR_CHECK(uart_driver_install(uart_port_num, 1024, 1024, 0, NULL, 0));
     ESP_ERROR_CHECK(uart_param_config(uart_port_num, &uart_config));
     ESP_ERROR_CHECK(uart_set_pin(uart_port_num, 4, 5, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
+}
 
+void SERVO::start()
+{
     /*** ASYNC API service ***/
-
     xTaskCreate(
         SERVO_TASK,                 /* Function that implements the task. */
         "SERVO BUS SERVICE",        /* Text name for the task. */
@@ -60,8 +62,6 @@ SERVO::SERVO()
         tskIDLE_PRIORITY,           /* Priority at which the task is created. */
         &task_handle                /* Used to pass out the created task's handle. */
     );
-
-    /*** ASYNC API service ***/
 }
 
 void SERVO::disable()
@@ -562,6 +562,33 @@ void SERVO::setPosition12Async(u16 const servoPositions[])
     
     // (re)start sync service
     enableAsyncService(true);
+}
+
+void SERVO::getPosition12Async(u16 servoPositions[])
+{
+    // (re)start sync service
+    enableAsyncService(true);
+
+    for(size_t index=0;index<12;++index)
+        servoPositions[index] = state[index].present_position;
+}
+
+void SERVO::getSpeed12Async(s16 servoSpeeds[])
+{
+    // (re)start sync service
+    enableAsyncService(true);
+
+    for(size_t index=0;index<12;++index)
+        servoSpeeds[index] = state[index].present_speed;
+}
+
+void SERVO::getLoad12Async(s16 servoLoads[])
+{
+    // (re)start sync service
+    enableAsyncService(true);
+
+    for(size_t index=0;index<12;++index)
+        servoLoads[index] = state[index].present_load;
 }
 
 u16  SERVO::getPositionAsync(u8 servoID)

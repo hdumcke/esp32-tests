@@ -16,7 +16,7 @@
 #define DEBUG
 
 struct UartDevice {
-	char* filename;
+	char const * filename;
 	int rate;
 
 	int fd;

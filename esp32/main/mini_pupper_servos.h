@@ -2,6 +2,8 @@
  * - Hdumcke
  * - Pat92fr
  */
+#ifndef _mini_pupper_servos_H
+#define _mini_pupper_servos_H
 
 /* Manual : 
  * 
@@ -66,10 +68,12 @@
  *
  */
 
+#include "mini_pupper_types.h"
+
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 
-/* IMPORTANT : Mini Servo API requires to setup FreeRTOS frequency at 1000Hz.
+/* IMPORTANT : Mini Pupper Servo API requires to setup FreeRTOS frequency at 1000Hz.
  *             Use IDF ESP32 : MENUCONFIG > COMPONENTS > FREERTOS > KERNEL > 1000Hz
  *
  */
@@ -80,17 +84,6 @@
  */
 #define SERVO_USE_SCS_0009
 //#define SERVO_USE_SCS_GENERIC
-
-#ifndef _mini_pupper_servos_H
-#define _mini_pupper_servos_H
-
-// types
-typedef char s8;
-typedef unsigned char u8;   
-typedef unsigned short u16; 
-typedef short s16;
-typedef unsigned long u32;  
-typedef long s32;
 
 // servo instruction code
 #define INST_PING 0x01
@@ -161,7 +154,7 @@ struct SERVO_STATE
     u8 ID                   {0};
     u16 goal_position       {512}; // middle position
     u16 present_position    {0};
-    s16 present_speed    {0};
+    s16 present_speed       {0};
     s16 present_load        {0};
     u8 present_voltage      {0};
     u8 present_temperature  {0};
@@ -174,9 +167,8 @@ enum {
     SERVO_STATUS_FAIL,
 };
 
-class SERVO
+struct SERVO
 {
-public:
     SERVO();
 
     /* Power distribution API
@@ -231,6 +223,7 @@ public:
      * Members functions allow changing setpoint (pos) and reading feedback (pos,speed,load)
      *
      */
+    void start();
 
     void setPositionAsync(u8 servoID, u16 servoPosition);
     void setPosition12Async(u16 const servoPositions[]);    
@@ -242,6 +235,10 @@ public:
     u8   getTemperatureAsync(u8 servoID);   // return 0 with SCS 0009 and SCS Generic (future functionality)
     u8   getMoveAsync(u8 servoID);          // return 0 with SCS 0009 and SCS Generic (future functionality)
     s16  getCurrentAsync(u8 servoID);       // return 0 with SCS 0009 and SCS Generic (future functionality)
+
+    void getPosition12Async(u16 servoPositions[]);    
+    void getSpeed12Async(s16 servoSpeeds[]);    
+    void getLoad12Async(s16 servoLoads[]);    
 
     // async service enable
     void enableAsyncService(bool enable);
@@ -279,4 +276,4 @@ public:
 
 extern SERVO servo;
 
-#endif
+#endif //_mini_pupper_servos_H
