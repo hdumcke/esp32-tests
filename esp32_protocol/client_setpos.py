@@ -22,5 +22,5 @@ while True:
         print("Invalid Ack")
         sock.close()
         sys.exit(1)
-    positions[0] += 1
-    positions[0] %= 1024
+    positions[1] += 1
+    positions[1] %= 1024

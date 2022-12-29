@@ -6,13 +6,13 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <unistd.h>
+#include <termios.h>
 #include <errno.h>
 #include <signal.h>
 #include <sys/mman.h>
 #include <fcntl.h>
 #include <termios.h>
 #include <string.h>
-#include "uart.h"
 #include "connection.h"
 
 #include "mini_pupper_host_base.h"
@@ -22,13 +22,34 @@ static void *control_block;
 
 void esp32_protocol(void *control_block)
 {
-    struct UartDevice dev;
-    dev.filename = "/dev/ttyAMA1";
-    dev.rate = B3000000;
-    int result = uart_start(&dev, false);
-    printf("uart_start:%d\r\n",result);
+    static const char* filename = "/dev/ttyAMA1";
+    int fd;
+    int rc;
+    struct termios *tty;
 
-    //TODO handle return code
+    fd = open(filename, O_RDWR | O_NOCTTY);
+    if (fd < 0) {
+        printf("%s: failed to open UART device\n", __func__);
+        //TODO handle fd < 0
+    }
+    tty = (termios *)malloc(sizeof(*tty));
+    if (!tty) {
+        printf("%s: failed to allocate UART TTY instance\n", __func__);
+    }
+    //TODO handle ENOMEM;
+    memset(tty, 0, sizeof(*tty));
+    tty->c_iflag |=  IGNPAR;
+    tty->c_cflag =  CS8 | CREAD | B3000000;
+    tty->c_cc[VTIME] = 0;
+    tty->c_cc[VMIN] = 1;
+
+    tcflush(fd, TCIFLUSH);
+    rc = tcsetattr(fd, TCSANOW, tty);
+    if (rc) {
+        printf("%s: failed to set attributes\r\n", __func__);
+        //TODO
+    }
+
     for (;;)
     {
         /*
@@ -41,16 +62,12 @@ void esp32_protocol(void *control_block)
         // Copy 12 servo goal positions into the goal_position array of parameters
         for(auto & goal_position : parameters.goal_position)
         {
-            goal_position = 512; // default hard-coded position (note : to be replaced by following line of codes)
+            for(size_t servo_index=0; servo_index<N; ++servo_index) 
+            {
+                int offset = servo_index * sizeof(SERVO_STATE) + 2;
+                memcpy(&goal_position, (char*)control_block + offset, 2);
+            }
         }
-        /*
-                for(size_t servo_index=0; servo_index<N; ++servo_index) 
-                {
-                    offset = servo_index * sizeof(SERVO_STATE) + 2;
-                    memcpy(&tx_buffer[index], (char*)control_block + offset, 2);
-                    index+=2;
-                }
-        */
 
         // Compute the size of the payload (parameters length + 2)
         size_t const tx_payload_length { sizeof(parameters_control_instruction_format) + 2 };
@@ -64,7 +81,7 @@ void esp32_protocol(void *control_block)
             0xFF,               // header
             0x01,               // default ID
             tx_payload_length,  // length
-            INST_CONTROL       // instruction
+            INST_CONTROL        // instruction
         };
         memcpy(tx_buffer+5,&parameters,sizeof(parameters_control_instruction_format));
         
@@ -72,13 +89,10 @@ void esp32_protocol(void *control_block)
         tx_buffer[tx_buffer_size-1] = compute_checksum(tx_buffer);
 
         // Send
-        result = uart_writen(&dev, (char *)tx_buffer, tx_buffer_size);
-        printf("uart_writen:%d\r\n",result);
+        int result = write(fd, (char *)tx_buffer, tx_buffer_size);
+        printf("uart writen:%d\n",result);
 
-        // INSERT a 25ms delay
-        // INSERT a 25ms delay
-        // INSERT a 25ms delay
-
+	sleep(1);
 
         /*
          * Decode a CONTROL ACK frame 
@@ -89,14 +103,14 @@ void esp32_protocol(void *control_block)
         u8 rx_buffer[rx_buffer_size] {0};
         
         // Read
-        int read_length = uart_reads(&dev, (char*)rx_buffer, 4); 
-        printf("uart_reads:%d\r\n",read_length);
+        int read_length = read(fd, (char*)rx_buffer, 4); 
+        printf("uart read:%d\n",read_length);
 
         // waiting for a (full) header...
         if(read_length != 4)
         {
             // log
-            printf("RX frame header truncated!");
+            printf("RX frame header truncated!\n");
             // flush RX FIFO
             //// HOW TO LINUX ?
             // next            
@@ -113,7 +127,7 @@ void esp32_protocol(void *control_block)
         if(!rx_header_check) 
         {
             // log
-            printf("RX frame error : header invalid!");
+            printf("RX frame error : header invalid!\n");
             // flush RX FIFO
             //// HOW TO LINUX ?
             // next
@@ -124,13 +138,13 @@ void esp32_protocol(void *control_block)
         size_t const rx_payload_length {(size_t)rx_buffer[3]};
 
         // copy RX fifo into local buffer (L bytes : Payload + Checksum)
-        read_length = uart_reads(&dev, (char*)(rx_buffer+4), rx_payload_length); 
+        read_length = read(fd, (char*)(rx_buffer+4), rx_payload_length); 
 
         // waiting for a (full) payload...
         if(read_length != (int)rx_payload_length) 
         {
             // log
-            printf("RX frame error : truncated payload [expected:%d, received:%d]!",rx_payload_length,read_length);
+            printf("RX frame error : truncated payload [expected:%ld, received:%d]!\n",rx_payload_length,read_length);
             // flush RX FIFO
             //// HOW TO LINUX ?
             // next
@@ -143,13 +157,13 @@ void esp32_protocol(void *control_block)
 
         // waiting for a valid instruction and checksum...
         bool const rx_payload_checksum_check { 
-                    (rx_buffer[4]==INST_CONTROL) 
+                    (rx_buffer[4]==0x00) 
                 &&  rx_checksum
         };  
         if(!rx_payload_checksum_check) 
         {
             // log
-            printf("RX frame error : bad instruction [%d] or checksum [received:%d,expected:%d]!",rx_buffer[4],rx_buffer[rx_payload_length+4-1],expected_checksum);
+            printf("RX frame error : bad instruction [%d] or checksum [received:%d,expected:%d]!\n",rx_buffer[4],rx_buffer[rx_payload_length+4-1],expected_checksum);
             // flush RX FIFO
             //// HOW TO LINUX ?
             // next
@@ -161,7 +175,7 @@ void esp32_protocol(void *control_block)
         memcpy(&ack_parameters,rx_buffer+5,sizeof(parameters_control_acknowledge_format));
 
         // log
-        printf("Present Position: %d %d %d %d %d %d %d %d %d %d %d %d",
+        printf("Present Position: %d %d %d %d %d %d %d %d %d %d %d %d\n",
             ack_parameters.present_position[0],ack_parameters.present_position[1],ack_parameters.present_position[2],
             ack_parameters.present_position[3],ack_parameters.present_position[4],ack_parameters.present_position[5],
             ack_parameters.present_position[6],ack_parameters.present_position[7],ack_parameters.present_position[8],
@@ -173,14 +187,12 @@ void esp32_protocol(void *control_block)
 int main(int argc, char *argv[])
 {
     struct sockaddr_un name;
-    int down_flag = 0;
     size_t offset;
     size_t index;
     int ret;
     int pid;
     int connection_socket;
     int data_socket;
-    int result;
     static u8 r_buffer[buffer_size];
     static u8 s_buffer[buffer_size];
 
@@ -255,7 +267,6 @@ int main(int argc, char *argv[])
 	pid = fork();
         if (pid == 0) {
     
-            result = 0;
             for (;;) {
     
                 /* Wait for next data packet. */
