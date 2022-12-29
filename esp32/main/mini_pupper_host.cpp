@@ -23,7 +23,8 @@ HOST host;
 
 HOST::HOST() : 
 _uart_port_num(2),
-_task_handle(NULL)
+_task_handle(NULL),
+_uart_queue(NULL)
 {
     // set UART port
     uart_config_t uart_config;
@@ -36,7 +37,7 @@ _task_handle(NULL)
     uart_config.source_clk = UART_SCLK_DEFAULT;
     ESP_ERROR_CHECK(uart_param_config(_uart_port_num, &uart_config));
     ESP_ERROR_CHECK(uart_set_pin(_uart_port_num, HOST_SERVER_TXD, HOST_SERVER_RXD, HOST_SERVER_RTS, HOST_SERVER_CTS));
-    ESP_ERROR_CHECK(uart_driver_install(_uart_port_num, 1024, 1024, 0, NULL, 0));
+    ESP_ERROR_CHECK(uart_driver_install(_uart_port_num, 1024, 1024, 20, &_uart_queue, 0));
 }
 
 void HOST::start()
@@ -59,12 +60,26 @@ void HOST_TASK(void * parameters)
         // delay 1ms
         // - about 1KHz refresh frequency for sync write servo setpoints
         // - about 80Hz refresh frequency for read/ack servo feedbacks
-        vTaskDelay(1 / portTICK_PERIOD_MS);
+        //vTaskDelay(1 / portTICK_PERIOD_MS);
 
+        // Waiting for UART event.
+        uart_event_t event;
+        if(!xQueueReceive(host->_uart_queue,(void*)&event,(TickType_t)portMAX_DELAY)) continue;
+
+        // Waiting for a DATA event
+        if(event.type!=UART_DATA)
+        {
+            // log
+            ESP_LOGI(TAG, "RX uart event type: %d", event.type);
+            // next
+            continue;
+        } 
+        ESP_LOGD(TAG, "RX uart event size: %d", event.size);
 
         // wait for a frame from host
         size_t available_length {0};
         uart_get_buffered_data_len(host->_uart_port_num,&available_length);
+
         if(available_length<4)
             continue;
 

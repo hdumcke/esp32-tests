@@ -10,6 +10,7 @@
 
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
+#include "freertos/queue.h"
 
 /* IMPORTANT : Mini Pupper Host API requires to setup FreeRTOS frequency at 1000Hz.
  *             Use IDF ESP32 : MENUCONFIG > COMPONENTS > FREERTOS > KERNEL > 1000Hz
@@ -31,6 +32,7 @@ private:
     
     // background host serial bus service
     TaskHandle_t _task_handle {NULL};    
+    QueueHandle_t _uart_queue {NULL};    
     friend void HOST_TASK(void * parameters);
 };
 
