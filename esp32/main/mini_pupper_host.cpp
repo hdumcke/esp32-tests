@@ -34,9 +34,9 @@ _task_handle(NULL)
     uart_config.flow_ctrl = UART_HW_FLOWCTRL_DISABLE;
     uart_config.rx_flow_ctrl_thresh = 0;
     uart_config.source_clk = UART_SCLK_DEFAULT;
-    ESP_ERROR_CHECK(uart_driver_install(_uart_port_num, 1024, 1024, 0, NULL, 0));
     ESP_ERROR_CHECK(uart_param_config(_uart_port_num, &uart_config));
     ESP_ERROR_CHECK(uart_set_pin(_uart_port_num, HOST_SERVER_TXD, HOST_SERVER_RXD, HOST_SERVER_RTS, HOST_SERVER_CTS));
+    ESP_ERROR_CHECK(uart_driver_install(_uart_port_num, 1024, 1024, 0, NULL, 0));
 }
 
 void HOST::start()
@@ -46,7 +46,7 @@ void HOST::start()
         "HOST BUS SERVICE",        /* Text name for the task. */
         10000,                      /* Stack size in words, not bytes. */
         (void*)this,                /* Parameter passed into the task. */
-        tskIDLE_PRIORITY,           /* Priority at which the task is created. */
+        1,           /* Priority at which the task is created. */
         &_task_handle                /* Used to pass out the created task's handle. */
     );
 }
@@ -61,7 +61,14 @@ void HOST_TASK(void * parameters)
         // - about 80Hz refresh frequency for read/ack servo feedbacks
         vTaskDelay(1 / portTICK_PERIOD_MS);
 
+
         // wait for a frame from host
+        size_t available_length {0};
+        uart_get_buffered_data_len(host->_uart_port_num,&available_length);
+        if(available_length<4)
+            continue;
+
+        // read a frame header from host
         size_t const rx_buffer_size {128};
         u8 rx_buffer[rx_buffer_size] {0};
         // copy RX fifo into local buffer (4 bytes : Header + ID + Length)
@@ -71,7 +78,7 @@ void HOST_TASK(void * parameters)
         if(read_length != 4) 
         {
             // log
-            //ESP_LOGI(TAG, "RX frame error : truncated header [expected:%d, received:%d]!",4,read_length);
+            ESP_LOGI(TAG, "RX frame error : truncated header [expected:%d, received:%d]!",4,read_length);
             // flush RX FIFO
             uart_flush(host->_uart_port_num);    
             // next
@@ -95,8 +102,16 @@ void HOST_TASK(void * parameters)
             continue;
         }
 
-        // read payalod length from frame header
+        // read paylaod length from frame header
         size_t const rx_payload_length {(size_t)rx_buffer[3]};
+
+        // wait for a frame payload from host
+        uart_get_buffered_data_len(host->_uart_port_num,&available_length);
+        if(available_length<rx_payload_length)
+        {
+            // wait one ms
+            vTaskDelay(1 / portTICK_PERIOD_MS);
+        }
 
         // copy RX fifo into local buffer (L bytes : Payload + Checksum)
         read_length = uart_read_bytes(host->_uart_port_num,rx_buffer+4,rx_payload_length,0);
