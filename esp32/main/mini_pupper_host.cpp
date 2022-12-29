@@ -57,11 +57,6 @@ void HOST_TASK(void * parameters)
     HOST * host = reinterpret_cast<HOST*>(parameters);
     for(;;)
     {
-        // delay 1ms
-        // - about 1KHz refresh frequency for sync write servo setpoints
-        // - about 80Hz refresh frequency for read/ack servo feedbacks
-        //vTaskDelay(1 / portTICK_PERIOD_MS);
-
         // Waiting for UART event.
         uart_event_t event;
         if(!xQueueReceive(host->_uart_queue,(void*)&event,(TickType_t)portMAX_DELAY)) continue;
@@ -157,7 +152,6 @@ void HOST_TASK(void * parameters)
         );
 
         // control servo
-        servo.enable();
         servo.setPosition12Async(parameters.goal_position);
 
         // flush RX FIFO

@@ -120,6 +120,9 @@ extern "C" void app_main(void)
     // start HOST interface
     host.start();
 
+    // enable SERVO system
+    servo.enable();
+
     ESP_ERROR_CHECK(esp_console_start_repl(repl));
 
 }
