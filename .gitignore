@@ -51,4 +51,5 @@ test_api/MangDang/mini_pupper/__pycache__
 test_api/.eggs/
 Python_Module/.eggs/
 Python_Module/MangDang/mini_pupper/__pycache__
+Python_Module/MangDang.egg-info/
 .pytest_cache
