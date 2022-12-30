@@ -17,18 +17,20 @@ class IMU_FILTER
   private: 
     vec3_t s;
     quat_t q;
-    int64_t last_time_us;
+    uint32_t last_time;
+    float updateTimer();
       
   public:
     // Initialization:
-    void setup(int64_t current_time_us);
-    void setup(int64_t current_time_us, float ax, float ay, float az);
+    void setup();
+    void setup( float, float, float );
 
     // Heading estimate:
-    void update(int64_t current_time_us, float gx, float gy, float gz);
-    void update(int64_t current_time_us, float gx, float gy, float gz, float ax, float ay, float az, float alpha=DEFAULT_GAIN, const bool SCALE_GAIN =true );
+    void update( float, float, float );
+    void update( float, float, float, float, float, float, 
+                 float=DEFAULT_GAIN, const bool=true );
                  
-    void rotateHeading(float angle, bool const SMALL_ANG);
+    void rotateHeading( float, const bool );
 
     //-- Fusion outputs:
     

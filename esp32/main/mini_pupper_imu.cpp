@@ -351,14 +351,13 @@ void IMU_TASK(void * parameters)
     // Fusion & Filter
     if(first_imu_fusion_filtering)
     {
-      filter.setup( esp_timer_get_time(), imu->acc.x, imu->acc.y, imu->acc.z );  
+      filter.setup( imu->acc.x, imu->acc.y, imu->acc.z );  
       first_imu_fusion_filtering = false;  
     }
     else
     {
       
       filter.update(
-        esp_timer_get_time(), 
         imu->gyro.x*DEG2RAD, 
         imu->gyro.y*DEG2RAD, 
         imu->gyro.z*DEG2RAD, 
@@ -368,20 +367,16 @@ void IMU_TASK(void * parameters)
       );  
     }
 
-    ESP_LOGI(TAG, "Froll:%.3f  Fpitch:%.3f  Fyaw:%.3f", (filter.roll()*RAD2DEG), (filter.pitch()*RAD2DEG), (filter.yaw()*RAD2DEG));
-
-
     //  Store attitude
-    
-    imu->_roll_deg = imu->roll_adjust(filter.roll()*RAD2DEG);
-    imu->_pitch_deg = filter.pitch()*RAD2DEG;
+    imu->_roll_deg = filter.pitch()*RAD2DEG;
+    imu->_pitch_deg = imu->roll_adjust(filter.roll()*RAD2DEG);
     imu->_yaw_deg = filter.yaw()*RAD2DEG;
 
     int64_t const end_time_us { esp_timer_get_time() };
     int64_t const delta_time_us { end_time_us-current_time_us };
 
     // log
-    //ESP_LOGI(TAG, "(dt:%lld time:%lld) ATTITUDE: roll:%.3f  pitch:%.3f  yaw:%.3f", delta_time_us, current_time_us, imu->_roll_deg, imu->_pitch_deg, imu->_yaw_deg);
+    ESP_LOGD(TAG, "(dt:%lld time:%lld) ATTITUDE: roll:%.3f  pitch:%.3f  yaw:%.3f", delta_time_us, current_time_us, imu->_roll_deg, imu->_pitch_deg, imu->_yaw_deg);
 
   }    
 }
