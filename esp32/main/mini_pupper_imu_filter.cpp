@@ -3,6 +3,8 @@
 #include <cmath>
 
 
+#include "esp_log.h"
+
 //----------------- Initialization ------------------- 
 
 void IMU_FILTER::setup(int64_t current_time_us)
@@ -57,6 +59,7 @@ void IMU_FILTER::update(
   // Update Timer
   float dt = current_time_us-last_time_us;
   last_time_us = current_time_us;
+  ESP_LOGD("IMU_FILTER", "(dt:%f)",dt);
 
   // error about vertical
   vec3_t vz = q.axisZ(LOCAL_FRAME);   
@@ -134,17 +137,16 @@ float IMU_FILTER::roll()
 }
 
 float IMU_FILTER::pitch()
-{
-  constexpr float PI_2 = M_PI_2;    
+{   
   vec3_t v = q.v;
   float a = 2*( v.y*q.w - v.z*v.x );    
   if( a > 1 )
   {
-    return PI_2; 
+    return M_PI_2; 
   }
   else if( a < -1 )
   {
-    return -PI_2;
+    return -M_PI_2;
   }
   else
   {

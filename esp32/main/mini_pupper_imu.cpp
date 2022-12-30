@@ -245,7 +245,17 @@ void IMU_ISR(void* arg)
 void IMU::start()
 {
   //create a queue to handle gpio event from isr
-  _INT2_evt_queue = xQueueCreate(10, sizeof(uint32_t));
+  _INT2_evt_queue = xQueueCreate(20, sizeof(uint32_t));
+
+  // start the task
+  xTaskCreate(
+      IMU_TASK,                 /* Function that implements the task. */
+      "IMU SERVICE",            /* Text name for the task. */
+      10000,                      /* Stack size in words, not bytes. */
+      (void*)this,                /* Parameter passed into the task. */
+      2,           /* Priority at which the task is created. */
+      &_task_handle                /* Used to pass out the created task's handle. */
+  );
 
   //change gpio interrupt type for one pin
   gpio_set_intr_type(GPIO_NUM_39, GPIO_INTR_POSEDGE);
@@ -255,22 +265,21 @@ void IMU::start()
 
   //hook isr handler for specific gpio pin
   gpio_isr_handler_add(GPIO_NUM_39, IMU_ISR, (void*)this);
-
-
-  xTaskCreate(
-      IMU_TASK,                 /* Function that implements the task. */
-      "IMU SERVICE",            /* Text name for the task. */
-      10000,                      /* Stack size in words, not bytes. */
-      (void*)this,                /* Parameter passed into the task. */
-      0,           /* Priority at which the task is created. */
-      &_task_handle                /* Used to pass out the created task's handle. */
-  );
 }
 
-void IMU::get_attitude(float & roll_deg, float & pitch_deg) const
+float IMU::get_roll() const
 {
-  roll_deg = _roll_deg;
-  pitch_deg = _pitch_deg;
+  return _roll_deg;
+}
+
+float IMU::get_pitch() const
+{
+  return _pitch_deg;
+}
+
+float IMU::get_yaw() const
+{
+  return _yaw_deg;
 }
 
 float IMU::roll_adjust(float roll_deg)
@@ -304,17 +313,75 @@ float IMU::compute_pitch(quat_t dq)
 
 void IMU_TASK(void * parameters)
 {
-    bool first_imu_fusion_filtering {true};
-    IMU * imu = reinterpret_cast<IMU*>(parameters);
-    for(;;)
-    {
-      // Waiting for UART event.
-      uint32_t value {0};
-      if(!xQueueReceive(imu->_INT2_evt_queue,(void*)&value,(TickType_t)portMAX_DELAY)) continue;
+  IMU * imu { reinterpret_cast<IMU*>(parameters) };
+  bool first_imu_fusion_filtering {true};
+  IMU_FILTER filter;
+  for(;;)
+  {
+    static float const DEG2RAD { M_PI/180.0 };
+    static float const RAD2DEG { 180.0/M_PI };
 
-      int64_t const current_time_us { esp_timer_get_time() };
-      // log
-      ESP_LOGI(TAG, "INT2 (time:%lld)", current_time_us);
-      vTaskDelay(1 / portTICK_PERIOD_MS);
-    }    
+    // Waiting for UART event.
+    static uint32_t value {0};
+    if(!xQueueReceive(imu->_INT2_evt_queue,(void*)&value,(TickType_t)portMAX_DELAY)) continue;
+    xQueueReset(imu->_INT2_evt_queue);
+
+
+    // Time
+    int64_t const current_time_us { esp_timer_get_time() };
+
+    // log debug
+    ESP_LOGD(TAG, "INT2 (time:%lld)(queue:%d)", current_time_us, uxQueueMessagesWaiting(imu->_INT2_evt_queue));
+  
+    // Read raw IMU data
+    uint8_t const read_data { imu->read_6dof() };
+    if(read_data)
+      ESP_LOGI(TAG, "(time:%lld) IMU read error!!!!", current_time_us);
+
+    // log debug
+    ESP_LOGD(TAG, "ax:%0.3f ay:%0.3f az:%0.3f gx:%0.3f gy:%0.3f gz:%0.3f",
+      imu->acc.x,
+      imu->acc.y,
+      imu->acc.z,
+      (imu->gyro.x*DEG2RAD),
+      (imu->gyro.y*DEG2RAD),
+      (imu->gyro.z*DEG2RAD)
+    );
+
+    // Fusion & Filter
+    if(first_imu_fusion_filtering)
+    {
+      filter.setup( esp_timer_get_time(), imu->acc.x, imu->acc.y, imu->acc.z );  
+      first_imu_fusion_filtering = false;  
+    }
+    else
+    {
+      
+      filter.update(
+        esp_timer_get_time(), 
+        imu->gyro.x*DEG2RAD, 
+        imu->gyro.y*DEG2RAD, 
+        imu->gyro.z*DEG2RAD, 
+        imu->acc.x, 
+        imu->acc.y, 
+        imu->acc.z
+      );  
+    }
+
+    ESP_LOGI(TAG, "Froll:%.3f  Fpitch:%.3f  Fyaw:%.3f", (filter.roll()*RAD2DEG), (filter.pitch()*RAD2DEG), (filter.yaw()*RAD2DEG));
+
+
+    //  Store attitude
+    
+    imu->_roll_deg = imu->roll_adjust(filter.roll()*RAD2DEG);
+    imu->_pitch_deg = filter.pitch()*RAD2DEG;
+    imu->_yaw_deg = filter.yaw()*RAD2DEG;
+
+    int64_t const end_time_us { esp_timer_get_time() };
+    int64_t const delta_time_us { end_time_us-current_time_us };
+
+    // log
+    //ESP_LOGI(TAG, "(dt:%lld time:%lld) ATTITUDE: roll:%.3f  pitch:%.3f  yaw:%.3f", delta_time_us, current_time_us, imu->_roll_deg, imu->_pitch_deg, imu->_yaw_deg);
+
+  }    
 }

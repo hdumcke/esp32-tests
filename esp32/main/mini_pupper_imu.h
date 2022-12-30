@@ -28,7 +28,9 @@ struct IMU
 
   void start();
 
-  void get_attitude(float & roll_deg, float & pitch_deg) const;
+  float get_roll() const;
+  float get_pitch() const;
+  float get_yaw() const;
 
   /* DEBUG */
 
@@ -51,6 +53,7 @@ private:
 
   float _roll_deg {0.0f};
   float _pitch_deg {0.0f};
+  float _yaw_deg {0.0f};
 
   static float roll_adjust(float roll_deg);
   static float compute_roll(quat_t dq);
