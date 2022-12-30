@@ -20,5 +20,5 @@ while True:
         print("Invalid Ack")
         sock.close()
         sys.exit(1)
-    positions = list(unpack("12H", data[2:]))
+    positions = list(unpack("12h", data[2:]))
     print(positions)

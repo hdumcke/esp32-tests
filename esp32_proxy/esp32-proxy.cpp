@@ -1,4 +1,3 @@
-// UART code based on example in https://github.com/Digilent/linux-userspace-examples.git
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -27,7 +26,7 @@ void esp32_protocol(void *control_block)
     int offset;
     struct termios *tty;
     bool print_debug;
-    print_debug = true;
+    print_debug = false;
 
     fd = open(filename, O_RDWR | O_NOCTTY);
     if (fd < 0) {
@@ -43,8 +42,8 @@ void esp32_protocol(void *control_block)
     memset(tty, 0, sizeof(*tty));
     tty->c_iflag |=  IGNPAR;
     tty->c_cflag =  CS8 | CREAD | B3000000;
-    tty->c_cc[VTIME] = 0;
-    tty->c_cc[VMIN] = 1;
+    tty->c_cc[VTIME] = 10; // Set timeout of 1.0 seconds
+    tty->c_cc[VMIN] = 0;
 
     tcflush(fd, TCIFLUSH);
     rc = tcsetattr(fd, TCSANOW, tty);
@@ -95,37 +94,40 @@ void esp32_protocol(void *control_block)
 	    printf("uart writen:%d\n",result);
 	}
 
-	sleep(1);
+        // Read buffer
+	// If we do not get data within 1 second we assume ESP32 stopped sending and we send again
+        size_t const rx_buffer_size { 128 };
+        u8 rx_buffer[rx_buffer_size] {0};
+	int read_length;
+	int expected_lenght;
+	expected_lenght = 4 + 1 + 24 + 24 + 1; // header + status + pos + load + chksum
+	offset = 0;
+	do {
+            read_length = read(fd, (char*)rx_buffer + offset, expected_lenght); 
+	    if(!read_length)
+	    {
+		// time out
+		break;
+	    }
+	    expected_lenght -= read_length;
+	    offset += read_length;
+            if (print_debug)
+            {
+                printf("uart read:%d, waiting for %d\n",read_length, expected_lenght);
+            }
+	} while (expected_lenght > 0);
+
+	if(expected_lenght)
+	{
+	    // time out
+	    continue;
+	}
+
 
         /*
          * Decode a CONTROL ACK frame 
          */
 
-        // Read buffer
-        size_t const rx_buffer_size { 128 };
-        u8 rx_buffer[rx_buffer_size] {0};
-        
-        // Read
-        int read_length = read(fd, (char*)rx_buffer, 4); 
-        if (print_debug)
-	{
-            printf("uart read:%d\n",read_length);
-	}
-
-        // waiting for a (full) header...
-        if(read_length != 4)
-        {
-            if (print_debug)
-	    {
-                printf("RX frame header truncated!\n");
-	    }
-            // flush RX FIFO
-            //// HOW TO LINUX ?
-            // next            
-            continue;
-        }
-
-        // waiting for a valid frame header with my ID...
         bool const rx_header_check { 
                     (rx_buffer[0]==0xFF) 
                 &&  (rx_buffer[1]==0xFF) 
@@ -138,26 +140,6 @@ void esp32_protocol(void *control_block)
             if (print_debug)
 	    {
                 printf("RX frame error : header invalid!\n");
-	    }
-            // flush RX FIFO
-            //// HOW TO LINUX ?
-            // next
-            continue;
-        }
-
-        // read payload length from frame header
-        size_t const rx_payload_length {(size_t)rx_buffer[3]};
-
-        // copy RX fifo into local buffer (L bytes : Payload + Checksum)
-        read_length = read(fd, (char*)(rx_buffer+4), rx_payload_length); 
-
-        // waiting for a (full) payload...
-        if(read_length != (int)rx_payload_length) 
-        {
-            // log
-            if (print_debug)
-	    {
-                printf("RX frame error : truncated payload [expected:%ld, received:%d]!\n",rx_payload_length,read_length);
 	    }
             // flush RX FIFO
             //// HOW TO LINUX ?
@@ -179,7 +161,7 @@ void esp32_protocol(void *control_block)
             // log
             if (print_debug)
 	    {
-                printf("RX frame error : bad instruction [%d] or checksum [received:%d,expected:%d]!\n",rx_buffer[4],rx_buffer[rx_payload_length+4-1],expected_checksum);
+                printf("RX frame error : bad instruction [%d] or checksum [received:%d,expected:%d]!\n",rx_buffer[4],rx_buffer[rx_buffer[3]+3],expected_checksum);
 	    }
             // flush RX FIFO
             //// HOW TO LINUX ?
@@ -205,6 +187,12 @@ void esp32_protocol(void *control_block)
             ack_parameters.present_position[3],ack_parameters.present_position[4],ack_parameters.present_position[5],
             ack_parameters.present_position[6],ack_parameters.present_position[7],ack_parameters.present_position[8],
             ack_parameters.present_position[9],ack_parameters.present_position[10],ack_parameters.present_position[11]
+            );
+            printf("            Load: %d %d %d %d %d %d %d %d %d %d %d %d\n",
+            ack_parameters.present_load[0],ack_parameters.present_load[1],ack_parameters.present_load[2],
+            ack_parameters.present_load[3],ack_parameters.present_load[4],ack_parameters.present_load[5],
+            ack_parameters.present_load[6],ack_parameters.present_load[7],ack_parameters.present_load[8],
+            ack_parameters.present_load[9],ack_parameters.present_load[10],ack_parameters.present_load[11]
             );
 	}
     }
@@ -330,7 +318,7 @@ int main(int argc, char *argv[])
     		s_buffer[0]= buffer_size;
     		s_buffer[1]= INST_GETLOAD;
                 for(size_t servo_index=0; servo_index<N; ++servo_index) {
-		    offset = servo_index * sizeof(SERVO_STATE) + 4;
+		    offset = servo_index * sizeof(SERVO_STATE) + 8;
     		    memcpy(&s_buffer[index], (char*)control_block + offset, 2);
     		    index = index + 2;
     		}
