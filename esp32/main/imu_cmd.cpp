@@ -1,7 +1,7 @@
 #include "imu_cmd.h"
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
-#include "QMI8658C.h"
+#include "mini_pupper_imu.h"
 #include <stdio.h>
 #include <stdio.h>
 #include <string.h>
@@ -12,10 +12,9 @@
 #include "esp_timer.h"
 
 static const char *TAG = "IMUCMD";
+
 static uint64_t start_time = 0;
 static uint64_t end_time = 0;
-
-QMI8658C imu;
 
 static int imu_cmd_init(int argc, char **argv)
 {
@@ -102,7 +101,7 @@ static int imu_cmd_read_6dof(int argc, char **argv)
             printf("error: %d \r\n", err);
         }
         else {
-            printf("%f\t%f\t%f\t%f\t%f\t%f \r\n", imu.acc.x, imu.acc.y, imu.acc.z, imu.gyro.x, imu.gyro.y, imu.gyro.z);
+            printf("Ax:%.3f Ay:%.3f Az:%.3f | Gx:%.3f Gy:%.3f Gz:%.3f. ", imu.acc.x, imu.acc.y, imu.acc.z, imu.gyro.x, imu.gyro.y, imu.gyro.z);
         }
 	vTaskDelay(200 / portTICK_PERIOD_MS);
     }
