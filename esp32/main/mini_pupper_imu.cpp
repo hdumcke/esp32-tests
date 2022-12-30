@@ -1,9 +1,17 @@
+/* Authors : 
+ * - Hdumcke
+ * - Pat92fr
+ */
+
 #include "mini_pupper_imu.h"
+#include "mini_pupper_imu_filter.h"
+
 #include "esp_log.h"
 #include "esp_timer.h"
 #include "driver/i2c.h"
-#include <freertos/FreeRTOS.h>
-#include <freertos/task.h>
+#include "driver/gpio.h"
+
+#include <cmath>
 
 static const char *TAG = "IMU";
 
@@ -81,22 +89,30 @@ static const char *TAG = "IMU";
 
 IMU imu;
 
-IMU::IMU()
+IMU::IMU():
+_task_handle(NULL) 
 {
+  /* start i2c bus */
+  i2c_config_t conf;
+  conf.mode = I2C_MODE_MASTER;
+  conf.sda_io_num = I2C_MASTER_SDA_IO;
+  conf.scl_io_num = I2C_MASTER_SCL_IO;
+  conf.sda_pullup_en = GPIO_PULLUP_ENABLE;
+  conf.scl_pullup_en = GPIO_PULLUP_ENABLE;
+  conf.master.clk_speed = I2C_MASTER_FREQ_HZ;
+  conf.clk_flags = 0;
+  i2c_param_config(I2C_NUM_0, &conf);
 
-    /* start i2c bus */
-    i2c_config_t conf;
-    conf.mode = I2C_MODE_MASTER;
-    conf.sda_io_num = I2C_MASTER_SDA_IO;
-    conf.scl_io_num = I2C_MASTER_SCL_IO;
-    conf.sda_pullup_en = GPIO_PULLUP_ENABLE;
-    conf.scl_pullup_en = GPIO_PULLUP_ENABLE;
-    conf.master.clk_speed = I2C_MASTER_FREQ_HZ;
-    conf.clk_flags = 0;
-    i2c_param_config(I2C_NUM_0, &conf);
+  ESP_ERROR_CHECK(i2c_driver_install(I2C_NUM_0, conf.mode, I2C_MASTER_RX_BUF_DISABLE, I2C_MASTER_TX_BUF_DISABLE, 0));
+  ESP_LOGI(TAG, "I2C initialized successfully");
 
-    ESP_ERROR_CHECK(i2c_driver_install(I2C_NUM_0, conf.mode, I2C_MASTER_RX_BUF_DISABLE, I2C_MASTER_TX_BUF_DISABLE, 0));
-    ESP_LOGI(TAG, "I2C initialized successfully");
+  // GPIO #39 configuration (IMU :: INT2)  
+  gpio_config_t io_conf {};
+  io_conf.intr_type = GPIO_INTR_DISABLE;
+  io_conf.mode = GPIO_MODE_INPUT;
+  io_conf.pin_bit_mask = (1ULL<<GPIO_NUM_39);
+  gpio_config(&io_conf);
+
 }
 
 struct imu_configuration
@@ -219,3 +235,86 @@ uint8_t IMU::version()
   return data[0];
 }
 
+void IMU_ISR(void* arg)
+{
+    IMU * imu = reinterpret_cast<IMU*>(arg);
+    uint32_t const value {39};
+    xQueueSendFromISR(imu->_INT2_evt_queue, &value, NULL);
+}
+
+void IMU::start()
+{
+  //create a queue to handle gpio event from isr
+  _INT2_evt_queue = xQueueCreate(10, sizeof(uint32_t));
+
+  //change gpio interrupt type for one pin
+  gpio_set_intr_type(GPIO_NUM_39, GPIO_INTR_POSEDGE);
+
+  //install gpio isr service
+  gpio_install_isr_service(ESP_INTR_FLAG_LEVEL3);
+
+  //hook isr handler for specific gpio pin
+  gpio_isr_handler_add(GPIO_NUM_39, IMU_ISR, (void*)this);
+
+
+  xTaskCreate(
+      IMU_TASK,                 /* Function that implements the task. */
+      "IMU SERVICE",            /* Text name for the task. */
+      10000,                      /* Stack size in words, not bytes. */
+      (void*)this,                /* Parameter passed into the task. */
+      0,           /* Priority at which the task is created. */
+      &_task_handle                /* Used to pass out the created task's handle. */
+  );
+}
+
+void IMU::get_attitude(float & roll_deg, float & pitch_deg) const
+{
+  roll_deg = _roll_deg;
+  pitch_deg = _pitch_deg;
+}
+
+float IMU::roll_adjust(float roll_deg)
+{
+  if(roll_deg>=0)
+    return roll_deg-180.0f;
+  else
+    return roll_deg+180.0f;
+}
+
+float IMU::compute_roll(quat_t dq)
+{
+  vec3_t v = dq.v;
+  float y = 2*( dq.w*v.x + v.y*v.z );
+  float x = 1 - 2*( v.x*v.x + v.y*v.y );
+  return atan2( y, x );
+}
+
+float IMU::compute_pitch(quat_t dq)
+{
+  vec3_t v = dq.v;
+  float a = 2*( v.y*dq.w - v.z*v.x );    
+  if( a > 1 ) {
+    return M_PI_2; 
+  } else if ( a < -1 ) {
+    return -M_PI_2;
+  } else {
+    return asin(a);
+  }
+}
+
+void IMU_TASK(void * parameters)
+{
+    bool first_imu_fusion_filtering {true};
+    IMU * imu = reinterpret_cast<IMU*>(parameters);
+    for(;;)
+    {
+      // Waiting for UART event.
+      uint32_t value {0};
+      if(!xQueueReceive(imu->_INT2_evt_queue,(void*)&value,(TickType_t)portMAX_DELAY)) continue;
+
+      int64_t const current_time_us { esp_timer_get_time() };
+      // log
+      ESP_LOGI(TAG, "INT2 (time:%lld)", current_time_us);
+      vTaskDelay(1 / portTICK_PERIOD_MS);
+    }    
+}

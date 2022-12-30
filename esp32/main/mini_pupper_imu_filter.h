@@ -3,6 +3,8 @@
 #ifndef _mini_pupper_imu_filter_H
 #define _mini_pupper_imu_filter_H
 
+#include <stdint.h>
+
 //------------------ Coefficients -------------------- 
 
 #define INV_Q_FACTOR        2           // Filter damping. A smaller value leads to faster response but more oscillations.
@@ -15,16 +17,16 @@ class IMU_FILTER
   private: 
     vec3_t s;
     quat_t q;
-    float last_time_s;
+    int64_t last_time_us;
       
   public:
     // Initialization:
-    void setup(float current_time_s);
-    void setup(float current_time_s, float ax, float ay, float az);
+    void setup(int64_t current_time_us);
+    void setup(int64_t current_time_us, float ax, float ay, float az);
 
     // Heading estimate:
-    void update(float current_time_s, float gx, float gy, float gz);
-    void update(float current_time_s, float gx, float gy, float gz, float ax, float ay, float az, float alpha=DEFAULT_GAIN, const bool SCALE_GAIN =true );
+    void update(int64_t current_time_us, float gx, float gy, float gz);
+    void update(int64_t current_time_us, float gx, float gy, float gz, float ax, float ay, float az, float alpha=DEFAULT_GAIN, const bool SCALE_GAIN =true );
                  
     void rotateHeading(float angle, bool const SMALL_ANG);
 

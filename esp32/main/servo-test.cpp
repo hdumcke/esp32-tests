@@ -1,19 +1,30 @@
-#include "servo_cmd.h"
-#include "imu_cmd.h"
+/* Authors : 
+ * - Hdumcke
+ * - Pat92fr
+ */
+
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
+
 #include <stdio.h>
 #include <string.h>
-#include "esp_system.h"
+
 #include "cmd_system.h"
 #include "cmd_wifi.h"
+
+#include "esp_system.h"
+#include "esp_timer.h"
 #include "esp_console.h"
 #include "esp_log.h"
 #include "esp_vfs_dev.h"
 #include "esp_vfs_fat.h"
+
 #include "nvs.h"
 #include "nvs_flash.h"
-#include "driver/i2c.h"
+
+#include "servo_cmd.h"
+#include "imu_cmd.h"
+
 #include "mini_pupper_servos.h"
 #include "mini_pupper_host.h"
 #include "mini_pupper_imu.h"
@@ -54,6 +65,10 @@ static void initialize_nvs(void)
 
 extern "C" void app_main(void)
 {
+    // Initialize esp_timer library
+    //ESP_ERROR_CHECK(esp_timer_init());
+
+
     esp_console_repl_t *repl = NULL;
     esp_console_repl_config_t repl_config = ESP_CONSOLE_REPL_CONFIG_DEFAULT();
     repl_config.prompt = "muni_pupper>";
@@ -99,13 +114,16 @@ extern "C" void app_main(void)
     else
         ESP_LOGI(TAG, "IMU device configuration [FAILURE] (error:%d)!",imu_status);
 
+    // start IMU service
+    //imu.start();
+
     // start SERVO interface
     servo.start();
 
     // start HOST interface
     host.start();
 
-    // enable SERVO system
+    // enable SERVO power supply
     servo.enable();
 
     ESP_ERROR_CHECK(esp_console_start_repl(repl));

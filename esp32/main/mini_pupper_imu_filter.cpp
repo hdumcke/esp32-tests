@@ -5,15 +5,15 @@
 
 //----------------- Initialization ------------------- 
 
-void IMU_FILTER::setup(float current_time_s)
+void IMU_FILTER::setup(int64_t current_time_us)
 {
   q = {1,0,0,0};
-  last_time_s = current_time_s;
+  last_time_us = current_time_us;
 }
 
-void IMU_FILTER::setup(float current_time_s, float ax, float ay, float az)
+void IMU_FILTER::setup(int64_t current_time_us, float ax, float ay, float az)
 { 
-  setup(current_time_s);
+  setup(current_time_us);
   // set quaternion as vertical vector
   vec3_t v = vec3_t(ax, ay, az).norm();             // gravity vector
  
@@ -29,11 +29,11 @@ void IMU_FILTER::setup(float current_time_s, float ax, float ay, float az)
 
 // Update heading with gyro:
 
-void IMU_FILTER::update(float current_time_s, float gx, float gy, float gz)
+void IMU_FILTER::update(int64_t current_time_us, float gx, float gy, float gz)
 {
   // Update Timer
-  float dt = current_time_s-last_time_s;
-  last_time_s = current_time_s;
+  float dt = (current_time_us-last_time_us)*0.000001;
+  last_time_us = current_time_us;
 
   // Rotation increment
   vec3_t da = vec3_t(gx, gy, gz)*dt;
@@ -47,7 +47,7 @@ void IMU_FILTER::update(float current_time_s, float gx, float gy, float gz)
 // Update heading with gyro and accelerometer:
 
 void IMU_FILTER::update(
-  float current_time_s, 
+  int64_t current_time_us, 
   float gx, float gy, float gz, 
   float ax, float ay, float az, 
   float alpha /*=DEFAULT_GAIN*/, 
@@ -55,8 +55,8 @@ void IMU_FILTER::update(
 )
 {  
   // Update Timer
-  float dt = current_time_s-last_time_s;
-  last_time_s = current_time_s;
+  float dt = current_time_us-last_time_us;
+  last_time_us = current_time_us;
 
   // error about vertical
   vec3_t vz = q.axisZ(LOCAL_FRAME);   
