@@ -23,6 +23,9 @@ struct parameters_control_acknowledge_format
     u16 present_position[12];
     s16 present_load[12];
     // IMU data
+    float roll;
+    float pitch;
+    float yaw;    
 };
 
 
