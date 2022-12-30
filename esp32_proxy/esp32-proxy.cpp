@@ -1,4 +1,3 @@
-// UNIX domain socket code based on example in http://man7.org/linux/man-pages/man7/unix.7.html
 // UART code based on example in https://github.com/Digilent/linux-userspace-examples.git
 #include <stdio.h>
 #include <stdlib.h>
@@ -25,18 +24,22 @@ void esp32_protocol(void *control_block)
     static const char* filename = "/dev/ttyAMA1";
     int fd;
     int rc;
+    int offset;
     struct termios *tty;
+    bool print_debug;
+    print_debug = true;
 
     fd = open(filename, O_RDWR | O_NOCTTY);
     if (fd < 0) {
         printf("%s: failed to open UART device\n", __func__);
-        //TODO handle fd < 0
+        exit(EXIT_FAILURE);
     }
     tty = (termios *)malloc(sizeof(*tty));
     if (!tty) {
         printf("%s: failed to allocate UART TTY instance\n", __func__);
+        exit(EXIT_FAILURE);
     }
-    //TODO handle ENOMEM;
+
     memset(tty, 0, sizeof(*tty));
     tty->c_iflag |=  IGNPAR;
     tty->c_cflag =  CS8 | CREAD | B3000000;
@@ -47,7 +50,7 @@ void esp32_protocol(void *control_block)
     rc = tcsetattr(fd, TCSANOW, tty);
     if (rc) {
         printf("%s: failed to set attributes\r\n", __func__);
-        //TODO
+        exit(EXIT_FAILURE);
     }
 
     for (;;)
@@ -60,13 +63,10 @@ void esp32_protocol(void *control_block)
         parameters_control_instruction_format parameters;
 
         // Copy 12 servo goal positions into the goal_position array of parameters
-        for(auto & goal_position : parameters.goal_position)
+        for(size_t servo_index=0; servo_index<N; ++servo_index) 
         {
-            for(size_t servo_index=0; servo_index<N; ++servo_index) 
-            {
-                int offset = servo_index * sizeof(SERVO_STATE) + 2;
-                memcpy(&goal_position, (char*)control_block + offset, 2);
-            }
+            offset = servo_index * sizeof(SERVO_STATE) + 2;
+            memcpy(&parameters.goal_position[servo_index], (char*)control_block + offset, 2);
         }
 
         // Compute the size of the payload (parameters length + 2)
@@ -90,7 +90,10 @@ void esp32_protocol(void *control_block)
 
         // Send
         int result = write(fd, (char *)tx_buffer, tx_buffer_size);
-        printf("uart writen:%d\n",result);
+        if (print_debug)
+	{
+	    printf("uart writen:%d\n",result);
+	}
 
 	sleep(1);
 
@@ -104,13 +107,18 @@ void esp32_protocol(void *control_block)
         
         // Read
         int read_length = read(fd, (char*)rx_buffer, 4); 
-        printf("uart read:%d\n",read_length);
+        if (print_debug)
+	{
+            printf("uart read:%d\n",read_length);
+	}
 
         // waiting for a (full) header...
         if(read_length != 4)
         {
-            // log
-            printf("RX frame header truncated!\n");
+            if (print_debug)
+	    {
+                printf("RX frame header truncated!\n");
+	    }
             // flush RX FIFO
             //// HOW TO LINUX ?
             // next            
@@ -127,7 +135,10 @@ void esp32_protocol(void *control_block)
         if(!rx_header_check) 
         {
             // log
-            printf("RX frame error : header invalid!\n");
+            if (print_debug)
+	    {
+                printf("RX frame error : header invalid!\n");
+	    }
             // flush RX FIFO
             //// HOW TO LINUX ?
             // next
@@ -144,7 +155,10 @@ void esp32_protocol(void *control_block)
         if(read_length != (int)rx_payload_length) 
         {
             // log
-            printf("RX frame error : truncated payload [expected:%ld, received:%d]!\n",rx_payload_length,read_length);
+            if (print_debug)
+	    {
+                printf("RX frame error : truncated payload [expected:%ld, received:%d]!\n",rx_payload_length,read_length);
+	    }
             // flush RX FIFO
             //// HOW TO LINUX ?
             // next
@@ -163,7 +177,10 @@ void esp32_protocol(void *control_block)
         if(!rx_payload_checksum_check) 
         {
             // log
-            printf("RX frame error : bad instruction [%d] or checksum [received:%d,expected:%d]!\n",rx_buffer[4],rx_buffer[rx_payload_length+4-1],expected_checksum);
+            if (print_debug)
+	    {
+                printf("RX frame error : bad instruction [%d] or checksum [received:%d,expected:%d]!\n",rx_buffer[4],rx_buffer[rx_payload_length+4-1],expected_checksum);
+	    }
             // flush RX FIFO
             //// HOW TO LINUX ?
             // next
@@ -173,14 +190,23 @@ void esp32_protocol(void *control_block)
         // decode parameters
         parameters_control_acknowledge_format ack_parameters;
         memcpy(&ack_parameters,rx_buffer+5,sizeof(parameters_control_acknowledge_format));
+        for(size_t servo_index=0; servo_index<N; ++servo_index) 
+        {
+            offset = servo_index * sizeof(SERVO_STATE) + 4;
+            memcpy((char*)control_block + offset, &ack_parameters.present_position[servo_index], 2);
+            memcpy((char*)control_block + offset + 4, &ack_parameters.present_load[servo_index], 2);
+        }
 
         // log
-        printf("Present Position: %d %d %d %d %d %d %d %d %d %d %d %d\n",
+        if (print_debug)
+	{
+            printf("Present Position: %d %d %d %d %d %d %d %d %d %d %d %d\n",
             ack_parameters.present_position[0],ack_parameters.present_position[1],ack_parameters.present_position[2],
             ack_parameters.present_position[3],ack_parameters.present_position[4],ack_parameters.present_position[5],
             ack_parameters.present_position[6],ack_parameters.present_position[7],ack_parameters.present_position[8],
             ack_parameters.present_position[9],ack_parameters.present_position[10],ack_parameters.present_position[11]
-        );
+            );
+	}
     }
 }
 
@@ -294,7 +320,17 @@ int main(int argc, char *argv[])
     		s_buffer[0]= buffer_size;
     		s_buffer[1]= INST_GETPOS;
                 for(size_t servo_index=0; servo_index<N; ++servo_index) {
-		    offset = servo_index * sizeof(SERVO_STATE) + 2;
+		    offset = servo_index * sizeof(SERVO_STATE) + 4;
+    		    memcpy(&s_buffer[index], (char*)control_block + offset, 2);
+    		    index = index + 2;
+    		}
+    	    }
+    
+    	    if(r_buffer[1] == INST_GETLOAD && r_buffer[0] == 2) {
+    		s_buffer[0]= buffer_size;
+    		s_buffer[1]= INST_GETLOAD;
+                for(size_t servo_index=0; servo_index<N; ++servo_index) {
+		    offset = servo_index * sizeof(SERVO_STATE) + 4;
     		    memcpy(&s_buffer[index], (char*)control_block + offset, 2);
     		    index = index + 2;
     		}
