@@ -11,10 +11,12 @@
 #include <fcntl.h>
 #include <termios.h>
 #include <string.h>
-#include "connection.h"
+#include "esp32-proxy.h"
 
 #include "mini_pupper_host_base.h"
 #include "mini_pupper_protocol.h"
+
+#define N 12
 
 static void *control_block;
 
@@ -27,6 +29,15 @@ void esp32_protocol(void *control_block)
     struct termios *tty;
     bool print_debug;
     print_debug = false;
+
+    // Initialize positions to 0
+    u16 neutral_pos;
+    neutral_pos = 512;
+    for(size_t servo_index=0; servo_index<N; ++servo_index)
+    {
+        offset = servo_index * 2;
+        memcpy(control_block + offset, &neutral_pos, 2);
+    }
 
     fd = open(filename, O_RDWR | O_NOCTTY);
     if (fd < 0) {
@@ -64,7 +75,7 @@ void esp32_protocol(void *control_block)
         // Copy 12 servo goal positions into the goal_position array of parameters
         for(size_t servo_index=0; servo_index<N; ++servo_index)
         {
-            offset = servo_index * sizeof(SERVO_STATE) + 2;
+            offset = servo_index * 2;
             memcpy(&parameters.goal_position[servo_index], (char*)control_block + offset, 2);
         }
 
@@ -174,9 +185,8 @@ void esp32_protocol(void *control_block)
         memcpy(&ack_parameters,rx_buffer+5,sizeof(parameters_control_acknowledge_format));
         for(size_t servo_index=0; servo_index<N; ++servo_index)
         {
-            offset = servo_index * sizeof(SERVO_STATE) + 4;
-            memcpy((char*)control_block + offset, &ack_parameters.present_position[servo_index], 2);
-            memcpy((char*)control_block + offset + 4, &ack_parameters.present_load[servo_index], 2);
+            offset = sizeof(parameters_control_instruction_format);
+            memcpy((char*)control_block + offset, &ack_parameters, sizeof(parameters_control_acknowledge_format));
         }
 
         // log
@@ -205,18 +215,17 @@ void esp32_protocol(void *control_block)
 int main(int argc, char *argv[])
 {
     struct sockaddr_un name;
-    size_t offset;
-    size_t index;
     int ret;
     int pid;
     int connection_socket;
     int data_socket;
-    static u8 r_buffer[buffer_size];
-    static u8 s_buffer[buffer_size];
+    static u8 r_buffer[26];
+    static u8 s_buffer[26];
+    size_t const control_block_size { sizeof(parameters_control_instruction_format) +  sizeof(parameters_control_acknowledge_format)};
 
-    control_block = mmap(NULL, sizeof state, PROT_READ | PROT_WRITE,
+    control_block = mmap(NULL, control_block_size, PROT_READ | PROT_WRITE,
                          MAP_SHARED | MAP_ANONYMOUS, -1, 0);
-    memcpy(control_block, state, sizeof(state));
+    memset(control_block, 0, control_block_size);
 
     /* start UART protocol with ESP32 */
     pid = fork();
@@ -296,37 +305,41 @@ int main(int argc, char *argv[])
                 }
 
                 /* Handle commands. */
-                index = 2;
+		int offset;
+                offset = 0;
+                if(r_buffer[1] == INST_SETPOS && r_buffer[0] == 26) {
+            	memcpy((char*)control_block + offset, &r_buffer[2], sizeof(parameters_control_instruction_format));
+            	s_buffer[0]= 2;
+            	s_buffer[1]= INST_SETPOS;
+                }
 
-    	    if(r_buffer[1] == INST_SETPOS && r_buffer[0] == buffer_size) {
-                for(size_t servo_index=0; servo_index<N; ++servo_index) {
-		    offset = servo_index * sizeof(SERVO_STATE) + 2;
-    		    memcpy((char*)control_block + offset, &r_buffer[index], 2);
-    		    index = index + 2;
-    		}
-    		s_buffer[0]= 2;
-    		s_buffer[1]= INST_SETPOS;
-    	    }
+                offset = sizeof(parameters_control_instruction_format);
+                if(r_buffer[1] == INST_GETPOS && r_buffer[0] == 2) {
+            	s_buffer[0]= 2 + 12*sizeof(u16);
+            	s_buffer[1]= INST_GETPOS;
+            	memcpy(&s_buffer[2], (char*)control_block + offset, 12*sizeof(u16));
+                }
 
-    	    if(r_buffer[1] == INST_GETPOS && r_buffer[0] == 2) {
-    		s_buffer[0]= buffer_size;
-    		s_buffer[1]= INST_GETPOS;
-                for(size_t servo_index=0; servo_index<N; ++servo_index) {
-		    offset = servo_index * sizeof(SERVO_STATE) + 4;
-    		    memcpy(&s_buffer[index], (char*)control_block + offset, 2);
-    		    index = index + 2;
-    		}
-    	    }
+                offset += 12*sizeof(u16);
+                if(r_buffer[1] == INST_GETLOAD && r_buffer[0] == 2) {
+            	s_buffer[0]= 2 + 12*sizeof(s16);
+            	s_buffer[1]= INST_GETLOAD;
+            	memcpy(&s_buffer[2], (char*)control_block + offset, 12*sizeof(s16));
+                }
 
-    	    if(r_buffer[1] == INST_GETLOAD && r_buffer[0] == 2) {
-    		s_buffer[0]= buffer_size;
-    		s_buffer[1]= INST_GETLOAD;
-                for(size_t servo_index=0; servo_index<N; ++servo_index) {
-		    offset = servo_index * sizeof(SERVO_STATE) + 8;
-    		    memcpy(&s_buffer[index], (char*)control_block + offset, 2);
-    		    index = index + 2;
-    		}
-    	    }
+                offset += 12*sizeof(s16);
+                if(r_buffer[1] == INST_GETIMU && r_buffer[0] == 2) {
+            	s_buffer[0]= 2 + 3*sizeof(float);
+            	s_buffer[1]= INST_GETIMU;
+            	memcpy(&s_buffer[2], (char*)control_block + offset, 3*sizeof(float));
+                }
+
+                offset += 3*sizeof(float);
+                if(r_buffer[1] == INST_GETPOWER && r_buffer[0] == 2) {
+            	s_buffer[0]= 2 + 2*sizeof(float);
+            	s_buffer[1]= INST_GETPOWER;
+            	memcpy(&s_buffer[2], (char*)control_block + offset, 2*sizeof(float));
+                }
 
                 /* Send result. */
 
