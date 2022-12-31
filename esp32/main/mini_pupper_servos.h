@@ -153,6 +153,7 @@ struct SERVO_STATE
     SERVO_STATE(u8 id) : ID(id) {}
     u8 ID                   {0};
     u16 goal_position       {512}; // middle position
+    u16 goal_speed          {1000}; // max
     u16 present_position    {0};
     s16 present_speed       {0};
     s16 present_load        {0};
@@ -190,7 +191,9 @@ struct SERVO
     int enable_torque(u8 ID = 0xFE);  // not param means ALL servo
     int disable_torque(u8 ID = 0xFE); // not param means ALL servo
     int is_torque_enable(u8 ID, u8 & enable);
-    int set_position(u8 ID, u16 position);
+    int set_goal_position(u8 ID, u16 position);
+    int get_goal_speed(u8 ID, u16 & speed);
+    int set_goal_speed(u8 ID, u16 speed);
     int get_position(u8 ID, u16 & position);
     int get_speed(u8 ID, s16 & speed);
     int get_load(u8 ID, s16 & load);
@@ -207,12 +210,12 @@ struct SERVO
     // advanced API
     int setID(u8 ID, u8 newID);
 
+    void soft_start();
+
     // deprecated API
     int setStartPos(u8 servoID);
     int setMidPos(u8 servoID);
     int setEndPos(u8 servoID);
-    int rotate(u8 servoID);
-    bool checkPosition(u8 servoID, u16 position, int accuracy);
 
     bool isEnabled {false}; 
 

@@ -12,7 +12,7 @@
 // reference :
 //https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/uart.html
 
-//static const char *TAG = "MINIPUPPERSERVOS";
+static const char *TAG = "SERVOS";
 
 void SERVO_TASK(void * parameters);
 
@@ -167,7 +167,7 @@ int SERVO::is_torque_enable(u8 ID, u8 & enable)
     return SERVO_STATUS_OK;    
 }
 
-int SERVO::set_position(u8 ID, u16 position)
+int SERVO::set_goal_position(u8 ID, u16 position)
 {
     // abort if servo not powered on
     if(!isEnabled) return SERVO_STATUS_FAIL;
@@ -180,6 +180,41 @@ int SERVO::set_position(u8 ID, u16 position)
 
     // send write instruction
     write_register_word(ID, SERVO_GOAL_POSITION_L, position);
+
+    // wait for reply
+    return check_reply_frame_no_parameter(ID);
+}
+
+int SERVO::get_goal_speed(u8 ID, u16 & speed)
+{
+    // abort if servo not powered on
+    if(!isEnabled) return SERVO_STATUS_FAIL;
+
+    // suspend sync service
+    enableAsyncService(false);
+
+    // send read instruction
+    int const status = read_register_word(ID, SERVO_GOAL_SPEED_L,speed);
+
+    // check reply
+    if(status!=SERVO_STATUS_OK) return SERVO_STATUS_FAIL;
+
+    return SERVO_STATUS_OK;
+}
+
+int SERVO::set_goal_speed(u8 ID, u16 speed)
+{
+    // abort if servo not powered on
+    if(!isEnabled) return SERVO_STATUS_FAIL;
+
+    // suspend sync service
+    enableAsyncService(false);
+
+    // abort command when broadcasting
+    if(ID==0XFE) return SERVO_STATUS_FAIL;
+
+    // send write instruction
+    write_register_word(ID, SERVO_GOAL_SPEED_L, speed);
 
     // wait for reply
     return check_reply_frame_no_parameter(ID);
@@ -466,84 +501,19 @@ int SERVO::setID(u8 servoID, u8 newID)
     return SERVO_STATUS_OK;
 }
 
-int SERVO::rotate(u8 servoID)
-{
-    // abort if servo not powered on
-    if(!isEnabled) return SERVO_STATUS_FAIL;
-
-    // suspend sync service
-    enableAsyncService(false);
-
-    int i {0};
-    set_position(servoID, 0);
-   
-    for(int l=0; l<5; l++) {    
-      printf("Start of Cycle!\n");
-      for(i = 0; i<1024; i++)
-      {
-        set_position(servoID,i);
-        printf("Position: %d\n", i);
-      }
-      for(i = 1023; i > 0; i--)
-      {
-        set_position(servoID,i);
-        printf("Position: %d\n", i);
-      }
-    }
-
-    return SERVO_STATUS_OK;
-}
-
 int SERVO::setStartPos(u8 servoID)
 {
-    return set_position(servoID, 0);
+    return set_goal_position(servoID, 0);
 }
 
 int SERVO::setMidPos(u8 servoID)
 {
-    return set_position(servoID, 511);
+    return set_goal_position(servoID, 512);
 }
 
 int SERVO::setEndPos(u8 servoID)
 {
-    return set_position(servoID, 1023);
-}
-
-bool SERVO::checkPosition(u8 servoID, u16 position, int accuracy = 5)
-{
-    // abort if servo not powered on
-    if(!isEnabled) return SERVO_STATUS_FAIL;
-
-    // suspend sync service
-    enableAsyncService(false);
-
-
-/*
-    u16 pos = 0;
-    bool ret = false;
-    int retry_counter = retries;
-    
-    for( int i=0; i<retry_counter; i++) {
-        get_position(servoID,pos);
-	if(!this->Err) { 
-	    retry_counter = 0;
-        }
-	else {
-            ESP_LOGI(TAG, "Retrying ReadPos(%d)", servoID);
-            vTaskDelay(20 / portTICK_PERIOD_MS);
-	}
-    }
-    ret = (pos>=(position-accuracy) && pos<=(position+accuracy));
-    //ESP_LOGI(TAG, "Position: %d FeedBack %d Servo: %d %d", pos, this->FeedBack(servoID), servoID, ret);
-    //ESP_LOGI(TAG, "Position: %d Speed %d Servo: %d %d", pos, this->ReadSpeed(servoID), servoID, ret);
-    //ESP_LOGI(TAG, "Position: %d Load %d Servo: %d %d", pos, this->ReadLoad(servoID), servoID, ret);
-    //ESP_LOGI(TAG, "Position: %d Voltage %d Servo: %d %d", pos, this->ReadSpeed(servoID), servoID, ret);
-    //ESP_LOGI(TAG, "Position: %d Temper %d Servo: %d %d", pos, this->ReadSpeed(servoID), servoID, ret);
-    //ESP_LOGI(TAG, "Position: %d Move %d Servo: %d %d", pos, this->ReadSpeed(servoID), servoID, ret);
-    //ESP_LOGI(TAG, "Position: %d Current %d Servo: %d %d", pos, this->ReadSpeed(servoID), servoID, ret);
-    return ret;
-    */
-    return false;
+    return set_goal_position(servoID, 1023);
 }
 
 void SERVO::setPositionAsync(u8 servoID, u16 servoPosition)
@@ -998,4 +968,45 @@ int SERVO::check_reply_frame_no_parameter(u8 & ID)
     if(reply_id!=ID || reply_state!=0) return SERVO_STATUS_FAIL;
 
     return SERVO_STATUS_OK;    
+}
+
+void SERVO::soft_start()
+{
+    // wait a moment, servo booting
+    vTaskDelay(100 / portTICK_PERIOD_MS);
+    // read present position 
+    for(auto & servo : state )
+    {
+        int status = get_position(servo.ID,servo.goal_position);
+        ESP_LOGD(TAG, "#%d pos:%d (status:%d)",servo.ID,servo.goal_position,status);
+    }
+    // write low goal speed
+    for(auto & servo : state )
+    {
+        servo.goal_speed = 120;
+        int status = set_goal_speed(servo.ID,servo.goal_speed);
+        ESP_LOGD(TAG, "#%d spd:%d (status:%d)",servo.ID,servo.goal_speed,status);
+    }
+    // write goal position neutral
+    for(auto & servo : state )
+    {
+        servo.goal_position = 512; // TODO : from FLASH ?
+        int status = set_goal_position(servo.ID,servo.goal_position);
+        ESP_LOGD(TAG, "#%d pos:%d (status:%d)",servo.ID,servo.goal_position,status);
+    }
+    // wait a moment, servo moving
+    vTaskDelay(3000 / portTICK_PERIOD_MS);
+    // write max goal speed
+    for(auto & servo : state )
+    {
+        servo.goal_speed = 0;
+        int status = set_goal_speed(servo.ID,servo.goal_speed);
+        ESP_LOGD(TAG, "#%d spd:%d (status:%d)",servo.ID,servo.goal_speed,status);
+    }
+    // read present position 
+    for(auto & servo : state )
+    {
+        int status = get_position(servo.ID,servo.goal_position);
+        ESP_LOGD(TAG, "#%d pos:%d (status:%d)",servo.ID,servo.goal_position,status);
+    }
 }

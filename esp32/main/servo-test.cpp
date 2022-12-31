@@ -125,6 +125,7 @@ extern "C" void app_main(void)
 
     // enable SERVO power supply
     servo.enable();
+    servo.soft_start();
 
     ESP_ERROR_CHECK(esp_console_start_repl(repl));
 
