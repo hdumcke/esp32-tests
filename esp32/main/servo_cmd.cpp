@@ -49,9 +49,6 @@ static struct
     struct arg_end *end;
 } servo_pos12_args;
 
-static uint64_t start_time = 0;
-static uint64_t end_time = 0;
-
 /*
  * Switch ON/OFF servo power supply
  *
@@ -272,180 +269,6 @@ static void register_servo_cmd_scan(void)
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_servo_scan) );
 }
 
-static int servo_cmd_rotate(int argc, char **argv)
-{
-    int nerrors = arg_parse(argc, argv, (void **)&servo_id_args);
-    if (nerrors != 0) {
-        arg_print_errors(stderr, servo_id_args.end, argv[0]);
-        return 0;
-    }
-
-    /* Check servoID "--id" option */
-    int servo_id = servo_id_args.servo_id->ival[0];
-    if(servo_id<0) {
-        printf("Invalid servo ID\r\n");
-        return 0;
-    }
-    if( servo_id>12 && servo_id != 254 ) {
-        printf("Invalid servo ID\r\n");
-        return 0;
-    }
-    if( servo_id == 254) {
-        printf("Warning: your servo ID is the broadcast ID\r\n");
-    }
-    servo.rotate((u8)servo_id);
-    return 0;
-}
-
-static void register_servo_cmd_rotate(void)
-{
-    servo_id_args.servo_id = arg_int1(NULL, "id", "<n>", "Servo ID");
-    servo_id_args.end = arg_end(2);
-    const esp_console_cmd_t cmd_servo_rotate = {
-        .command = "servo-rotate",
-        .help = "rotate the servos",
-        .hint = "--id <servoID>",
-        .func = &servo_cmd_rotate,
-	.argtable = NULL
-    };
-    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_servo_rotate) );
-}
-
-static int servo_cmd_rotate12(int argc, char **argv)
-{
-    int nerrors = arg_parse(argc, argv, (void **)&servo_loop_args);
-    if (nerrors != 0) {
-        arg_print_errors(stderr, servo_loop_args.end, argv[0]);
-        return 0;
-    }
-    int loop = servo_loop_args.loop->ival[0];
-    int i = 0;
-    int l = 0;
-    static u16 servoPositions[12] {0};
-    servo.set_position_all(servoPositions);
-    // make sure the servo is in the starting position before we measure time
-    vTaskDelay(6000 / portTICK_PERIOD_MS);
-    start_time = esp_timer_get_time();
-    for (l = 0; l < loop; l++) {
-        for (i = 0; i < 1024; i++) {
-            for(size_t index=0;index<12;++index) {
-                servoPositions[index] = i;
-            }
-    	    servo.set_position_all(servoPositions);
-            vTaskDelay(10 / portTICK_PERIOD_MS);
-        }
-        for (i = 1023; i > 0; i--) {
-            for(size_t index=0;index<12;++index) {
-                servoPositions[index] = i;
-            }
-    	    servo.set_position_all(servoPositions);
-            vTaskDelay(10 / portTICK_PERIOD_MS);
-        }
-    }
-    end_time = esp_timer_get_time();
-    ESP_LOGI(TAG, "Time: %llu microseconds", end_time-start_time);
-
-    return 0;
-}
-
-static void register_servo_cmd_rotate12(void)
-{
-    servo_loop_args.loop = arg_int1(NULL, "loop", "<n>", "loop <n> times");
-    servo_loop_args.end = arg_end(2);
-    const esp_console_cmd_t cmd_servo_rotate12 = {
-        .command = "servo-rotate12",
-        .help = "rotate the servos",
-        .hint = "--loop <n>",
-        .func = &servo_cmd_rotate12,
-        .argtable = NULL
-    };
-    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_servo_rotate12) );
-}
-
-static int servo_cmd_perftest(int argc, char **argv)
-{
-    int nerrors = arg_parse(argc, argv, (void **)&servo_perftest_args);
-    if (nerrors != 0) {
-        arg_print_errors(stderr, servo_perftest_args.end, argv[0]);
-        return 0;
-    }
-
-    /* Check servoID "--id" option */
-    int servo_id = servo_perftest_args.servo_id->ival[0];
-    if(servo_id<0) {
-        printf("Invalid servo ID\r\n");
-        return 0;
-    }
-    if( servo_id>12 && servo_id != 999 ) {
-        printf("Invalid servo ID\r\n");
-        return 0;
-    }
-
-    int start_pos = servo_perftest_args.start_pos->ival[0];
-    int end_pos = servo_perftest_args.end_pos->ival[0];
-    int accuracy = servo_perftest_args.accuracy->ival[0];
-    int start_range = 0;
-    int end_range = 0;
-
-    if( servo_id == 999) {
-        start_range = 1;
-        end_range = 12;
-    }
-    else {
-        start_range = servo_id;
-        end_range = servo_id;
-    }
-    int id = 0;
-    for (id = start_range; id <= end_range; id++) {
-        servo.set_position((u8)id, (u16)start_pos);
-    }
-    // make sure the servo is in the starting position before we measure time
-    vTaskDelay(6000 / portTICK_PERIOD_MS);
-    bool hasError = false;
-    for (id = start_range; id <= end_range; id++) {
-        if(! servo.checkPosition((u8)id, (u16)start_pos, accuracy)) {
-            u16 position {0};
-            servo.get_position((u8)id,position);
-            ESP_LOGE(TAG, "Servo %d has not reached it's starting position. Expected % d Read, %d", id, start_pos, position);
-            hasError = true;
-        }
-    }
-    if(hasError) { return 0; }
-
-    start_time = esp_timer_get_time();
-    for (id = start_range; id <= end_range; id++) {
-        servo.set_position((u8)id, (u16)end_pos);
-    }
-    if(accuracy<=1023) {
-        for (id = start_range; id <= end_range; id++) {
-            while(! servo.checkPosition((u8)id, (u16)end_pos, accuracy)) {
-                vTaskDelay(1 / portTICK_PERIOD_MS);
-            }
-        }
-    }
-    end_time = esp_timer_get_time();
-    ESP_LOGI(TAG, "Time: %llu microseconds", end_time-start_time);
-    return 0;
-}
-
-static void register_servo_cmd_perftest(void)
-{
-    servo_perftest_args.servo_id = arg_int1(NULL, "id", "<n>", "Servo ID");
-    servo_perftest_args.start_pos = arg_int1(NULL, "start", "<n>", "Start Position");
-    servo_perftest_args.end_pos = arg_int1(NULL, "end", "<n>", "End Position");
-    servo_perftest_args.accuracy = arg_int1(NULL, "acc", "<n>", "Read Accuracy");
-    servo_perftest_args.end = arg_end(2);
-    const esp_console_cmd_t cmd_servo_perftest = {
-        .command = "servo-perftest",
-        .help = "servo performance test",
-        .hint = "--id <servoID> --start <startpos> --end <endpos>  --acc <n> # id=999: servos 1-12; acc>1023: we do not read position",
-        .func = &servo_cmd_perftest,
-	.argtable = NULL
-    };
-    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_servo_perftest) );
-}
-
-
 static int servo_cmd_setStartPos(int argc, char **argv)
 {
     int nerrors = arg_parse(argc, argv, (void **)&servo_id_args);
@@ -597,7 +420,7 @@ static int servo_cmd_setPosition(int argc, char **argv)
         printf("Invalid servo position\r\n");
         return 0;
     }
-    servo.set_position((u8)servo_id, (u16)servo_pos);
+    servo.set_goal_position((u8)servo_id, (u16)servo_pos);
     return 0;
 }
 
@@ -1198,9 +1021,6 @@ void register_servo_cmds(void)
     register_servo_cmd_enableTorque();
     register_servo_cmd_isTorqueEnabled();
     register_servo_cmd_scan();
-    register_servo_cmd_rotate();
-    register_servo_cmd_rotate12();
-    register_servo_cmd_perftest();
     register_servo_cmd_setStartPos();
     register_servo_cmd_setMidPos();
     register_servo_cmd_setEndPos();
