@@ -72,6 +72,9 @@ struct parameters_control_acknowledge_format
     float roll;
     float pitch;
     float yaw;
+    // POWER SUPPLY data
+    float voltage_V;
+    float current_A;
 };
 
 

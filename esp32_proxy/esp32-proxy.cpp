@@ -197,7 +197,7 @@ void esp32_protocol(void *control_block)
             );
 
             printf("Attitude:  roll:%.3f  pitch:%.3f  yaw:%.3f\n", ack_parameters.roll, ack_parameters.pitch, ack_parameters.yaw);
-
+            printf("Power:  %.3fV  %.3fA\n", ack_parameters.voltage_V, ack_parameters.current_A);
 	}
     }
 }

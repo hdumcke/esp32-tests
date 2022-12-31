@@ -1,4 +1,5 @@
 idf_component_register(SRCS "servo-test.cpp"
+                            "mini_pupper_power.cpp"
                             "mini_pupper_servos.cpp"
                             "mini_pupper_host.cpp"
 			    "mini_pupper_imu.cpp"
