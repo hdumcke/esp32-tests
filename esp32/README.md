@@ -24,7 +24,7 @@ cd ~
 git clone https://github.com/hdumcke/esp32-tests
 cd ~/esp32-tests
 idf.py set-target esp32s3
-idf.py menuconfig # enable backward compatibility for freertos
+idf.py menuconfig # you can use all default values
 idf.py build
 export ESPPORT=/dev/ttyUSB0
 idf.py monitor # set ESP32 in download mode if you use a simple serial adapter
