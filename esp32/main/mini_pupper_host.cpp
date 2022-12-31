@@ -8,6 +8,7 @@ static const char* TAG = "HOST";
 #include "mini_pupper_protocol.h"
 #include "mini_pupper_host.h"
 #include "mini_pupper_servos.h"
+#include "mini_pupper_imu.h"
 #include "driver/uart.h"
 #include "esp_log.h"
 #include <string.h>
@@ -161,6 +162,10 @@ void HOST_TASK(void * parameters)
         parameters_control_acknowledge_format feedback_parameters;
         servo.getPosition12Async(feedback_parameters.present_position);
         servo.getLoad12Async(feedback_parameters.present_load);
+        // imu feedback
+        feedback_parameters.roll = imu.get_roll();
+        feedback_parameters.pitch = imu.get_pitch();
+        feedback_parameters.yaw = imu.get_yaw();
 
         // build acknowledge frame
         static size_t const tx_payload_length {1+sizeof(parameters_control_acknowledge_format)+1};            

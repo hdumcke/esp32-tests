@@ -1,30 +1,35 @@
-#include "servo_cmd.h"
-#include "imu_cmd.h"
+/* Authors : 
+ * - Hdumcke
+ * - Pat92fr
+ */
+
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
+
 #include <stdio.h>
 #include <string.h>
-#include "esp_system.h"
+
 #include "cmd_system.h"
 #include "cmd_wifi.h"
+
+#include "esp_system.h"
+#include "esp_timer.h"
 #include "esp_console.h"
 #include "esp_log.h"
 #include "esp_vfs_dev.h"
 #include "esp_vfs_fat.h"
+
 #include "nvs.h"
 #include "nvs_flash.h"
-#include "driver/i2c.h"
+
+#include "servo_cmd.h"
+#include "imu_cmd.h"
+
 #include "mini_pupper_servos.h"
 #include "mini_pupper_host.h"
+#include "mini_pupper_imu.h"
 
-static const char* TAG = "servo_tests";
-
-#define I2C_MASTER_FREQ_HZ          400000                     /*!< I2C master clock frequency */
-#define I2C_MASTER_TX_BUF_DISABLE   0                          /*!< I2C master doesn't need buffer */
-#define I2C_MASTER_RX_BUF_DISABLE   0                          /*!< I2C master doesn't need buffer */
-#define I2C_MASTER_SDA_IO 41
-#define I2C_MASTER_SCL_IO 42
-
+static const char* TAG = "MAIN";
 
 #if CONFIG_CONSOLE_STORE_HISTORY
 
@@ -60,22 +65,6 @@ static void initialize_nvs(void)
 
 extern "C" void app_main(void)
 {
-
-    /* start i2c bus */
-    i2c_config_t conf;
-    conf.mode = I2C_MODE_MASTER;
-    conf.sda_io_num = I2C_MASTER_SDA_IO;
-    conf.scl_io_num = I2C_MASTER_SCL_IO;
-    conf.sda_pullup_en = GPIO_PULLUP_ENABLE;
-    conf.scl_pullup_en = GPIO_PULLUP_ENABLE;
-    conf.master.clk_speed = I2C_MASTER_FREQ_HZ;
-    conf.clk_flags = 0;
-
-    i2c_param_config(I2C_NUM_0, &conf);
-
-    ESP_ERROR_CHECK(i2c_driver_install(I2C_NUM_0, conf.mode, I2C_MASTER_RX_BUF_DISABLE, I2C_MASTER_TX_BUF_DISABLE, 0));
-    ESP_LOGI(TAG, "I2C initialized successfully");
-
     esp_console_repl_t *repl = NULL;
     esp_console_repl_config_t repl_config = ESP_CONSOLE_REPL_CONFIG_DEFAULT();
     repl_config.prompt = "muni_pupper>";
@@ -113,6 +102,15 @@ extern "C" void app_main(void)
 #else
 #error Unsupported console type
 #endif
+    // init IMU device
+    uint8_t const imu_status = imu.init();
+    if(imu_status==0)
+        ESP_LOGI(TAG, "IMU device init [OK].");
+    else
+        ESP_LOGI(TAG, "IMU device configuration [FAILURE] (error:%d)!",imu_status);
+
+    // start IMU service
+    imu.start();
 
     // start SERVO interface
     servo.start();
@@ -120,7 +118,7 @@ extern "C" void app_main(void)
     // start HOST interface
     host.start();
 
-    // enable SERVO system
+    // enable SERVO power supply
     servo.enable();
 
     ESP_ERROR_CHECK(esp_console_start_repl(repl));

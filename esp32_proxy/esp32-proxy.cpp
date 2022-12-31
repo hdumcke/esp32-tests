@@ -55,14 +55,14 @@ void esp32_protocol(void *control_block)
     for (;;)
     {
         /*
-         * Encode a CONTROL frame 
+         * Encode a CONTROL frame
          */
 
         // Build parameters
         parameters_control_instruction_format parameters;
 
         // Copy 12 servo goal positions into the goal_position array of parameters
-        for(size_t servo_index=0; servo_index<N; ++servo_index) 
+        for(size_t servo_index=0; servo_index<N; ++servo_index)
         {
             offset = servo_index * sizeof(SERVO_STATE) + 2;
             memcpy(&parameters.goal_position[servo_index], (char*)control_block + offset, 2);
@@ -83,7 +83,7 @@ void esp32_protocol(void *control_block)
             INST_CONTROL        // instruction
         };
         memcpy(tx_buffer+5,&parameters,sizeof(parameters_control_instruction_format));
-        
+
         // Checksum
         tx_buffer[tx_buffer_size-1] = compute_checksum(tx_buffer);
 
@@ -100,10 +100,10 @@ void esp32_protocol(void *control_block)
         u8 rx_buffer[rx_buffer_size] {0};
 	int read_length;
 	int expected_lenght;
-	expected_lenght = 4 + 1 + 24 + 24 + 1; // header + status + pos + load + chksum
+	expected_lenght = 4 + 1 + sizeof(parameters_control_acknowledge_format) + 1; // header + status + pos + load + chksum
 	offset = 0;
 	do {
-            read_length = read(fd, (char*)rx_buffer + offset, expected_lenght); 
+            read_length = read(fd, (char*)rx_buffer + offset, expected_lenght);
 	    if(!read_length)
 	    {
 		// time out
@@ -125,16 +125,16 @@ void esp32_protocol(void *control_block)
 
 
         /*
-         * Decode a CONTROL ACK frame 
+         * Decode a CONTROL ACK frame
          */
 
-        bool const rx_header_check { 
-                    (rx_buffer[0]==0xFF) 
-                &&  (rx_buffer[1]==0xFF) 
+        bool const rx_header_check {
+                    (rx_buffer[0]==0xFF)
+                &&  (rx_buffer[1]==0xFF)
                 &&  (rx_buffer[2]==0x01) // my ID
                 &&  (rx_buffer[3]<=(rx_buffer_size-4)) // keep the header in the rx buffer
-        };  
-        if(!rx_header_check) 
+        };
+        if(!rx_header_check)
         {
             // log
             if (print_debug)
@@ -152,11 +152,11 @@ void esp32_protocol(void *control_block)
         bool const rx_checksum {checksum(rx_buffer,expected_checksum)};
 
         // waiting for a valid instruction and checksum...
-        bool const rx_payload_checksum_check { 
-                    (rx_buffer[4]==0x00) 
+        bool const rx_payload_checksum_check {
+                    (rx_buffer[4]==0x00)
                 &&  rx_checksum
-        };  
-        if(!rx_payload_checksum_check) 
+        };
+        if(!rx_payload_checksum_check)
         {
             // log
             if (print_debug)
@@ -172,7 +172,7 @@ void esp32_protocol(void *control_block)
         // decode parameters
         parameters_control_acknowledge_format ack_parameters;
         memcpy(&ack_parameters,rx_buffer+5,sizeof(parameters_control_acknowledge_format));
-        for(size_t servo_index=0; servo_index<N; ++servo_index) 
+        for(size_t servo_index=0; servo_index<N; ++servo_index)
         {
             offset = servo_index * sizeof(SERVO_STATE) + 4;
             memcpy((char*)control_block + offset, &ack_parameters.present_position[servo_index], 2);
@@ -180,6 +180,7 @@ void esp32_protocol(void *control_block)
         }
 
         // log
+
         if (print_debug)
 	{
             printf("Present Position: %d %d %d %d %d %d %d %d %d %d %d %d\n",
@@ -194,6 +195,9 @@ void esp32_protocol(void *control_block)
             ack_parameters.present_load[6],ack_parameters.present_load[7],ack_parameters.present_load[8],
             ack_parameters.present_load[9],ack_parameters.present_load[10],ack_parameters.present_load[11]
             );
+
+            printf("Attitude:  roll:%.3f  pitch:%.3f  yaw:%.3f\n", ack_parameters.roll, ack_parameters.pitch, ack_parameters.yaw);
+
 	}
     }
 }
@@ -280,20 +284,20 @@ int main(int argc, char *argv[])
 
 	pid = fork();
         if (pid == 0) {
-    
+
             for (;;) {
-    
+
                 /* Wait for next data packet. */
-    
+
                 ret = read(data_socket, r_buffer, sizeof(r_buffer));
                 if (ret == -1) {
     		/* client terminated? */
     		break;
                 }
-    
+
                 /* Handle commands. */
                 index = 2;
-    
+
     	    if(r_buffer[1] == INST_SETPOS && r_buffer[0] == buffer_size) {
                 for(size_t servo_index=0; servo_index<N; ++servo_index) {
 		    offset = servo_index * sizeof(SERVO_STATE) + 2;
@@ -303,7 +307,7 @@ int main(int argc, char *argv[])
     		s_buffer[0]= 2;
     		s_buffer[1]= INST_SETPOS;
     	    }
-    
+
     	    if(r_buffer[1] == INST_GETPOS && r_buffer[0] == 2) {
     		s_buffer[0]= buffer_size;
     		s_buffer[1]= INST_GETPOS;
@@ -313,7 +317,7 @@ int main(int argc, char *argv[])
     		    index = index + 2;
     		}
     	    }
-    
+
     	    if(r_buffer[1] == INST_GETLOAD && r_buffer[0] == 2) {
     		s_buffer[0]= buffer_size;
     		s_buffer[1]= INST_GETLOAD;
@@ -323,21 +327,21 @@ int main(int argc, char *argv[])
     		    index = index + 2;
     		}
     	    }
-    
+
                 /* Send result. */
-        
+
                 ret = write(data_socket, s_buffer, s_buffer[0]);
                 if (ret == -1) {
     		/* client terminated? */
     		break;
                 }
-        
+
             }
         }
         else {
             close(data_socket);
             continue;
-        }   
+        }
     }
 
     close(connection_socket);
