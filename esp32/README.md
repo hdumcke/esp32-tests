@@ -1,8 +1,5 @@
 # esp32-tests
 
-Code contained in components/SCServo_esp32/ is not mine, I am still researching the origin and the licence of this code.
-For now consider that components/SCServo_esp32 is not under MIT license
-
 ## Getting Started
 
 To install esp-idf use a Ubuntu 22.04 environment:
