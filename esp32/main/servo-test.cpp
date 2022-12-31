@@ -28,6 +28,8 @@
 #include "mini_pupper_servos.h"
 #include "mini_pupper_host.h"
 #include "mini_pupper_imu.h"
+#include "mini_pupper_power.h"
+
 
 static const char* TAG = "MAIN";
 
@@ -111,6 +113,9 @@ extern "C" void app_main(void)
 
     // start IMU service
     imu.start();
+
+    // start POWER service
+    POWER::start();
 
     // start SERVO interface
     servo.start();
