@@ -61,8 +61,8 @@ def send_servo_commands(pwm_params, servo_params, joint_angles):
 
 
 def send_servo_command(pwm_params, servo_params, joint_angle, axis, leg):
-    servo_position = angle_to_servo_position(joint_angle, pwm_params, servo_params, axis, leg)
-    pwm_params.esp32.servo_set_position(pwm_params.servo_ids[axis, leg], servo_position)
+    # not implemented
+    pass
 
 
 def deactivate_servos(pi, pwm_params):
