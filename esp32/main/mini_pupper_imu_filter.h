@@ -17,7 +17,7 @@ class IMU_FILTER
   private: 
     vec3_t s;
     quat_t q;
-    uint32_t last_time;
+    int64_t last_time;
     float updateTimer();
       
   public:
