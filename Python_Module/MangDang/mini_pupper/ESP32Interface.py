@@ -43,3 +43,28 @@ class ESP32Interface:
             sys.exit(1)
         load = list(unpack("12h", data[2:]))
         return load
+
+    def imu_get_attitude(self):
+        self.sock.sendall(pack("BB", 2, 4))
+        data = self.sock.recv(14)
+        if data[0:2] != pack("BB", 14, 4):
+            print("Invalid Ack")
+            self.sock.close()
+            sys.exit(1)
+        raw_attitude = list(unpack("3f", data[2:]))
+        attitude = {"roll": raw_attitude[0],
+                    "pitch": raw_attitude[1],
+                    "yaw": raw_attitude[2]}
+        return attitude
+
+    def get_power_status(self):
+        self.sock.sendall(pack("BB", 2, 5))
+        data = self.sock.recv(10)
+        if data[0:2] != pack("BB", 10, 5):
+            print("Invalid Ack")
+            self.sock.close()
+            sys.exit(1)
+        raw_power = list(unpack("2f", data[2:]))
+        power = {"volt": raw_power[0],
+                 "ampere": raw_power[1]}
+        return power
