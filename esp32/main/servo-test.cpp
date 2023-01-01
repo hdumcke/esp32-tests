@@ -127,6 +127,10 @@ extern "C" void app_main(void)
     servo.enable();
     servo.soft_start();
 
+    // TODO faire une tache de fond qui démarre les servo, gère le déplcement en position de stand by et lance la tache servo, et coupe les servo lotsque la tension passe en dessous du seuil bas.
+
+    // TODO commande de calibration
+
     ESP_ERROR_CHECK(esp_console_start_repl(repl));
 
 }
