@@ -5,7 +5,7 @@
 #ifndef _esp32_proxy__H
 #define _esp32_proxy__H
 
-#define SOCKET_NAME "/tmp/9Lq7BNBnBycd6nxy.socket"
+#define SOCKET_NAME "/tmp/esp32-proxy.socket"
 
 #define INST_SETPOS 0x01
 #define INST_GETPOS 0x02

@@ -9,7 +9,7 @@ class ESP32Interface:
     def __init__(self):
         self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_SEQPACKET)
         # Connect the socket to the port where the server is listening
-        server_address = "/tmp/9Lq7BNBnBycd6nxy.socket"
+        server_address = "/tmp/esp32-proxy.socket"
         try:
             self.sock.connect(server_address)
         except Exception as e:
