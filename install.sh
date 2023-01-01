@@ -54,6 +54,9 @@ sudo rm -rf /var/lib/mini_pupper_bsp
 sudo cp -r $BASEDIR/Display /var/lib/mini_pupper_bsp
 sudo pip install $BASEDIR/Python_Module
 
+### Install esp32 gateway
+./$BASEDIR//esp32_proxy/install.sh
+
 ### Make pwm sysfs and nvmem work for non-root users
 ### reference: https://github.com/raspberrypi/linux/issues/1983
 ### reference: https://github.com/bitula/mini_pupper-dev/blob/main/scripts/mini_pupper.sh

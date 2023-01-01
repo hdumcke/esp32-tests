@@ -3,6 +3,7 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <sys/stat.h>
 #include <unistd.h>
 #include <termios.h>
 #include <errno.h>
@@ -259,7 +260,6 @@ int main(int argc, char *argv[])
         perror("unlink");
         exit(EXIT_FAILURE);
     }
-
     ret = bind(connection_socket, (const struct sockaddr *) &name,
                sizeof(name));
     if (ret == -1) {
