@@ -9,7 +9,6 @@ class PWMParams:
     def __init__(self):
         self.servo_ids = np.array([[1, 4, 7, 10], [2, 5, 8, 11], [3, 6, 9, 12]])
         self.esp32 = ESP32Interface()
-        self.esp32.servos_enable()
 
 
 class ServoParams:
