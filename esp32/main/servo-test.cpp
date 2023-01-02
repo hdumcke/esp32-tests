@@ -113,24 +113,51 @@ extern "C" void app_main(void)
 
     // start IMU service
     imu.start();
+    ESP_LOGI(TAG, "IMU service started.");
 
     // start POWER service
     POWER::start();
+    ESP_LOGI(TAG, "Power service started.");
 
-    // start SERVO interface
-    servo.start();
-
-    // start HOST interface
-    host.start();
+    // start CLI
+    ESP_ERROR_CHECK(esp_console_start_repl(repl));
 
     // enable SERVO power supply
     servo.enable();
+    ESP_LOGI(TAG, "Servo power supply enabled.");
     servo.soft_start();
+    ESP_LOGI(TAG, "Servo in neutral position.");
 
-    // TODO faire une tache de fond qui démarre les servo, gère le déplcement en position de stand by et lance la tache servo, et coupe les servo lotsque la tension passe en dessous du seuil bas.
+    // start SERVO interface
+    servo.start();
+    ESP_LOGI(TAG, "Servo control & feedback service started.");
 
-    // TODO commande de calibration
+    // start HOST interface
+    host.start();
+    ESP_LOGI(TAG, "Host communication service started.");
 
-    ESP_ERROR_CHECK(esp_console_start_repl(repl));
+    int const low_voltage_cutoff_counter_max {60}; // 1 minute
+    int low_voltage_cutoff_counter {low_voltage_cutoff_counter_max}; 
+    for(;;)
+    {
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
+        ESP_LOGD(TAG, "heart-beat");
 
+
+        // low-voltage cutoff
+        if(POWER::get_voltage_V()<6.2 && low_voltage_cutoff_counter>0)
+        {
+            --low_voltage_cutoff_counter;
+            ESP_LOGI(TAG, "Warning : Low-voltage!");            
+        }
+        if(POWER::get_voltage_V()>6.6 && low_voltage_cutoff_counter!=0 && low_voltage_cutoff_counter<low_voltage_cutoff_counter_max)
+        {
+            ++low_voltage_cutoff_counter;
+        }
+        if(low_voltage_cutoff_counter==0)
+        {
+            servo.disable();
+            ESP_LOGI(TAG, "Servo power supply disabled (low-voltage cutoff)!");            
+        }
+    }
 }
