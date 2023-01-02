@@ -7,10 +7,9 @@
 #Power monitor
 while true
 do
-	current_voltage=`cat /sys/class/power_supply/max1720x_battery/voltage_now`
-	if [ $current_voltage -le 6500 ]; then
-		echo 0 > /sys/class/gpio/gpio25/value
-		echo 0 > /sys/class/gpio/gpio21/value
+	current_voltage=`python -c "from MangDang.mini_pupper.ESP32Interface import ESP32Interface;  print(int(ESP32Interface().get_power_status()['volt']*100))"`
+	# Servos will be disabled by ESP32 when power is low
+	if [ $current_voltage -le 620 ]; then
 		# install scrip will replace BASEDIR
 		mpg123 BASEDIR/Audio/low_power.mp3
 	fi
