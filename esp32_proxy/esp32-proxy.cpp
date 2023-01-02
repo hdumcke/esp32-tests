@@ -350,8 +350,8 @@ int main(int argc, char *argv[])
 
                 ret = read(data_socket, r_buffer, sizeof(r_buffer));
                 if (ret == -1) {
-    		/* client terminated? */
-    		break;
+                    /* client terminated? */
+                    exit(EXIT_SUCCESS);
                 }
 
                 /* Handle commands. */
@@ -395,8 +395,8 @@ int main(int argc, char *argv[])
 
                 ret = write(data_socket, s_buffer, s_buffer[0]);
                 if (ret == -1) {
-    		/* client terminated? */
-    		break;
+                    /* client terminated? */
+                    exit(EXIT_SUCCESS);
                 }
 
             }
