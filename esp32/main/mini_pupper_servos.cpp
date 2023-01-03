@@ -572,6 +572,24 @@ int SERVO::calibrate()
     return SERVO_STATUS_OK;
 }
 
+void SERVO::setTorqueAsync(u8 servoID, u8 servoTorque)
+{
+    if(0<servoID && servoID<=12)
+        state[servoID-1].torque_enable=servoTorque;
+    
+    // (re)start sync service
+    enable_service();
+}
+
+void SERVO::setTorque12Async(u8 const servoTorques[])
+{
+    for(size_t index=0;index<12;++index)
+        state[index].torque_enable = servoTorques[index];
+    
+    // (re)start sync service
+    enable_service();
+}
+
 void SERVO::setPositionAsync(u8 servoID, u16 servoPosition)
 {
     if(0<servoID && servoID<=12)
@@ -722,36 +740,80 @@ void SERVO::enable_service(bool enable)
 
 void SERVO::sync_all_goal_position()
 {
-    // prepare sync write frame to all servo
-    static size_t const L {2};                      // Length of data sent to each servo
-    static size_t const N {12};                     // Servo Number
-    static size_t const Length {(L+1)*N+4};         // Length field value
-    static size_t const buffer_size {2+1+1+Length}; // 0xFF 0xFF ID LENGTH (INSTR PARAM... CHK)
-    // prepare frame header and parameters (fixed)
-    static u8 buffer[buffer_size] {
-        0xFF,                                       // Start of Frame
-        0xFF,                                       // Start of Frame
-        0xFE,                                       // ID
-        Length,                                     // Length
-        INST_SYNC_WRITE,                            // Instruction
-        SERVO_GOAL_POSITION_L,                      // Parameter 1 : Register address
-        L                                           // Parameter 2 : L
-    };
-    // build frame payload
-    size_t index {7};
-    for(size_t servo_index=0; servo_index<N; ++servo_index) {
-        buffer[index++] = state[servo_index].ID;                    // Parameter 3 = Servo Number
-        buffer[index++] = (state[servo_index].goal_position>>8);    // Write the first data of the first servo
-        buffer[index++] = (state[servo_index].goal_position&0xff);
+    static size_t const buffer_size {64};               // Buffer size
+    static u8 buffer[buffer_size] {0xFF,0xFF,0xFE};     // Fixed header (boradcast)
+    /*
+     * First sync write frame : torque switch disable
+     *
+     *  A servo receiving a goal position automatically switches to torque enable.
+     *  So we send only torque disable to servo to be disabled.
+     *
+     */
+    {
+        // prepare sync write frame to servo
+        static size_t const L {1};  // Length of data sent to each servo : torque switch register is one-byte
+        // prepare pyaload : instruction and parameters
+        buffer[4] = INST_SYNC_WRITE;        // Instruction
+        buffer[5] = SERVO_TORQUE_ENABLE;    // Parameter 1 : Register address
+        buffer[6] = L;                      // Parameter 2 : L
+        // build frame payload
+        size_t index {7};
+        size_t n {0}; // effective servo count
+        for(auto & servo : state)
+        {
+            if(servo.torque_enable==0)
+            {
+                ++n;
+                buffer[index++] = servo.ID;                    // Parameter 3 = Servo Number
+                buffer[index++] = servo.torque_enable;         // Write the data
+            }
+        }
+        // compute payload length
+        buffer[3] = (L+1)*n+4;
+        // compute checksum
+        u8 chk_sum {0};
+        for(size_t chk_index=2; chk_index<index; ++chk_index) {
+            chk_sum += buffer[chk_index];
+        }
+        buffer[index++] = ~chk_sum;
+        // send frame to all servo    
+        uart_write_bytes(uart_port_num,buffer,index);
     }
-    // compute checksum
-    u8 chk_sum {0};
-    for(size_t chk_index=2; chk_index<(buffer_size-1); ++chk_index) {
-        chk_sum += buffer[chk_index];
+    /*
+     * Second sync write frame : goal position
+     *
+     */
+    {
+        // prepare sync write frame to servo
+        static size_t const L {2};  // Length of data sent to each servo : goal position register is one-word
+        // prepare pyaload : instruction and parameters
+        buffer[4] = INST_SYNC_WRITE;        // Instruction
+        buffer[5] = SERVO_GOAL_POSITION_L;  // Parameter 1 : Register address
+        buffer[6] = L;                      // Parameter 2 : L
+        // build frame payload
+        size_t index {7};
+        size_t n {0}; // effective servo count
+        for(auto & servo : state)
+        {
+            if(servo.torque_enable==1)
+            {
+                ++n;
+                buffer[index++] = servo.ID;                    // Parameter 3 = Servo Number
+                buffer[index++] = (servo.goal_position>>8);    
+                buffer[index++] = (servo.goal_position&0xff);                
+            }
+        }
+        // compute payload length
+        buffer[3] = (L+1)*n+4;
+        // compute checksum
+        u8 chk_sum {0};
+        for(size_t chk_index=2; chk_index<index; ++chk_index) {
+            chk_sum += buffer[chk_index];
+        }
+        buffer[index++] = ~chk_sum;
+        // send frame to all servo    
+        uart_write_bytes(uart_port_num,buffer,index);
     }
-    buffer[index++] = ~chk_sum;
-    // send frame to all servo    
-    uart_write_bytes(uart_port_num,buffer,buffer_size);
 }
 
 void SERVO::cmd_feedback_one_servo(SERVO_STATE & servoState)

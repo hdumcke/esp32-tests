@@ -162,6 +162,7 @@ void HOST_TASK(void * parameters)
         // update servo setpoint only if service is enabled
         if(host->_is_service_enabled)
         {
+            //servo.setTorque12Async(parameters.torque_enable);
             servo.setPosition12Async(parameters.goal_position);
         }
 

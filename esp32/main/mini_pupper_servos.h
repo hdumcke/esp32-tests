@@ -152,6 +152,7 @@ struct SERVO_STATE
 {
     SERVO_STATE(u8 id) : ID(id) {}
     u8 ID                   {0};
+    u8 torque_enable        {0};   // torque disable
     u16 goal_position       {512}; // middle position
     u16 goal_speed          {1000}; // max
     u16 present_position    {0};
@@ -226,6 +227,9 @@ struct SERVO
 
     // async service enable
     void enable_service(bool enable = true);
+
+    void setTorqueAsync(u8 servoID, u8 servoTorque);
+    void setTorque12Async(u8 const servoTorques[]);
 
     void setPositionAsync(u8 servoID, u16 servoPosition);
     void setPosition12Async(u16 const servoPositions[]);    

@@ -59,6 +59,7 @@
 // frame parameters format for control instruction
 struct parameters_control_instruction_format
 {
+    // u8 torque_enable[12];
     u16 goal_position[12];
 };
 
