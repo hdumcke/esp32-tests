@@ -60,7 +60,7 @@ static struct
 
 static int mini_pupper_cmd_disable(int argc, char **argv)
 {
-    servo.disable();
+    servo.enable_power(false);
     return 0;
 }
 
@@ -78,7 +78,7 @@ static void register_mini_pupper_cmd_disable(void)
 
 static int mini_pupper_cmd_enable(int argc, char **argv)
 {
-    servo.enable();
+    servo.enable_power();
     return 0;
 }
 
@@ -96,7 +96,7 @@ static void register_mini_pupper_cmd_enable(void)
 
 static int mini_pupper_cmd_isEnabled(int argc, char **argv)
 {
-    if(servo.isEnabled) {
+    if(servo.is_power_enabled()) {
         printf("servos are enabled\r\n");
     }
     else{

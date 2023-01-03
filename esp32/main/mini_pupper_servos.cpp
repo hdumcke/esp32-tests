@@ -15,8 +15,6 @@
 
 static const char *TAG = "SERVOS";
 
-void SERVO_TASK(void * parameters);
-
 SERVO servo;
 
 SERVO::SERVO()
@@ -31,7 +29,7 @@ SERVO::SERVO()
     ESP_ERROR_CHECK(gpio_config(&io_conf));//configure GPIO with the given settings
 
     // power off servo system
-    disable();
+    enable_power(false);
 
     // set UART port
     uart_config_t uart_config;
@@ -65,27 +63,34 @@ void SERVO::start()
     );
 }
 
-void SERVO::disable()
+bool SERVO::is_power_enabled() const
 {
-    gpio_set_level(GPIO_NUM_8, 0);
-    isEnabled = false;
-    isSyncRunning = false;
+    return _is_power_enabled;
 }
 
-void SERVO::enable()
+void SERVO::enable_power(bool enable)
 {
-    gpio_set_level(GPIO_NUM_8, 1);
-    isEnabled = true;
-    isSyncRunning = false;
+    if(enable)
+    {
+        gpio_set_level(GPIO_NUM_8, 1);
+        _is_power_enabled = true;
+        _is_service_enabled = false;
+    }
+    else
+    {
+        gpio_set_level(GPIO_NUM_8, 0);
+        _is_power_enabled = false;
+        _is_service_enabled = false;
+    }
 }
 
 int SERVO::ping(u8 ID)
 {
     // abort if servo not powered on
-    if(!isEnabled) return SERVO_STATUS_FAIL;
+    if(!_is_power_enabled) return SERVO_STATUS_FAIL;
 
     // suspend sync service
-    enableAsyncService(false);
+    enable_service(false);
 
     // abort command when broadcasting
     if(ID==0XFE) return SERVO_STATUS_FAIL;
@@ -100,10 +105,10 @@ int SERVO::ping(u8 ID)
 int SERVO::reset(u8 ID)
 {
     // abort if servo not powered on
-    if(!isEnabled) return SERVO_STATUS_FAIL;
+    if(!_is_power_enabled) return SERVO_STATUS_FAIL;
 
     // suspend sync service
-    enableAsyncService(false);
+    enable_service(false);
 
     // abort command when broadcasting
     if(ID==0XFE) return SERVO_STATUS_FAIL;
@@ -118,10 +123,10 @@ int SERVO::reset(u8 ID)
 int SERVO::enable_torque(u8 ID)
 {
     // abort if servo not powered on
-    if(!isEnabled) return SERVO_STATUS_FAIL;
+    if(!_is_power_enabled) return SERVO_STATUS_FAIL;
 
     // suspend sync service
-    enableAsyncService(false);
+    enable_service(false);
 
     // write instruction
     write_register_byte(ID, SERVO_TORQUE_ENABLE, 1);
@@ -136,10 +141,10 @@ int SERVO::enable_torque(u8 ID)
 int SERVO::disable_torque(u8 ID)
 {
     // abort if servo not powered on
-    if(!isEnabled) return SERVO_STATUS_FAIL;
+    if(!_is_power_enabled) return SERVO_STATUS_FAIL;
 
     // suspend sync service
-    enableAsyncService(false);
+    enable_service(false);
 
     // send write frame
     write_register_byte(ID, SERVO_TORQUE_ENABLE, 0);
@@ -154,10 +159,10 @@ int SERVO::disable_torque(u8 ID)
 int SERVO::is_torque_enable(u8 ID, u8 & enable)
 {
     // abort if servo not powered on
-    if(!isEnabled) return SERVO_STATUS_FAIL;
+    if(!_is_power_enabled) return SERVO_STATUS_FAIL;
 
     // suspend sync service
-    enableAsyncService(false);
+    enable_service(false);
 
     // send read instruction
     int const status = read_register_byte(ID, SERVO_TORQUE_ENABLE,enable);
@@ -171,10 +176,10 @@ int SERVO::is_torque_enable(u8 ID, u8 & enable)
 int SERVO::set_goal_position(u8 ID, u16 position)
 {
     // abort if servo not powered on
-    if(!isEnabled) return SERVO_STATUS_FAIL;
+    if(!_is_power_enabled) return SERVO_STATUS_FAIL;
 
     // suspend sync service
-    enableAsyncService(false);
+    enable_service(false);
 
     // abort command when broadcasting
     if(ID==0XFE) return SERVO_STATUS_FAIL;
@@ -189,10 +194,10 @@ int SERVO::set_goal_position(u8 ID, u16 position)
 int SERVO::get_goal_speed(u8 ID, u16 & speed)
 {
     // abort if servo not powered on
-    if(!isEnabled) return SERVO_STATUS_FAIL;
+    if(!_is_power_enabled) return SERVO_STATUS_FAIL;
 
     // suspend sync service
-    enableAsyncService(false);
+    enable_service(false);
 
     // send read instruction
     int const status = read_register_word(ID, SERVO_GOAL_SPEED_L,speed);
@@ -206,10 +211,10 @@ int SERVO::get_goal_speed(u8 ID, u16 & speed)
 int SERVO::set_goal_speed(u8 ID, u16 speed)
 {
     // abort if servo not powered on
-    if(!isEnabled) return SERVO_STATUS_FAIL;
+    if(!_is_power_enabled) return SERVO_STATUS_FAIL;
 
     // suspend sync service
-    enableAsyncService(false);
+    enable_service(false);
 
     // abort command when broadcasting
     if(ID==0XFE) return SERVO_STATUS_FAIL;
@@ -224,10 +229,10 @@ int SERVO::set_goal_speed(u8 ID, u16 speed)
 int SERVO::get_position(u8 ID, u16 & position)
 {
     // abort if servo not powered on
-    if(!isEnabled) return SERVO_STATUS_FAIL;
+    if(!_is_power_enabled) return SERVO_STATUS_FAIL;
 
     // suspend sync service
-    enableAsyncService(false);
+    enable_service(false);
 
     // send read instruction
     int const status = read_register_word(ID, SERVO_PRESENT_POSITION_L,position);
@@ -241,10 +246,10 @@ int SERVO::get_position(u8 ID, u16 & position)
 int SERVO::get_speed(u8 ID, s16 & speed)
 {
     // abort if servo not powered on
-    if(!isEnabled) return SERVO_STATUS_FAIL;
+    if(!_is_power_enabled) return SERVO_STATUS_FAIL;
 
     // suspend sync service
-    enableAsyncService(false);
+    enable_service(false);
 
     // send read instruction
     u16 present_value {0};
@@ -264,10 +269,10 @@ int SERVO::get_speed(u8 ID, s16 & speed)
 int SERVO::get_load(u8 ID, s16 & load)
 {
     // abort if servo not powered on
-    if(!isEnabled) return SERVO_STATUS_FAIL;
+    if(!_is_power_enabled) return SERVO_STATUS_FAIL;
 
     // suspend sync service
-    enableAsyncService(false);
+    enable_service(false);
 
     // send read instruction
     u16 present_value {0};
@@ -289,10 +294,10 @@ int SERVO::get_voltage(u8 ID, u8 & voltage)
 #ifdef SERVO_USE_SCS_GENERIC
 
     // abort if servo not powered on
-    if(!isEnabled) return SERVO_STATUS_FAIL;
+    if(!_is_power_enabled) return SERVO_STATUS_FAIL;
 
     // suspend sync service
-    enableAsyncService(false);
+    enable_service(false);
 
     // send read instruction
     u8 present_value {0};
@@ -319,10 +324,10 @@ int SERVO::get_temperature(u8 ID, u8 & temperature)
 #ifdef SERVO_USE_SCS_GENERIC
 
     // abort if servo not powered on
-    if(!isEnabled) return SERVO_STATUS_FAIL;
+    if(!_is_power_enabled) return SERVO_STATUS_FAIL;
 
     // suspend sync service
-    enableAsyncService(false);
+    enable_service(false);
 
     // send read instruction
     u8 present_value {0};
@@ -348,10 +353,10 @@ int SERVO::get_temperature(u8 ID, u8 & temperature)
 int SERVO::get_move(u8 ID, u8 & move)
 {
     // abort if servo not powered on
-    if(!isEnabled) return SERVO_STATUS_FAIL;
+    if(!_is_power_enabled) return SERVO_STATUS_FAIL;
 
     // suspend sync service
-    enableAsyncService(false);
+    enable_service(false);
 
     // send read instruction
     u8 present_value {0};
@@ -370,10 +375,10 @@ int SERVO::get_current(u8 ID, s16 & current)
 #ifdef SERVO_USE_SCS_GENERIC
 
     // abort if servo not powered on
-    if(!isEnabled) return SERVO_STATUS_FAIL;
+    if(!_is_power_enabled) return SERVO_STATUS_FAIL;
 
     // suspend sync service
-    enableAsyncService(false);
+    enable_service(false);
 
     // send read instruction
     u16 present_value {0};
@@ -401,10 +406,10 @@ int SERVO::get_current(u8 ID, s16 & current)
 int SERVO::unlock_eeprom(u8 ID)
 {
     // abort if servo not powered on
-    if(!isEnabled) return SERVO_STATUS_FAIL;
+    if(!_is_power_enabled) return SERVO_STATUS_FAIL;
 
     // suspend sync service
-    enableAsyncService(false);
+    enable_service(false);
 
     // write instruction
     write_register_byte(ID, SERVO_LOCK, 0);
@@ -427,10 +432,10 @@ int SERVO::unlock_eeprom(u8 ID)
 int SERVO::lock_eeprom(u8 ID)
 {
     // abort if servo not powered on
-    if(!isEnabled) return SERVO_STATUS_FAIL;
+    if(!_is_power_enabled) return SERVO_STATUS_FAIL;
 
     // suspend sync service
-    enableAsyncService(false);
+    enable_service(false);
 
     // write instruction
     write_register_byte(ID, SERVO_LOCK, 1);
@@ -453,7 +458,7 @@ int SERVO::lock_eeprom(u8 ID)
 void SERVO::set_position_all(u16 const servoPositions[])
 {
     // suspend sync service
-    enableAsyncService(false);
+    enable_service(false);
 
     static size_t const L {2};                      // Length of data sent to each servo
     static size_t const N {12};                     // Servo Number
@@ -490,10 +495,10 @@ void SERVO::set_position_all(u16 const servoPositions[])
 int SERVO::setID(u8 servoID, u8 newID)
 {
     // abort if servo not powered on
-    if(!isEnabled) return SERVO_STATUS_FAIL;
+    if(!_is_power_enabled) return SERVO_STATUS_FAIL;
 
     // suspend sync service
-    enableAsyncService(false);
+    enable_service(false);
 
     unlock_eeprom(servoID);
     write_register_byte(servoID, SERVO_ID, newID);
@@ -505,7 +510,7 @@ int SERVO::setID(u8 servoID, u8 newID)
 int SERVO::calibrate()
 {
     // abort if servo not powered on
-    if(!isEnabled) return SERVO_STATUS_FAIL;
+    if(!_is_power_enabled) return SERVO_STATUS_FAIL;
 
     // we have to suspend the host task during calibration
     // where to find the task handle??
@@ -539,7 +544,7 @@ int SERVO::calibrate()
     ESP_LOGI(TAG, "Read from file: '%s'", line);
 
     // suspend sync service
-    enableAsyncService(false);
+    enable_service(false);
 
     // write low goal speed
     for(auto & servo : state )
@@ -573,7 +578,7 @@ void SERVO::setPositionAsync(u8 servoID, u16 servoPosition)
         state[servoID-1].goal_position=servoPosition;
     
     // (re)start sync service
-    enableAsyncService(true);
+    enable_service();
 }
 
 void SERVO::setPosition12Async(u16 const servoPositions[])
@@ -582,13 +587,13 @@ void SERVO::setPosition12Async(u16 const servoPositions[])
         state[index].goal_position = servoPositions[index];
     
     // (re)start sync service
-    enableAsyncService(true);
+    enable_service();
 }
 
 void SERVO::getPosition12Async(u16 servoPositions[])
 {
     // (re)start sync service
-    enableAsyncService(true);
+    enable_service();
 
     for(size_t index=0;index<12;++index)
         servoPositions[index] = state[index].present_position;
@@ -597,7 +602,7 @@ void SERVO::getPosition12Async(u16 servoPositions[])
 void SERVO::getSpeed12Async(s16 servoSpeeds[])
 {
     // (re)start sync service
-    enableAsyncService(true);
+    enable_service();
 
     for(size_t index=0;index<12;++index)
         servoSpeeds[index] = state[index].present_speed;
@@ -606,7 +611,7 @@ void SERVO::getSpeed12Async(s16 servoSpeeds[])
 void SERVO::getLoad12Async(s16 servoLoads[])
 {
     // (re)start sync service
-    enableAsyncService(true);
+    enable_service();
 
     for(size_t index=0;index<12;++index)
         servoLoads[index] = state[index].present_load;
@@ -615,7 +620,7 @@ void SERVO::getLoad12Async(s16 servoLoads[])
 u16  SERVO::getPositionAsync(u8 servoID)
 {
     // (re)start sync service
-    enableAsyncService(true);
+    enable_service();
 
     if(0<servoID && servoID<=12)
         return state[servoID-1].present_position;
@@ -626,7 +631,7 @@ u16  SERVO::getPositionAsync(u8 servoID)
 s16  SERVO::getSpeedAsync(u8 servoID)
 {
     // (re)start sync service
-    enableAsyncService(true);
+    enable_service();
 
     if(0<servoID && servoID<=12)
         return state[servoID-1].present_speed;
@@ -637,7 +642,7 @@ s16  SERVO::getSpeedAsync(u8 servoID)
 s16  SERVO::getLoadAsync(u8 servoID)
 {
     // (re)start sync service
-    enableAsyncService(true);
+    enable_service();
 
     if(0<servoID && servoID<=12)
         return state[servoID-1].present_load;
@@ -648,7 +653,7 @@ s16  SERVO::getLoadAsync(u8 servoID)
 u8  SERVO::getVoltageAsync(u8 servoID)
 {
     // (re)start sync service
-    enableAsyncService(true);
+    enable_service();
 
     if(0<servoID && servoID<=12)
         return state[servoID-1].present_load;
@@ -659,7 +664,7 @@ u8  SERVO::getVoltageAsync(u8 servoID)
 u8  SERVO::getTemperatureAsync(u8 servoID)
 {
     // (re)start sync service
-    enableAsyncService(true);
+    enable_service();
 
     if(0<servoID && servoID<=12)
         return state[servoID-1].present_temperature;
@@ -670,7 +675,7 @@ u8  SERVO::getTemperatureAsync(u8 servoID)
 u8  SERVO::getMoveAsync(u8 servoID)
 {
     // (re)start sync service
-    enableAsyncService(true);
+    enable_service();
 
     if(0<servoID && servoID<=12)
         return state[servoID-1].present_move;
@@ -681,7 +686,7 @@ u8  SERVO::getMoveAsync(u8 servoID)
 s16 SERVO::getCurrentAsync(u8 servoID)
 {
     // (re)start sync service
-    enableAsyncService(true);
+    enable_service();
 
     if(0<servoID && servoID<=12)
         return state[servoID-1].present_current;
@@ -689,26 +694,26 @@ s16 SERVO::getCurrentAsync(u8 servoID)
         return 0;
 }
 
-void SERVO::enableAsyncService(bool enable)
+void SERVO::enable_service(bool enable)
 {
     // cannot start is power off
-    if(!isEnabled) return;
+    if(!_is_power_enabled) return;
 
     // nothing to do
-    if(isSyncRunning==enable) return;
+    if(_is_service_enabled==enable) return;
 
     // (re)start sync service
     if(enable)
     {
         // (re)start sync task and wait a moment to synchronise local feedback data base
-        isSyncRunning = true; 
+        _is_service_enabled = true; 
         vTaskDelay(20 / portTICK_PERIOD_MS);   
     }
     // suspend sync service
     else
     {
         // suspend sync task and wait a moment
-        isSyncRunning = false;
+        _is_service_enabled = false;
         vTaskDelay(10 / portTICK_PERIOD_MS);
     }
     // flush RX FIFO
@@ -827,7 +832,7 @@ void SERVO_TASK(void * parameters)
     u8 servoID {0};
     for(;;)
     {
-        if(servo->isEnabled && servo->isSyncRunning)
+        if(servo->_is_power_enabled && servo->_is_service_enabled)
         {
             // process read ack from one servo
             servo->ack_feedback_one_servo(servo->state[servoID]);

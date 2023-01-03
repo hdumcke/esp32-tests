@@ -109,7 +109,7 @@ extern "C" void app_main(void)
     ESP_ERROR_CHECK(esp_console_start_repl(repl));
 
     // enable SERVO power supply
-    servo.enable();
+    servo.enable_power();
     ESP_LOGI(TAG, "Servo power supply enabled.");
     servo.soft_start();
     ESP_LOGI(TAG, "Servo in neutral position.");
@@ -121,6 +121,7 @@ extern "C" void app_main(void)
     // start HOST interface
     host.start();
     ESP_LOGI(TAG, "Host communication service started.");
+    host.enable_service();
 
     int const low_voltage_cutoff_counter_max {60}; // 1 minute
     int low_voltage_cutoff_counter {low_voltage_cutoff_counter_max}; 
@@ -142,7 +143,7 @@ extern "C" void app_main(void)
         }
         if(low_voltage_cutoff_counter==0)
         {
-            servo.disable();
+            servo.enable_power(false);
             ESP_LOGI(TAG, "Servo power supply disabled (low-voltage cutoff)!");            
         }
     }

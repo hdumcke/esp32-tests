@@ -26,7 +26,8 @@ HOST host;
 HOST::HOST() : 
 _uart_port_num(2),
 _task_handle(NULL),
-_uart_queue(NULL)
+_uart_queue(NULL),
+_is_service_enabled(false)
 {
     // set UART port
     uart_config_t uart_config;
@@ -46,12 +47,17 @@ void HOST::start()
 {
     xTaskCreate(
         HOST_TASK,                 /* Function that implements the task. */
-        "HOST BUS SERVICE",        /* Text name for the task. */
+        "HOST INTERFACE SERVICE",        /* Text name for the task. */
         10000,                      /* Stack size in words, not bytes. */
         (void*)this,                /* Parameter passed into the task. */
         1,           /* Priority at which the task is created. */
         &_task_handle                /* Used to pass out the created task's handle. */
     );
+}
+
+void HOST::enable_service(bool enable)
+{
+    _is_service_enabled = enable;
 }
 
 void HOST_TASK(void * parameters)
@@ -153,8 +159,11 @@ void HOST_TASK(void * parameters)
             parameters.goal_position[9],parameters.goal_position[10],parameters.goal_position[11]
         );
 
-        // control servo
-        servo.setPosition12Async(parameters.goal_position);
+        // update servo setpoint only if service is enabled
+        if(host->_is_service_enabled)
+        {
+            servo.setPosition12Async(parameters.goal_position);
+        }
 
         // flush RX FIFO
         uart_flush(host->_uart_port_num);  

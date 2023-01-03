@@ -168,6 +168,8 @@ enum {
     SERVO_STATUS_FAIL,
 };
 
+void SERVO_TASK(void * parameters);
+
 struct SERVO
 {
     SERVO();
@@ -176,8 +178,8 @@ struct SERVO
      *
      */
 
-    void enable();
-    void disable();
+    void enable_power(bool enable = true);
+    bool is_power_enabled() const;
 
     /* Sync API
      *
@@ -213,8 +215,6 @@ struct SERVO
 
     void soft_start();
 
-    bool isEnabled {false}; 
-
     /* ASYNC API 
      *
      * A task synchronise a setpoint/feedback database and control the servo BUS trafic
@@ -223,6 +223,9 @@ struct SERVO
      *
      */
     void start();
+
+    // async service enable
+    void enable_service(bool enable = true);
 
     void setPositionAsync(u8 servoID, u16 servoPosition);
     void setPosition12Async(u16 const servoPositions[]);    
@@ -239,8 +242,17 @@ struct SERVO
     void getSpeed12Async(s16 servoSpeeds[]);    
     void getLoad12Async(s16 servoLoads[]);    
 
-    // async service enable
-    void enableAsyncService(bool enable);
+protected:
+
+    bool _is_power_enabled {false}; 
+
+    /* ASYNC API 
+     *
+     * A task synchronise a setpoint/feedback database and control the servo BUS trafic
+     *
+     * Members functions allow changing setpoint (pos) and reading feedback (pos,speed,load)
+     *
+     */
 
     // internals
     void sync_all_goal_position();
@@ -251,8 +263,9 @@ struct SERVO
     SERVO_STATE state[12] {1,2,3,4,5,6,7,8,9,10,11,12}; // hard-coded ID list
 
     // background servo bus service
-    bool isSyncRunning {false};
+    bool _is_service_enabled {false};
     TaskHandle_t task_handle {NULL};
+    friend void SERVO_TASK(void * parameters);
 
     /* LOW LEVEL helpers
      *
