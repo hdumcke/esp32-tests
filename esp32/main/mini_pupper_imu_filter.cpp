@@ -8,7 +8,7 @@
 //----------------- Initialization ------------------- 
 
 float IMU_FILTER::updateTimer() {
-  int64_t change_time = uint32_t( esp_timer_get_time() - last_time );
+  uint32_t change_time = uint32_t( esp_timer_get_time() - last_time );
   last_time = esp_timer_get_time();
   return float(change_time)*1e-6;         
 }

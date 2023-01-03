@@ -1,8 +1,9 @@
-#include "mini_pupper_servos.h"
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
+
 #include <stdio.h>
 #include <string.h>
+
 #include "argtable3/argtable3.h"
 #include "esp_system.h"
 #include "esp_console.h"
@@ -12,10 +13,13 @@
 #include "esp_timer.h"
 #include "nvs.h"
 #include "nvs_flash.h"
-#include "mini_pupper_cmd.h"
 #include "imu_cmd.h"
 #include "cmd_system.h"
 #include "cmd_wifi.h"
+
+#include "mini_pupper_servos.h"
+#include "mini_pupper_cmd.h"
+#include "mini_pupper_app.h"
 
 static const char *TAG = "SERVOCMD";
 
@@ -291,19 +295,37 @@ static void register_mini_pupper_cmd_extended_menu(void)
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_extended_menu) );
 }
 
-static int mini_pupper_cmd_calibrate(int argc, char **argv)
+static int mini_pupper_cmd_calibrate_begin(int argc, char **argv)
 {
-    servo.calibrate();
+    state = STATE_CALIBRATION_START;
     return 0;
 }
 
-static void register_mini_pupper_cmd_calibrate(void)
+static void register_mini_pupper_cmd_calibrate_begin(void)
 {
     const esp_console_cmd_t cmd_calibrate = {
-        .command = "calibrate",
-        .help = "calibrate minin pupper",
+        .command = "calibrate-begin",
+        .help = "begin mini pupper calibration",
         .hint = NULL,
-        .func = &mini_pupper_cmd_calibrate,
+        .func = &mini_pupper_cmd_calibrate_begin,
+           .argtable = NULL
+    };
+    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_calibrate) );
+}
+
+static int mini_pupper_cmd_calibrate_end(int argc, char **argv)
+{
+    state = STATE_CALIBRATION_FINISH;
+    return 0;
+}
+
+static void register_mini_pupper_cmd_calibrate_end(void)
+{
+    const esp_console_cmd_t cmd_calibrate = {
+        .command = "calibrate-end",
+        .help = "end mini pupper calibration",
+        .hint = NULL,
+        .func = &mini_pupper_cmd_calibrate_end,
            .argtable = NULL
     };
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_calibrate) );
@@ -939,7 +961,8 @@ void register_mini_pupper_cmds(void)
 {
     register_mini_pupper_cmd_scan();
     register_mini_pupper_cmd_setID();
-    register_mini_pupper_cmd_calibrate();
+    register_mini_pupper_cmd_calibrate_begin();
+    register_mini_pupper_cmd_calibrate_end();
     register_mini_pupper_cmd_extended_menu();
 }
 

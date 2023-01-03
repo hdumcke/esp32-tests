@@ -507,70 +507,6 @@ int SERVO::setID(u8 servoID, u8 newID)
     return SERVO_STATUS_OK;
 }
 
-int SERVO::calibrate()
-{
-    // abort if servo not powered on
-    if(!_is_power_enabled) return SERVO_STATUS_FAIL;
-
-    // we have to suspend the host task during calibration
-    // where to find the task handle??
-   
-    // test writing calibration data 
-    ESP_LOGI(TAG, "Opening file");
-    FILE *f = fopen("/data/calibrate.txt", "wb");
-    if (f == NULL) {
-        ESP_LOGE(TAG, "Failed to open file for writing");
-        return SERVO_STATUS_OK;
-    }
-    fprintf(f, "written using ESP-IDF %s\n", esp_get_idf_version());
-    fclose(f);
-    ESP_LOGI(TAG, "File written");
-
-    // Open file for reading
-    ESP_LOGI(TAG, "Reading file");
-    f = fopen("/data/calibrate.txt", "rb");
-    if (f == NULL) {
-        ESP_LOGE(TAG, "Failed to open file for reading");
-        return SERVO_STATUS_OK;
-    }
-    char line[128];
-    fgets(line, sizeof(line), f);
-    fclose(f);
-    // strip newline
-    char *pos = strchr(line, '\n');
-    if (pos) {
-        *pos = '\0';
-    }
-    ESP_LOGI(TAG, "Read from file: '%s'", line);
-
-    // suspend sync service
-    enable_service(false);
-
-    // write low goal speed
-    for(auto & servo : state )
-    {
-        servo.goal_speed = 120;
-        int status = set_goal_speed(servo.ID,servo.goal_speed);
-        ESP_LOGD(TAG, "#%d spd:%d (status:%d)",servo.ID,servo.goal_speed,status);
-    }
-    // write goal position neutral
-    for(auto & servo : state )
-    {
-        servo.goal_position = 512; // TODO : from FLASH ?
-        int status = set_goal_position(servo.ID,servo.goal_position);
-        ESP_LOGD(TAG, "#%d pos:%d (status:%d)",servo.ID,servo.goal_position,status);
-    }
-    // wait a moment, servo moving
-    vTaskDelay(3000 / portTICK_PERIOD_MS);
-    for(auto & servo : state )
-    {
-        int status = disable_torque(servo.ID);
-        ESP_LOGD(TAG, "#%d disable_torque (status:%d)",servo.ID,status);
-    }
-    ESP_LOGI(TAG, "Servos are set to neutral position, you can now assemble the robot");
-
-    return SERVO_STATUS_OK;
-}
 
 void SERVO::setTorqueAsync(u8 servoID, u8 servoTorque)
 {
@@ -593,7 +529,7 @@ void SERVO::setTorque12Async(u8 const servoTorques[])
 void SERVO::setPositionAsync(u8 servoID, u16 servoPosition)
 {
     if(0<servoID && servoID<=12)
-        state[servoID-1].goal_position=servoPosition;
+        state[servoID-1].goal_position=servoPosition; // TODO : take in account calibration_offset and constrain from 0 to 1023 !
     
     // (re)start sync service
     enable_service();
@@ -602,10 +538,19 @@ void SERVO::setPositionAsync(u8 servoID, u16 servoPosition)
 void SERVO::setPosition12Async(u16 const servoPositions[])
 {
     for(size_t index=0;index<12;++index)
-        state[index].goal_position = servoPositions[index];
+        state[index].goal_position = servoPositions[index]; // TODO : take in account calibration_offset and constrain from 0 to 1023 !
     
     // (re)start sync service
     enable_service();
+}
+
+void SERVO::getGoalPosition12Async(u16 servoPositions[])
+{
+    // (re)start sync service
+    enable_service();
+
+    for(size_t index=0;index<12;++index)
+        servoPositions[index] = state[index].goal_position;
 }
 
 void SERVO::getPosition12Async(u16 servoPositions[])
@@ -1088,43 +1033,12 @@ int SERVO::check_reply_frame_no_parameter(u8 & ID)
     return SERVO_STATUS_OK;    
 }
 
-void SERVO::soft_start()
+void SERVO::setCalibration(s16 const offset[])
 {
-    // wait a moment, servo booting
-    vTaskDelay(100 / portTICK_PERIOD_MS);
-    // read present position 
-    for(auto & servo : state )
-    {
-        int status = get_position(servo.ID,servo.goal_position);
-        ESP_LOGD(TAG, "#%d pos:%d (status:%d)",servo.ID,servo.goal_position,status);
-    }
-    // write low goal speed
-    for(auto & servo : state )
-    {
-        servo.goal_speed = 120;
-        int status = set_goal_speed(servo.ID,servo.goal_speed);
-        ESP_LOGD(TAG, "#%d spd:%d (status:%d)",servo.ID,servo.goal_speed,status);
-    }
-    // write goal position neutral
-    for(auto & servo : state )
-    {
-        servo.goal_position = 512; // TODO : from FLASH ?
-        int status = set_goal_position(servo.ID,servo.goal_position);
-        ESP_LOGD(TAG, "#%d pos:%d (status:%d)",servo.ID,servo.goal_position,status);
-    }
-    // wait a moment, servo moving
-    vTaskDelay(3000 / portTICK_PERIOD_MS);
-    // write max goal speed
-    for(auto & servo : state )
-    {
-        servo.goal_speed = 0;
-        int status = set_goal_speed(servo.ID,servo.goal_speed);
-        ESP_LOGD(TAG, "#%d spd:%d (status:%d)",servo.ID,servo.goal_speed,status);
-    }
-    // read present position 
-    for(auto & servo : state )
-    {
-        int status = get_position(servo.ID,servo.goal_position);
-        ESP_LOGD(TAG, "#%d pos:%d (status:%d)",servo.ID,servo.goal_position,status);
-    }
+    memcpy(_calibration_offset,offset,12*sizeof(s16));
+}
+
+void SERVO::resetCalibration()
+{
+    memset(_calibration_offset,0,12*sizeof(s16));
 }

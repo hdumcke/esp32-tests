@@ -212,9 +212,8 @@ struct SERVO
 
     // advanced API
     int setID(u8 ID, u8 newID);
-    int calibrate();
-
-    void soft_start();
+    void setCalibration(s16 const offset[]);
+    void resetCalibration();
 
     /* ASYNC API 
      *
@@ -241,6 +240,8 @@ struct SERVO
     u8   getTemperatureAsync(u8 servoID);   // return 0 with SCS 0009 and SCS Generic (future functionality)
     u8   getMoveAsync(u8 servoID);          // return 0 with SCS 0009 and SCS Generic (future functionality)
     s16  getCurrentAsync(u8 servoID);       // return 0 with SCS 0009 and SCS Generic (future functionality)
+
+    void getGoalPosition12Async(u16 servoPositions[]);    
 
     void getPosition12Async(u16 servoPositions[]);    
     void getSpeed12Async(s16 servoSpeeds[]);    
@@ -288,6 +289,9 @@ protected:
     int check_reply_frame_no_parameter(u8 & ID);
 
     int uart_port_num {1};
+
+    // calibration data
+    s16 _calibration_offset[12] {0};
 };
 
 extern SERVO servo;
