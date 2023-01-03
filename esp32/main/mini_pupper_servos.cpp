@@ -8,6 +8,7 @@
 #include "driver/gpio.h"
 #include "hal/gpio_hal.h"
 #include "esp_log.h"
+#include <string.h>
 
 // reference :
 //https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/uart.html
@@ -96,7 +97,7 @@ int SERVO::ping(u8 ID)
     return check_reply_frame_no_parameter(ID);
 }
 
-int SERVO::recovery(u8 ID)
+int SERVO::reset(u8 ID)
 {
     // abort if servo not powered on
     if(!isEnabled) return SERVO_STATUS_FAIL;
@@ -501,19 +502,69 @@ int SERVO::setID(u8 servoID, u8 newID)
     return SERVO_STATUS_OK;
 }
 
-int SERVO::setStartPos(u8 servoID)
+int SERVO::calibrate()
 {
-    return set_goal_position(servoID, 0);
-}
+    // abort if servo not powered on
+    if(!isEnabled) return SERVO_STATUS_FAIL;
 
-int SERVO::setMidPos(u8 servoID)
-{
-    return set_goal_position(servoID, 512);
-}
+    // we have to suspend the host task during calibration
+    // where to find the task handle??
+   
+    // test writing calibration data 
+    ESP_LOGI(TAG, "Opening file");
+    FILE *f = fopen("/data/calibrate.txt", "wb");
+    if (f == NULL) {
+        ESP_LOGE(TAG, "Failed to open file for writing");
+        return SERVO_STATUS_OK;
+    }
+    fprintf(f, "written using ESP-IDF %s\n", esp_get_idf_version());
+    fclose(f);
+    ESP_LOGI(TAG, "File written");
 
-int SERVO::setEndPos(u8 servoID)
-{
-    return set_goal_position(servoID, 1023);
+    // Open file for reading
+    ESP_LOGI(TAG, "Reading file");
+    f = fopen("/data/calibrate.txt", "rb");
+    if (f == NULL) {
+        ESP_LOGE(TAG, "Failed to open file for reading");
+        return SERVO_STATUS_OK;
+    }
+    char line[128];
+    fgets(line, sizeof(line), f);
+    fclose(f);
+    // strip newline
+    char *pos = strchr(line, '\n');
+    if (pos) {
+        *pos = '\0';
+    }
+    ESP_LOGI(TAG, "Read from file: '%s'", line);
+
+    // suspend sync service
+    enableAsyncService(false);
+
+    // write low goal speed
+    for(auto & servo : state )
+    {
+        servo.goal_speed = 120;
+        int status = set_goal_speed(servo.ID,servo.goal_speed);
+        ESP_LOGD(TAG, "#%d spd:%d (status:%d)",servo.ID,servo.goal_speed,status);
+    }
+    // write goal position neutral
+    for(auto & servo : state )
+    {
+        servo.goal_position = 512; // TODO : from FLASH ?
+        int status = set_goal_position(servo.ID,servo.goal_position);
+        ESP_LOGD(TAG, "#%d pos:%d (status:%d)",servo.ID,servo.goal_position,status);
+    }
+    // wait a moment, servo moving
+    vTaskDelay(3000 / portTICK_PERIOD_MS);
+    for(auto & servo : state )
+    {
+        int status = disable_torque(servo.ID);
+        ESP_LOGD(TAG, "#%d disable_torque (status:%d)",servo.ID,status);
+    }
+    ESP_LOGI(TAG, "Servos are set to neutral position, you can now assemble the robot");
+
+    return SERVO_STATUS_OK;
 }
 
 void SERVO::setPositionAsync(u8 servoID, u16 servoPosition)
