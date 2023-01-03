@@ -2,4 +2,5 @@ cobs
 Pillow
 RPi.GPIO
 numpy
+playsound
 spidev
