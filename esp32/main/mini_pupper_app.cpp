@@ -9,9 +9,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "cmd_system.h"
-#include "cmd_wifi.h"
-
 #include "esp_system.h"
 #include "esp_timer.h"
 #include "esp_console.h"
@@ -22,8 +19,7 @@
 #include "nvs.h"
 #include "nvs_flash.h"
 
-#include "servo_cmd.h"
-#include "imu_cmd.h"
+#include "mini_pupper_cmd.h"
 
 #include "mini_pupper_servos.h"
 #include "mini_pupper_host.h"
@@ -32,8 +28,6 @@
 
 
 static const char* TAG = "MAIN";
-
-#if CONFIG_CONSOLE_STORE_HISTORY
 
 #define MOUNT_PATH "/data"
 #define HISTORY_PATH MOUNT_PATH "/history.txt"
@@ -53,7 +47,6 @@ static void initialize_filesystem(void)
         return;
     }
 }
-#endif // CONFIG_STORE_HISTORY
 
 static void initialize_nvs(void)
 {
@@ -74,20 +67,13 @@ extern "C" void app_main(void)
 
     initialize_nvs();
 
-#if CONFIG_CONSOLE_STORE_HISTORY
     initialize_filesystem();
     repl_config.history_save_path = HISTORY_PATH;
     ESP_LOGI(TAG, "Command history enabled");
-#else
-    ESP_LOGI(TAG, "Command history disabled");
-#endif
 
     /* Register commands */
     esp_console_register_help_command();
-    register_servo_cmds();
-    register_imu_cmds();
-    register_system();
-    register_wifi();
+    register_mini_pupper_cmds();
 
 #if defined(CONFIG_ESP_CONSOLE_UART_DEFAULT) || defined(CONFIG_ESP_CONSOLE_UART_CUSTOM)
     esp_console_dev_uart_config_t hw_config = ESP_CONSOLE_DEV_UART_CONFIG_DEFAULT();

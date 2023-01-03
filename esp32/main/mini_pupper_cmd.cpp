@@ -12,6 +12,10 @@
 #include "esp_timer.h"
 #include "nvs.h"
 #include "nvs_flash.h"
+#include "mini_pupper_cmd.h"
+#include "imu_cmd.h"
+#include "cmd_system.h"
+#include "cmd_wifi.h"
 
 static const char *TAG = "SERVOCMD";
 
@@ -54,43 +58,43 @@ static struct
  *
  */
 
-static int servo_cmd_disable(int argc, char **argv)
+static int mini_pupper_cmd_disable(int argc, char **argv)
 {
     servo.disable();
     return 0;
 }
 
-static void register_servo_cmd_disable(void)
+static void register_mini_pupper_cmd_disable(void)
 {
     const esp_console_cmd_t cmd_servo_disable = {
         .command = "servo-disable",
         .help = "disabing the servos",
         .hint = NULL,
-        .func = &servo_cmd_disable,
+        .func = &mini_pupper_cmd_disable,
         .argtable = NULL
     };
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_servo_disable) );
 }
 
-static int servo_cmd_enable(int argc, char **argv)
+static int mini_pupper_cmd_enable(int argc, char **argv)
 {
     servo.enable();
     return 0;
 }
 
-static void register_servo_cmd_enable(void)
+static void register_mini_pupper_cmd_enable(void)
 {
     const esp_console_cmd_t cmd_servo_enable = {
         .command = "servo-enable",
-        .help = "disabing the servos",
+        .help = "enabing the servos",
         .hint = NULL,
-        .func = &servo_cmd_enable,
+        .func = &mini_pupper_cmd_enable,
 	.argtable = NULL
     };
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_servo_enable) );
 }
 
-static int servo_cmd_isEnabled(int argc, char **argv)
+static int mini_pupper_cmd_isEnabled(int argc, char **argv)
 {
     if(servo.isEnabled) {
         printf("servos are enabled\r\n");
@@ -101,13 +105,13 @@ static int servo_cmd_isEnabled(int argc, char **argv)
     return 0;
 }
 
-static void register_servo_cmd_isEnabled(void)
+static void register_mini_pupper_cmd_isEnabled(void)
 {
     const esp_console_cmd_t cmd_servo_isEnabled = {
         .command = "servo-isEnabled",
         .help = "check if the servos are enabled",
         .hint = NULL,
-        .func = &servo_cmd_isEnabled,
+        .func = &mini_pupper_cmd_isEnabled,
         .argtable = NULL
     };
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_servo_isEnabled) );
@@ -118,7 +122,7 @@ static void register_servo_cmd_isEnabled(void)
  *
  */
 
-static int servo_cmd_disableTorque(int argc, char **argv)
+static int mini_pupper_cmd_disableTorque(int argc, char **argv)
 {
     int nerrors = arg_parse(argc, argv, (void **)&servo_id_args);
     if (nerrors != 0) {
@@ -142,7 +146,7 @@ static int servo_cmd_disableTorque(int argc, char **argv)
     return 0;
 }
 
-static void register_servo_cmd_disableTorque(void)
+static void register_mini_pupper_cmd_disableTorque(void)
 {
     servo_id_args.servo_id = arg_int1(NULL, "id", "<n>", "Servo ID");
     servo_id_args.end = arg_end(2);
@@ -150,14 +154,14 @@ static void register_servo_cmd_disableTorque(void)
         .command = "servo-disableTorque",
         .help = "disable torque",
         .hint = "--id <servoID>",
-        .func = &servo_cmd_disableTorque,
+        .func = &mini_pupper_cmd_disableTorque,
         .argtable = &servo_id_args
     };
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_servo) );
 }
 
 
-static int servo_cmd_enableTorque(int argc, char **argv)
+static int mini_pupper_cmd_enableTorque(int argc, char **argv)
 {
     int nerrors = arg_parse(argc, argv, (void **)&servo_id_args);
     if (nerrors != 0) {
@@ -181,7 +185,7 @@ static int servo_cmd_enableTorque(int argc, char **argv)
     return 0;
 }
 
-static void register_servo_cmd_enableTorque(void)
+static void register_mini_pupper_cmd_enableTorque(void)
 {
     servo_id_args.servo_id = arg_int1(NULL, "id", "<n>", "Servo ID");
     servo_id_args.end = arg_end(2);
@@ -189,14 +193,14 @@ static void register_servo_cmd_enableTorque(void)
         .command = "servo-enableTorque",
         .help = "enable torque",
         .hint = "--id <servoID>",
-        .func = &servo_cmd_enableTorque,
+        .func = &mini_pupper_cmd_enableTorque,
         .argtable = &servo_id_args
     };
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_servo) );
 }
 
 
-static int servo_cmd_isTorqueEnabled(int argc, char **argv)
+static int mini_pupper_cmd_isTorqueEnabled(int argc, char **argv)
 {
     int nerrors = arg_parse(argc, argv, (void **)&servo_id_args);
     if (nerrors != 0) {
@@ -224,7 +228,7 @@ static int servo_cmd_isTorqueEnabled(int argc, char **argv)
     return 0;
 }
 
-static void register_servo_cmd_isTorqueEnabled(void)
+static void register_mini_pupper_cmd_isTorqueEnabled(void)
 {
     servo_id_args.servo_id = arg_int1(NULL, "id", "<n>", "Servo ID");
     servo_id_args.end = arg_end(2);
@@ -232,7 +236,7 @@ static void register_servo_cmd_isTorqueEnabled(void)
         .command = "servo-isTorqueEnable",
         .help = "check torque switch",
         .hint = "--id <servoID>",
-        .func = &servo_cmd_isTorqueEnabled,
+        .func = &mini_pupper_cmd_isTorqueEnabled,
         .argtable = &servo_id_args
     };
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_servo) );
@@ -243,7 +247,7 @@ static void register_servo_cmd_isTorqueEnabled(void)
  *
  */
 
-static int servo_cmd_scan(int argc, char **argv)
+static int mini_pupper_cmd_scan(int argc, char **argv)
 {
     printf("Servos on the bus:\r\n");
     for(u8 i = 1; i<13; i++)
@@ -257,133 +261,52 @@ static int servo_cmd_scan(int argc, char **argv)
     return 0;
 }
 
-static void register_servo_cmd_scan(void)
+static void register_mini_pupper_cmd_scan(void)
 {
     const esp_console_cmd_t cmd_servo_scan = {
         .command = "servo-scan",
         .help = "scan the bus for servos",
         .hint = NULL,
-        .func = &servo_cmd_scan,
+        .func = &mini_pupper_cmd_scan,
 	   .argtable = NULL
     };
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_servo_scan) );
 }
 
-static int servo_cmd_setStartPos(int argc, char **argv)
+static int mini_pupper_cmd_extended_menu(int argc, char **argv)
 {
-    int nerrors = arg_parse(argc, argv, (void **)&servo_id_args);
-    if (nerrors != 0) {
-        arg_print_errors(stderr, servo_id_args.end, argv[0]);
-        return 0;
-    }
-
-    /* Check servoID "--id" option */
-    int servo_id = servo_id_args.servo_id->ival[0];
-    if(servo_id<0) {
-        printf("Invalid servo ID\r\n");
-        return 0;
-    }
-    if( servo_id>12 && servo_id != 254 ) {
-        printf("Invalid servo ID\r\n");
-        return 0;
-    }
-    if( servo_id == 254) {
-        printf("Warning: your servo ID is the broadcast ID\r\n");
-    }
-    servo.setStartPos((u8)servo_id);
+    register_mini_pupper_extended_cmds();
     return 0;
 }
 
-static void register_servo_cmd_setStartPos(void)
+static void register_mini_pupper_cmd_extended_menu(void)
 {
-    servo_id_args.servo_id = arg_int1(NULL, "id", "<n>", "Servo ID");
-    servo_id_args.end = arg_end(2);
-    const esp_console_cmd_t cmd_servo_setStartPos = {
-        .command = "servo-setStartPos",
-        .help = "rotate the servos to the start position",
-        .hint = "--id <servoID>",
-        .func = &servo_cmd_setStartPos,
-	.argtable = NULL
+    const esp_console_cmd_t cmd_extended_menu = {
+        .command = "extended-menu",
+        .help = "enable extended menu",
+        .hint = NULL,
+        .func = &mini_pupper_cmd_extended_menu,
+           .argtable = NULL
     };
-    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_servo_setStartPos) );
+    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_extended_menu) );
 }
 
-static int servo_cmd_setMidPos(int argc, char **argv)
+static int mini_pupper_cmd_calibrate(int argc, char **argv)
 {
-    int nerrors = arg_parse(argc, argv, (void **)&servo_id_args);
-    if (nerrors != 0) {
-        arg_print_errors(stderr, servo_id_args.end, argv[0]);
-        return 0;
-    }
-
-    /* Check servoID "--id" option */
-    int servo_id = servo_id_args.servo_id->ival[0];
-    if(servo_id<0) {
-        printf("Invalid servo ID\r\n");
-        return 0;
-    }
-    if( servo_id>12 && servo_id != 254 ) {
-        printf("Invalid servo ID\r\n");
-        return 0;
-    }
-    if( servo_id == 254) {
-        printf("Warning: your servo ID is the broadcast ID\r\n");
-    }
-    servo.setMidPos((u8)servo_id);
+    servo.calibrate();
     return 0;
 }
 
-static void register_servo_cmd_setMidPos(void)
+static void register_mini_pupper_cmd_calibrate(void)
 {
-    servo_id_args.servo_id = arg_int1(NULL, "id", "<n>", "Servo ID");
-    servo_id_args.end = arg_end(2);
-    const esp_console_cmd_t cmd_servo_setMidPos = {
-        .command = "servo-setMidPos",
-        .help = "rotate the servos to the middle position",
-        .hint = "--id <servoID>",
-        .func = &servo_cmd_setMidPos,
-	.argtable = NULL
+    const esp_console_cmd_t cmd_calibrate = {
+        .command = "calibrate",
+        .help = "calibrate minin pupper",
+        .hint = NULL,
+        .func = &mini_pupper_cmd_calibrate,
+           .argtable = NULL
     };
-    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_servo_setMidPos) );
-}
-
-static int servo_cmd_setEndPos(int argc, char **argv)
-{
-    int nerrors = arg_parse(argc, argv, (void **)&servo_id_args);
-    if (nerrors != 0) {
-        arg_print_errors(stderr, servo_id_args.end, argv[0]);
-        return 0;
-    }
-
-    /* Check servoID "--id" option */
-    int servo_id = servo_id_args.servo_id->ival[0];
-    if(servo_id<0) {
-        printf("Invalid servo ID\r\n");
-        return 0;
-    }
-    if( servo_id>12 && servo_id != 254 ) {
-        printf("Invalid servo ID\r\n");
-        return 0;
-    }
-    if( servo_id == 254) {
-        printf("Warning: your servo ID is the broadcast ID\r\n");
-    }
-    servo.setEndPos((u8)servo_id);
-    return 0;
-}
-
-static void register_servo_cmd_setEndPos(void)
-{
-    servo_id_args.servo_id = arg_int1(NULL, "id", "<n>", "Servo ID");
-    servo_id_args.end = arg_end(2);
-    const esp_console_cmd_t cmd_servo_setEndPos = {
-        .command = "servo-setEndPos",
-        .help = "rotate the servos to the end position",
-        .hint = "--id <servoID>",
-        .func = &servo_cmd_setEndPos,
-	.argtable = NULL
-    };
-    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_servo_setEndPos) );
+    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_calibrate) );
 }
 
 static struct {
@@ -392,7 +315,7 @@ static struct {
     struct arg_end *end;
 } servo_pos_args;
 
-static int servo_cmd_setPosition(int argc, char **argv)
+static int mini_pupper_cmd_setPosition(int argc, char **argv)
 {
     int nerrors = arg_parse(argc, argv, (void **)&servo_pos_args);
     if (nerrors != 0) {
@@ -424,7 +347,7 @@ static int servo_cmd_setPosition(int argc, char **argv)
     return 0;
 }
 
-static void register_servo_cmd_setPosition(void)
+static void register_mini_pupper_cmd_setPosition(void)
 {
     servo_pos_args.servo_id = arg_int1(NULL, "id", "<n>", "Servo ID");
     servo_pos_args.servo_pos = arg_int1(NULL, "pos", "<n>", "Servo Position");
@@ -433,13 +356,13 @@ static void register_servo_cmd_setPosition(void)
         .command = "servo-setPosition",
         .help = "rotate the servos to a given position",
         .hint = "--id <servoID> --pos <position>",
-        .func = &servo_cmd_setPosition,
+        .func = &mini_pupper_cmd_setPosition,
 	.argtable = NULL
     };
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_servo_setPosition) );
 }
 
-static int servo_cmd_setPosition12(int argc, char **argv)
+static int mini_pupper_cmd_setPosition12(int argc, char **argv)
 {
     int nerrors = arg_parse(argc, argv, (void **)&servo_pos12_args);
     if (nerrors != 0) {
@@ -458,7 +381,7 @@ static int servo_cmd_setPosition12(int argc, char **argv)
     return 0;
 }
 
-static void register_servo_cmd_setPosition12(void)
+static void register_mini_pupper_cmd_setPosition12(void)
 {
     servo_pos12_args.servo_pos12 = arg_intn(NULL,NULL,"<pos>",12,12,"Servo position array (x12)");
     servo_pos12_args.end = arg_end(1);
@@ -466,7 +389,7 @@ static void register_servo_cmd_setPosition12(void)
         .command = "servo-setPosition12",
         .help = "rotate the servos to a given position",
         .hint = "<pos> (x12)",
-        .func = &servo_cmd_setPosition12,
+        .func = &mini_pupper_cmd_setPosition12,
         .argtable = &servo_pos12_args
     };
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_servo_setPosition12) );
@@ -478,7 +401,7 @@ static struct {
     struct arg_end *end;
 } servo_newid_args;
 
-static int servo_cmd_setID(int argc, char **argv)
+static int mini_pupper_cmd_setID(int argc, char **argv)
 {
     int nerrors = arg_parse(argc, argv, (void **)&servo_newid_args);
     if (nerrors != 0) {
@@ -507,7 +430,7 @@ static int servo_cmd_setID(int argc, char **argv)
     return 0;
 }
 
-static void register_servo_cmd_setID(void)
+static void register_mini_pupper_cmd_setID(void)
 {
     servo_newid_args.servo_id = arg_int1(NULL, "id", "<n>", "Servo ID");
     servo_newid_args.servo_newid = arg_int1(NULL, "newid", "<n>", "New Servo ID");
@@ -516,13 +439,13 @@ static void register_servo_cmd_setID(void)
         .command = "servo-setID",
         .help = "Change the servo ID",
         .hint = "--id <servoID> --newid <new servoID>",
-        .func = &servo_cmd_setID,
+        .func = &mini_pupper_cmd_setID,
 	   .argtable = NULL
     };
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_servo_setID) );
 }
 
-static int servo_cmd_getPosition(int argc, char **argv)
+static int mini_pupper_cmd_getPosition(int argc, char **argv)
 {
     int nerrors = arg_parse(argc, argv, (void **)&servo_id_loop_args);
     if (nerrors != 0) {
@@ -550,7 +473,7 @@ static int servo_cmd_getPosition(int argc, char **argv)
     return 0;
 }
 
-static void register_servo_cmd_getPosition(void)
+static void register_mini_pupper_cmd_getPosition(void)
 {
     servo_id_loop_args.servo_id = arg_int1(NULL, "id", "<n>", "Servo ID");
     servo_id_loop_args.loop = arg_int1(NULL, "loop", "<n>", "loop <n> times");
@@ -559,13 +482,13 @@ static void register_servo_cmd_getPosition(void)
         .command = "servo-getPosition",
         .help = "return position",
         .hint = "--id <servoID> --loop <n>",
-        .func = &servo_cmd_getPosition,
+        .func = &mini_pupper_cmd_getPosition,
         .argtable = &servo_id_loop_args
     };
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_servo) );
 }
 
-static int servo_cmd_getSpeed(int argc, char **argv)
+static int mini_pupper_cmd_getSpeed(int argc, char **argv)
 {
     int nerrors = arg_parse(argc, argv, (void **)&servo_id_loop_args);
     if (nerrors != 0) {
@@ -593,7 +516,7 @@ static int servo_cmd_getSpeed(int argc, char **argv)
     return 0;
 }
 
-static void register_servo_cmd_getSpeed(void)
+static void register_mini_pupper_cmd_getSpeed(void)
 {
     servo_id_loop_args.servo_id = arg_int1(NULL, "id", "<n>", "Servo ID");
     servo_id_loop_args.loop = arg_int1(NULL, "loop", "<n>", "loop <n> times");
@@ -602,13 +525,13 @@ static void register_servo_cmd_getSpeed(void)
         .command = "servo-getSpeed",
         .help = "return speed",
         .hint = "--id <servoID> --loop <n>",
-        .func = &servo_cmd_getSpeed,
+        .func = &mini_pupper_cmd_getSpeed,
         .argtable = NULL
     };
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_servo_getSpeed) );
 }
 
-static int servo_cmd_getLoad(int argc, char **argv)
+static int mini_pupper_cmd_getLoad(int argc, char **argv)
 {
     int nerrors = arg_parse(argc, argv, (void **)&servo_id_loop_args);
     if (nerrors != 0) {
@@ -636,7 +559,7 @@ static int servo_cmd_getLoad(int argc, char **argv)
     return 0;
 }
 
-static void register_servo_cmd_getLoad(void)
+static void register_mini_pupper_cmd_getLoad(void)
 {
     servo_id_loop_args.servo_id = arg_int1(NULL, "id", "<n>", "Servo ID");
     servo_id_loop_args.loop = arg_int1(NULL, "loop", "<n>", "loop <n> times");
@@ -645,13 +568,13 @@ static void register_servo_cmd_getLoad(void)
         .command = "servo-getLoad",
         .help = "return load",
         .hint = "--id <servoID> --loop <n>",
-        .func = &servo_cmd_getLoad,
+        .func = &mini_pupper_cmd_getLoad,
         .argtable = NULL
     };
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_servo_getLoad) );
 }
 
-static int servo_cmd_getVoltage(int argc, char **argv)
+static int mini_pupper_cmd_getVoltage(int argc, char **argv)
 {
     int nerrors = arg_parse(argc, argv, (void **)&servo_id_loop_args);
     if (nerrors != 0) {
@@ -679,7 +602,7 @@ static int servo_cmd_getVoltage(int argc, char **argv)
     return 0;
 }
 
-static void register_servo_cmd_getVoltage(void)
+static void register_mini_pupper_cmd_getVoltage(void)
 {
     servo_id_loop_args.servo_id = arg_int1(NULL, "id", "<n>", "Servo ID");
     servo_id_loop_args.loop = arg_int1(NULL, "loop", "<n>", "loop <n> times");
@@ -688,13 +611,13 @@ static void register_servo_cmd_getVoltage(void)
         .command = "servo-getVoltage",
         .help = "return voltage",
         .hint = "--id <servoID> --loop <n>",
-        .func = &servo_cmd_getVoltage,
+        .func = &mini_pupper_cmd_getVoltage,
         .argtable = NULL
     };
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_servo_getVoltage) );
 }
 
-static int servo_cmd_getTemperature(int argc, char **argv)
+static int mini_pupper_cmd_getTemperature(int argc, char **argv)
 {
     int nerrors = arg_parse(argc, argv, (void **)&servo_id_loop_args);
     if (nerrors != 0) {
@@ -722,7 +645,7 @@ static int servo_cmd_getTemperature(int argc, char **argv)
     return 0;
 }
 
-static void register_servo_cmd_getTemperature(void)
+static void register_mini_pupper_cmd_getTemperature(void)
 {
     servo_id_loop_args.servo_id = arg_int1(NULL, "id", "<n>", "Servo ID");
     servo_id_loop_args.loop = arg_int1(NULL, "loop", "<n>", "loop <n> times");
@@ -731,13 +654,13 @@ static void register_servo_cmd_getTemperature(void)
         .command = "servo-getTemperature",
         .help = "return temperature",
         .hint = "--id <servoID> --loop <n>",
-        .func = &servo_cmd_getTemperature,
+        .func = &mini_pupper_cmd_getTemperature,
         .argtable = NULL
     };
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_servo_getTemperature) );
 }
 
-static int servo_cmd_getMove(int argc, char **argv)
+static int mini_pupper_cmd_getMove(int argc, char **argv)
 {
     int nerrors = arg_parse(argc, argv, (void **)&servo_id_loop_args);
     if (nerrors != 0) {
@@ -765,7 +688,7 @@ static int servo_cmd_getMove(int argc, char **argv)
     return 0;
 }
 
-static void register_servo_cmd_getMove(void)
+static void register_mini_pupper_cmd_getMove(void)
 {
     servo_id_loop_args.servo_id = arg_int1(NULL, "id", "<n>", "Servo ID");
     servo_id_loop_args.loop = arg_int1(NULL, "loop", "<n>", "loop <n> times");
@@ -774,13 +697,13 @@ static void register_servo_cmd_getMove(void)
         .command = "servo-getMove",
         .help = "return move",
         .hint = "--id <servoID> --loop <n>",
-        .func = &servo_cmd_getMove,
+        .func = &mini_pupper_cmd_getMove,
         .argtable = NULL
     };
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_servo_getMove) );
 }
 
-static int servo_cmd_getCurrent(int argc, char **argv)
+static int mini_pupper_cmd_getCurrent(int argc, char **argv)
 {
     int nerrors = arg_parse(argc, argv, (void **)&servo_id_loop_args);
     if (nerrors != 0) {
@@ -808,7 +731,7 @@ static int servo_cmd_getCurrent(int argc, char **argv)
     return 0;
 }
 
-static void register_servo_cmd_getCurrent(void)
+static void register_mini_pupper_cmd_getCurrent(void)
 {
     servo_id_loop_args.servo_id = arg_int1(NULL, "id", "<n>", "Servo ID");
     servo_id_loop_args.loop = arg_int1(NULL, "loop", "<n>", "loop <n> times");
@@ -817,13 +740,13 @@ static void register_servo_cmd_getCurrent(void)
         .command = "servo-getCurrent",
         .help = "return current",
         .hint = "--id <servoID> --loop <n>",
-        .func = &servo_cmd_getCurrent,
+        .func = &mini_pupper_cmd_getCurrent,
         .argtable = NULL
     };
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_servo_getCurrent) );
 }
 
-static int servo_cmd_setPositionAsync(int argc, char **argv)
+static int mini_pupper_cmd_setPositionAsync(int argc, char **argv)
 {
     int nerrors = arg_parse(argc, argv, (void **)&servo_pos_args);
     if (nerrors != 0) {
@@ -855,7 +778,7 @@ static int servo_cmd_setPositionAsync(int argc, char **argv)
     return 0;
 }
 
-static void register_servo_cmd_setPositionAsync(void)
+static void register_mini_pupper_cmd_setPositionAsync(void)
 {
     servo_pos_args.servo_id = arg_int1(NULL, "id", "<n>", "Servo ID");
     servo_pos_args.servo_pos = arg_int1(NULL, "pos", "<n>", "Servo Position");
@@ -864,14 +787,14 @@ static void register_servo_cmd_setPositionAsync(void)
         .command = "servo-setPositionAsync",
         .help = "rotate the servos to a given position",
         .hint = "--id <servoID> --pos <position>",
-        .func = &servo_cmd_setPositionAsync,
+        .func = &mini_pupper_cmd_setPositionAsync,
         .argtable = &servo_pos_args
     };
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_servo_setPosition) );
 }
 
 
-static int servo_cmd_setPosition12Async(int argc, char **argv)
+static int mini_pupper_cmd_setPosition12Async(int argc, char **argv)
 {
     int nerrors = arg_parse(argc, argv, (void **)&servo_pos12_args);
     if (nerrors != 0) {
@@ -890,7 +813,7 @@ static int servo_cmd_setPosition12Async(int argc, char **argv)
     return 0;
 }
 
-static void register_servo_cmd_setPosition12Async(void)
+static void register_mini_pupper_cmd_setPosition12Async(void)
 {
     servo_pos12_args.servo_pos12 = arg_intn(NULL,NULL,"<pos>",12,12,"Servo position array (x12)");
     servo_pos12_args.end = arg_end(1);
@@ -898,13 +821,13 @@ static void register_servo_cmd_setPosition12Async(void)
         .command = "servo-setPosition12Async",
         .help = "rotate the servos to a given position",
         .hint = "<pos> (x12)",
-        .func = &servo_cmd_setPosition12Async,
+        .func = &mini_pupper_cmd_setPosition12Async,
         .argtable = &servo_pos12_args
     };
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_servo_setPosition12) );
 }
 
-static int servo_cmd_getPositionAsync(int argc, char **argv)
+static int mini_pupper_cmd_getPositionAsync(int argc, char **argv)
 {
     int nerrors = arg_parse(argc, argv, (void **)&servo_id_args);
     if (nerrors != 0) {
@@ -926,7 +849,7 @@ static int servo_cmd_getPositionAsync(int argc, char **argv)
     return 0;
 }
 
-static void register_servo_cmd_getPositionAsync(void)
+static void register_mini_pupper_cmd_getPositionAsync(void)
 {
     servo_id_args.servo_id = arg_int1(NULL, "id", "<n>", "Servo ID");
     servo_id_args.end = arg_end(2);
@@ -934,13 +857,13 @@ static void register_servo_cmd_getPositionAsync(void)
         .command = "servo-getPositionAsync",
         .help = "return position",
         .hint = "--id <servoID>",
-        .func = &servo_cmd_getPositionAsync,
+        .func = &mini_pupper_cmd_getPositionAsync,
         .argtable = &servo_id_args
     };
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_servo_ReadPos) );
 }
 
-static int servo_cmd_getSpeedAsync(int argc, char **argv)
+static int mini_pupper_cmd_getSpeedAsync(int argc, char **argv)
 {
     int nerrors = arg_parse(argc, argv, (void **)&servo_id_args);
     if (nerrors != 0) {
@@ -962,7 +885,7 @@ static int servo_cmd_getSpeedAsync(int argc, char **argv)
     return 0;
 }
 
-static void register_servo_cmd_getSpeedAsync(void)
+static void register_mini_pupper_cmd_getSpeedAsync(void)
 {
     servo_id_args.servo_id = arg_int1(NULL, "id", "<n>", "Servo ID");
     servo_id_args.end = arg_end(2);
@@ -970,13 +893,13 @@ static void register_servo_cmd_getSpeedAsync(void)
         .command = "servo-getSpeedAsync",
         .help = "return speed",
         .hint = "--id <servoID>",
-        .func = &servo_cmd_getSpeedAsync,
+        .func = &mini_pupper_cmd_getSpeedAsync,
         .argtable = &servo_id_args
     };
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_servo_ReadVel) );
 }
 
-static int servo_cmd_getLoadAsync(int argc, char **argv)
+static int mini_pupper_cmd_getLoadAsync(int argc, char **argv)
 {
     int nerrors = arg_parse(argc, argv, (void **)&servo_id_args);
     if (nerrors != 0) {
@@ -998,7 +921,7 @@ static int servo_cmd_getLoadAsync(int argc, char **argv)
     return 0;
 }
 
-static void register_servo_cmd_getLoadAsync(void)
+static void register_mini_pupper_cmd_getLoadAsync(void)
 {
     servo_id_args.servo_id = arg_int1(NULL, "id", "<n>", "Servo ID");
     servo_id_args.end = arg_end(2);
@@ -1006,37 +929,43 @@ static void register_servo_cmd_getLoadAsync(void)
         .command = "servo-getLoadAsync",
         .help = "return load",
         .hint = "--id <servoID>",
-        .func = &servo_cmd_getLoadAsync,
+        .func = &mini_pupper_cmd_getLoadAsync,
         .argtable = &servo_id_args
     };
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_servo_getLoad) );
 }
 
-void register_servo_cmds(void)
+void register_mini_pupper_cmds(void)
 {
-    register_servo_cmd_disable();
-    register_servo_cmd_enable();
-    register_servo_cmd_isEnabled();
-    register_servo_cmd_disableTorque();
-    register_servo_cmd_enableTorque();
-    register_servo_cmd_isTorqueEnabled();
-    register_servo_cmd_scan();
-    register_servo_cmd_setStartPos();
-    register_servo_cmd_setMidPos();
-    register_servo_cmd_setEndPos();
-    register_servo_cmd_setPosition();
-    register_servo_cmd_setPosition12();
-    register_servo_cmd_setID();
-    register_servo_cmd_getPosition();
-    register_servo_cmd_getSpeed();
-    register_servo_cmd_getLoad();
-    register_servo_cmd_getVoltage();
-    register_servo_cmd_getTemperature();
-    register_servo_cmd_getMove();
-    register_servo_cmd_getCurrent();
-    register_servo_cmd_setPositionAsync();
-    register_servo_cmd_setPosition12Async();
-    register_servo_cmd_getPositionAsync();
-    register_servo_cmd_getSpeedAsync();
-    register_servo_cmd_getLoadAsync();
+    register_mini_pupper_cmd_scan();
+    register_mini_pupper_cmd_setID();
+    register_mini_pupper_cmd_calibrate();
+    register_mini_pupper_cmd_extended_menu();
+}
+
+void register_mini_pupper_extended_cmds(void)
+{
+    register_mini_pupper_cmd_disable();
+    register_mini_pupper_cmd_enable();
+    register_mini_pupper_cmd_isEnabled();
+    register_mini_pupper_cmd_disableTorque();
+    register_mini_pupper_cmd_enableTorque();
+    register_mini_pupper_cmd_isTorqueEnabled();
+    register_mini_pupper_cmd_setPosition();
+    register_mini_pupper_cmd_setPosition12();
+    register_mini_pupper_cmd_getPosition();
+    register_mini_pupper_cmd_getSpeed();
+    register_mini_pupper_cmd_getLoad();
+    register_mini_pupper_cmd_getVoltage();
+    register_mini_pupper_cmd_getTemperature();
+    register_mini_pupper_cmd_getMove();
+    register_mini_pupper_cmd_getCurrent();
+    register_mini_pupper_cmd_setPositionAsync();
+    register_mini_pupper_cmd_setPosition12Async();
+    register_mini_pupper_cmd_getPositionAsync();
+    register_mini_pupper_cmd_getSpeedAsync();
+    register_mini_pupper_cmd_getLoadAsync();
+    register_imu_cmds();
+    register_system();
+    register_wifi();
 }

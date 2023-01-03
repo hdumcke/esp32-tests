@@ -187,7 +187,7 @@ struct SERVO
 
     // single servo API
     int ping(u8 ID);
-    int recovery(u8 ID);
+    int reset(u8 ID);
     int enable_torque(u8 ID = 0xFE);  // not param means ALL servo
     int disable_torque(u8 ID = 0xFE); // not param means ALL servo
     int is_torque_enable(u8 ID, u8 & enable);
@@ -209,13 +209,9 @@ struct SERVO
 
     // advanced API
     int setID(u8 ID, u8 newID);
+    int calibrate();
 
     void soft_start();
-
-    // deprecated API
-    int setStartPos(u8 servoID);
-    int setMidPos(u8 servoID);
-    int setEndPos(u8 servoID);
 
     bool isEnabled {false}; 
 
