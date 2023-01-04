@@ -162,6 +162,8 @@ struct SERVO_STATE
     u8 present_temperature  {0};
     u8 present_move         {0};
     s16 present_current     {0};
+    // calibration data
+    s16 calibration_offset  {0}; // default offset
 };
 
 enum {
@@ -290,8 +292,9 @@ protected:
 
     int uart_port_num {1};
 
-    // calibration data
-    s16 _calibration_offset[12] {0};
+    // calibration helper
+    u16 raw_to_calibrated_position(u16 raw_position, s16 calibration_offset) const;
+    u16 calibrated_position(u16 calibrated_position, s16 calibration_offset) const;
 };
 
 extern SERVO servo;

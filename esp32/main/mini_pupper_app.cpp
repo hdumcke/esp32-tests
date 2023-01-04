@@ -26,8 +26,9 @@
 #include "mini_pupper_imu.h"
 #include "mini_pupper_power.h"
 
-
 static const char* TAG = "MAIN";
+
+static u16 const REF_ZERO_POSITION {512}; // Hard-coded REF/ZERO position for calibration (0..1023). TODO : from Flash ?
 
 #define MOUNT_PATH "/data"
 #define HISTORY_PATH MOUNT_PATH "/history.txt"
@@ -118,6 +119,38 @@ extern "C" void app_main(void)
     // start SERVO task, SERVO not powered, service disabled at start-up.
     servo.start();
     ESP_LOGI(TAG, "Servo control & feedback service started, but disabled.");
+
+    // read calibration data from flash
+    {
+        // save to flash
+        FILE * f = fopen("/data/calibrate.txt", "r");
+        if (f == NULL)
+        {
+            ESP_LOGE(TAG, "Failed to open calibration file for reading");
+            ESP_LOGI(TAG, "Default calibration : 0 0 0 0 0 0 0 0 0 0 0 0");
+            // apply zero offset
+            servo.resetCalibration();
+        }
+        if(f)
+        {
+            s16 servoOffsets[12] {0};
+            for(size_t index=0; index<12; ++ index)
+            {
+                int data {0};
+                fscanf(f,"%d\n", &data);
+                servoOffsets[index] = data;
+            }
+            fclose(f);
+            ESP_LOGI(TAG, "Calibration read : %d %d %d %d %d %d %d %d %d %d %d %d",
+                servoOffsets[0],servoOffsets[1],servoOffsets[2],
+                servoOffsets[3],servoOffsets[4],servoOffsets[5],
+                servoOffsets[6],servoOffsets[7],servoOffsets[8],
+                servoOffsets[9],servoOffsets[10],servoOffsets[11]
+            );            
+            // apply offset
+            servo.setCalibration(servoOffsets);
+        }
+    }    
 
     // robot loop
     ESP_LOGI(TAG, "STATE_IDLE.");
@@ -286,7 +319,7 @@ extern "C" void app_main(void)
                 // update positions to ZERO/REF position
                 u16 servoPositions[12] {0}; 
                 for(auto & position : servoPositions)
-                    position = 512; // TODO : from FLASH ?
+                    position = REF_ZERO_POSITION;
                 servo.setPosition12Async(servoPositions);
                 servo.setTorque12Async(servoTorquesON);   
                 vTaskDelay(1000 / portTICK_PERIOD_MS);
@@ -338,15 +371,33 @@ extern "C" void app_main(void)
                 u16 servoPositions[12] {0}; 
                 servo.getPosition12Async(servoPositions); 
 
-                // compute something that ends to offsets
+                // compute calibration offsets
                 s16 servoOffsets[12] {0}; 
+                for(size_t index=0; index<12; ++ index)
+                {
+                    servoOffsets[index] = (s16)REF_ZERO_POSITION - (s16)servoPositions[index];
+                }
+                ESP_LOGI(TAG, "Computed Offsets : %d %d %d %d %d %d %d %d %d %d %d %d",
+                    servoOffsets[0],servoOffsets[1],servoOffsets[2],
+                    servoOffsets[3],servoOffsets[4],servoOffsets[5],
+                    servoOffsets[6],servoOffsets[7],servoOffsets[8],
+                    servoOffsets[9],servoOffsets[10],servoOffsets[11]
+                );
 
-                // TODO
-                // TODO
-                // TODO
-                // note : save ZERO/REF position in flash
-                ESP_LOGI(TAG, "Calibration saved.");   
-
+                // save to flash
+                FILE * f = fopen("/data/calibrate.txt", "w");
+                if (f == NULL) {
+                    ESP_LOGE(TAG, "Failed to open file for writing");
+                }
+                if(f)
+                {
+                    for(size_t index=0; index<12; ++ index)
+                    {
+                        fprintf(f,"%d\n", servoOffsets[index]);
+                    }
+                    fclose(f);
+                    ESP_LOGI(TAG, "Calibration saved.");   
+                }
                 // apply offset
                 servo.setCalibration(servoOffsets);
 

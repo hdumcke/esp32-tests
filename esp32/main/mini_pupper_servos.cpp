@@ -4,6 +4,8 @@
  */
 
 #include "mini_pupper_servos.h"
+#include "mini_pupper_math.h"
+
 #include "driver/uart.h"
 #include "driver/gpio.h"
 #include "hal/gpio_hal.h"
@@ -1035,10 +1037,24 @@ int SERVO::check_reply_frame_no_parameter(u8 & ID)
 
 void SERVO::setCalibration(s16 const offset[])
 {
-    memcpy(_calibration_offset,offset,12*sizeof(s16));
+    for(size_t index=0;index<12;++index)
+        state[index].calibration_offset = offset[index];
 }
 
 void SERVO::resetCalibration()
 {
-    memset(_calibration_offset,0,12*sizeof(s16));
+    for(size_t index=0;index<12;++index)
+        state[index].calibration_offset = 0;
+}
+
+u16 SERVO::raw_to_calibrated_position(u16 raw_position, s16 calibration_offset) const
+{
+    s16 new_position {static_cast<s16>(raw_position)};
+    return (u16)std::clamp(new_position+calibration_offset,0,1023);
+}
+
+u16 SERVO::calibrated_position(u16 calibrated_position, s16 calibration_offset) const
+{
+    s16 new_position {static_cast<s16>(calibrated_position)};
+    return (u16)std::clamp(new_position-calibration_offset,0,1023);
 }
