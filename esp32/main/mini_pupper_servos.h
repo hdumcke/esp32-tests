@@ -152,6 +152,7 @@ struct SERVO_STATE
 {
     SERVO_STATE(u8 id) : ID(id) {}
     u8 ID                   {0};
+    u8 torque_enable        {0};   // torque disable
     u16 goal_position       {512}; // middle position
     u16 goal_speed          {1000}; // max
     u16 present_position    {0};
@@ -161,12 +162,16 @@ struct SERVO_STATE
     u8 present_temperature  {0};
     u8 present_move         {0};
     s16 present_current     {0};
+    // calibration data
+    s16 calibration_offset  {0}; // default offset
 };
 
 enum {
     SERVO_STATUS_OK = 0,
     SERVO_STATUS_FAIL,
 };
+
+void SERVO_TASK(void * parameters);
 
 struct SERVO
 {
@@ -176,8 +181,8 @@ struct SERVO
      *
      */
 
-    void enable();
-    void disable();
+    void enable_power(bool enable = true);
+    bool is_power_enabled() const;
 
     /* Sync API
      *
@@ -209,11 +214,8 @@ struct SERVO
 
     // advanced API
     int setID(u8 ID, u8 newID);
-    int calibrate();
-
-    void soft_start();
-
-    bool isEnabled {false}; 
+    void setCalibration(s16 const offset[]);
+    void resetCalibration();
 
     /* ASYNC API 
      *
@@ -223,6 +225,12 @@ struct SERVO
      *
      */
     void start();
+
+    // async service enable
+    void enable_service(bool enable = true);
+
+    void setTorqueAsync(u8 servoID, u8 servoTorque);
+    void setTorque12Async(u8 const servoTorques[]);
 
     void setPositionAsync(u8 servoID, u16 servoPosition);
     void setPosition12Async(u16 const servoPositions[]);    
@@ -235,12 +243,23 @@ struct SERVO
     u8   getMoveAsync(u8 servoID);          // return 0 with SCS 0009 and SCS Generic (future functionality)
     s16  getCurrentAsync(u8 servoID);       // return 0 with SCS 0009 and SCS Generic (future functionality)
 
+    void getGoalPosition12Async(u16 servoPositions[]);    
+
     void getPosition12Async(u16 servoPositions[]);    
     void getSpeed12Async(s16 servoSpeeds[]);    
     void getLoad12Async(s16 servoLoads[]);    
 
-    // async service enable
-    void enableAsyncService(bool enable);
+protected:
+
+    bool _is_power_enabled {false}; 
+
+    /* ASYNC API 
+     *
+     * A task synchronise a setpoint/feedback database and control the servo BUS trafic
+     *
+     * Members functions allow changing setpoint (pos) and reading feedback (pos,speed,load)
+     *
+     */
 
     // internals
     void sync_all_goal_position();
@@ -251,8 +270,9 @@ struct SERVO
     SERVO_STATE state[12] {1,2,3,4,5,6,7,8,9,10,11,12}; // hard-coded ID list
 
     // background servo bus service
-    bool isSyncRunning {false};
+    bool _is_service_enabled {false};
     TaskHandle_t task_handle {NULL};
+    friend void SERVO_TASK(void * parameters);
 
     /* LOW LEVEL helpers
      *
@@ -271,6 +291,10 @@ struct SERVO
     int check_reply_frame_no_parameter(u8 & ID);
 
     int uart_port_num {1};
+
+    // calibration helpers
+    u16 raw_to_calibrated_position(u16 raw_position, s16 calibration_offset) const;
+    u16 calibrated_to_raw_position(u16 calibrated_position, s16 calibration_offset) const;
 };
 
 extern SERVO servo;

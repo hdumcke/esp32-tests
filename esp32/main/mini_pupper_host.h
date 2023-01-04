@@ -27,6 +27,8 @@ struct HOST
 
     void start();
 
+    void enable_service(bool enable = true);
+
 private:
     int _uart_port_num {2};
     
@@ -34,6 +36,8 @@ private:
     TaskHandle_t _task_handle {NULL};    
     QueueHandle_t _uart_queue {NULL};    
     friend void HOST_TASK(void * parameters);
+
+    bool _is_service_enabled {false};
 };
 
 extern HOST host; 
