@@ -32,6 +32,7 @@ static u16 const REF_ZERO_POSITION {512}; // Hard-coded REF/ZERO position for ca
 
 #define MOUNT_PATH "/data"
 #define HISTORY_PATH MOUNT_PATH "/history.txt"
+#define CALIBRATE_PATH MOUNT_PATH "/calib.txt"
 
 static void initialize_filesystem(void)
 {
@@ -123,7 +124,7 @@ extern "C" void app_main(void)
     // read calibration data from flash
     {
         // save to flash
-        FILE * f = fopen("/data/calibrate.txt", "r");
+        FILE * f = fopen(CALIBRATE_PATH, "r");
         if (f == NULL)
         {
             ESP_LOGE(TAG, "Failed to open calibration file for reading");
@@ -353,7 +354,7 @@ extern "C" void app_main(void)
                 // debug
                 u16 servoPositions[12] {0}; 
                 servo.getPosition12Async(servoPositions);        
-                ESP_LOGI(TAG, "%d %d %d %d %d %d %d %d %d %d %d %d",
+                ESP_LOGD(TAG, "%d %d %d %d %d %d %d %d %d %d %d %d",
                     servoPositions[0],servoPositions[1],servoPositions[2],
                     servoPositions[3],servoPositions[4],servoPositions[5],
                     servoPositions[6],servoPositions[7],servoPositions[8],
@@ -385,7 +386,7 @@ extern "C" void app_main(void)
                 );
 
                 // save to flash
-                FILE * f = fopen("/data/calibrate.txt", "w");
+                FILE * f = fopen(CALIBRATE_PATH, "w");
                 if (f == NULL) {
                     ESP_LOGE(TAG, "Failed to open file for writing");
                 }
@@ -410,35 +411,3 @@ extern "C" void app_main(void)
         }
     }
 }
-/*
-int SERVO::calibrate()
-{
-    // test writing calibration data 
-    ESP_LOGI(TAG, "Opening file");
-    FILE *f = fopen("/data/calibrate.txt", "wb");
-    if (f == NULL) {
-        ESP_LOGE(TAG, "Failed to open file for writing");
-        return SERVO_STATUS_OK;
-    }
-    fprintf(f, "written using ESP-IDF %s\n", esp_get_idf_version());
-    fclose(f);
-    ESP_LOGI(TAG, "File written");
-
-    // Open file for reading
-    ESP_LOGI(TAG, "Reading file");
-    f = fopen("/data/calibrate.txt", "rb");
-    if (f == NULL) {
-        ESP_LOGE(TAG, "Failed to open file for reading");
-        return SERVO_STATUS_OK;
-    }
-    char line[128];
-    fgets(line, sizeof(line), f);
-    fclose(f);
-    // strip newline
-    char *pos = strchr(line, '\n');
-    if (pos) {
-        *pos = '\0';
-    }
-    ESP_LOGI(TAG, "Read from file: '%s'", line);
-}
-*/

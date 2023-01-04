@@ -331,6 +331,28 @@ static void register_mini_pupper_cmd_calibrate_end(void)
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_calibrate) );
 }
 
+  static int mini_pupper_cmd_calibrate_clear(int argc, char **argv)
+  {
+    if (remove("/data//calib.txt") == 0) {
+        printf("The calibration file is deleted successfully.");
+    } else {
+        printf("The calibration file is not deleted.");
+    }
+    return 0;
+  }
+
+  static void register_mini_pupper_cmd_calibrate_clear(void)
+  {
+      const esp_console_cmd_t cmd_calibrate = {
+          .command = "calibrate-clear",
+          .help = "clear mini pupper calibration",
+          .hint = NULL,
+          .func = &mini_pupper_cmd_calibrate_clear,
+             .argtable = NULL
+      };
+      ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_calibrate) );
+  }
+
 static struct {
     struct arg_int *servo_id;
     struct arg_int *servo_pos;
@@ -963,6 +985,7 @@ void register_mini_pupper_cmds(void)
     register_mini_pupper_cmd_setID();
     register_mini_pupper_cmd_calibrate_begin();
     register_mini_pupper_cmd_calibrate_end();
+    register_mini_pupper_cmd_calibrate_clear();
     register_mini_pupper_cmd_extended_menu();
 }
 
