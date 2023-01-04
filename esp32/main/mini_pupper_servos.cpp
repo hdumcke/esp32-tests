@@ -746,8 +746,10 @@ void SERVO::sync_all_goal_position()
             {
                 ++n;
                 buffer[index++] = servo.ID;                    // Parameter 3 = Servo Number
-                buffer[index++] = (servo.goal_position>>8);    
-                buffer[index++] = (servo.goal_position&0xff);                
+                // apply calibration
+                u16 const raw_position {calibrated_to_raw_position(servo.goal_position,servo.calibration_offset)};
+                buffer[index++] = (raw_position>>8);    
+                buffer[index++] = (raw_position&0xff);                
             }
         }
         // compute payload length
@@ -816,9 +818,12 @@ void SERVO::ack_feedback_one_servo(SERVO_STATE & servoState)
             if(buffer[buffer_size-1]==(u8)(~chk_sum))
             {
                 // decode parameters and update feedback local data base for this servo
-                servoState.present_position = (u16)(buffer[5])<<8 | buffer[6];
+                u16 const raw_position = (u16)(buffer[5])<<8 | buffer[6];
                 u16 const speed  = (u16)(buffer[7])<<8 | buffer[8];
                 u16 const load   = (u16)(buffer[9])<<8 | buffer[10];
+
+                // apply calibration
+                servoState.present_position = raw_to_calibrated_position(raw_position,servoState.calibration_offset);
 
                 // .. to signed values
                 servoState.present_speed = (s16)speed;
@@ -1053,7 +1058,7 @@ u16 SERVO::raw_to_calibrated_position(u16 raw_position, s16 calibration_offset) 
     return (u16)std::clamp(new_position+calibration_offset,0,1023);
 }
 
-u16 SERVO::calibrated_position(u16 calibrated_position, s16 calibration_offset) const
+u16 SERVO::calibrated_to_raw_position(u16 calibrated_position, s16 calibration_offset) const
 {
     s16 new_position {static_cast<s16>(calibrated_position)};
     return (u16)std::clamp(new_position-calibration_offset,0,1023);

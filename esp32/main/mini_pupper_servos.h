@@ -292,9 +292,9 @@ protected:
 
     int uart_port_num {1};
 
-    // calibration helper
+    // calibration helpers
     u16 raw_to_calibrated_position(u16 raw_position, s16 calibration_offset) const;
-    u16 calibrated_position(u16 calibrated_position, s16 calibration_offset) const;
+    u16 calibrated_to_raw_position(u16 calibrated_position, s16 calibration_offset) const;
 };
 
 extern SERVO servo;
