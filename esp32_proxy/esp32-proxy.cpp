@@ -22,6 +22,8 @@ static bool const print_debug_max {false};
 
 static char const * filename {"/dev/ttyAMA1"};
 
+char *version = strdup("dev");
+
 // Setpoint and feedback data format for client-server communication (PoD)
 struct setpoint_and_feedback_data
 {
@@ -272,6 +274,9 @@ int main(int argc, char *argv[])
     // allocate a shared-memory buffer for setpoint and feedback data exchange between clients and server
     void * control_block = mmap(NULL, sizeof(setpoint_and_feedback_data), PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
     memset(control_block, 0, sizeof(setpoint_and_feedback_data));
+
+    /* print version string */
+    printf("%s\n", version);
 
     /* start UART protocol with ESP32 */
     int pid = fork();
