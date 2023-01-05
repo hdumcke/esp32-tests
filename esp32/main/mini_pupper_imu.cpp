@@ -5,6 +5,7 @@
 
 #include "mini_pupper_imu.h"
 #include "mini_pupper_imu_filter.h"
+#include "mini_pupper_taskes.h"
 
 #include "esp_log.h"
 #include "esp_timer.h"
@@ -242,19 +243,25 @@ void IMU_ISR(void* arg)
     xQueueSendFromISR(imu->_INT2_evt_queue, &value, NULL);
 }
 
+static size_t const stack_size = 10000;
+static StackType_t stack[stack_size] {0};
+static StaticTask_t task_buffer;
+
 void IMU::start()
 {
   //create a queue to handle gpio event from isr
   _INT2_evt_queue = xQueueCreate(20, sizeof(uint32_t));
 
   // start the task
-  xTaskCreate(
-      IMU_TASK,                 /* Function that implements the task. */
-      "IMU SERVICE",            /* Text name for the task. */
-      10000,                      /* Stack size in words, not bytes. */
-      (void*)this,                /* Parameter passed into the task. */
-      2,           /* Priority at which the task is created. */
-      &_task_handle                /* Used to pass out the created task's handle. */
+  _task_handle = xTaskCreateStaticPinnedToCore(
+      IMU_TASK,   
+      "IMU SERVICE",
+      stack_size,         
+      (void*)this,        
+      IMU_PRIORITY,     
+      stack,
+      &task_buffer,
+      IMU_CORE
   );
 
   //change gpio interrupt type for one pin
