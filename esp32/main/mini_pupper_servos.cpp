@@ -5,6 +5,7 @@
 
 #include "mini_pupper_servos.h"
 #include "mini_pupper_math.h"
+#include "mini_pupper_taskes.h"
 
 #include "driver/uart.h"
 #include "driver/gpio.h"
@@ -15,7 +16,7 @@
 // reference :
 //https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/uart.html
 
-static const char *TAG = "SERVOS";
+static char const * TAG {"SERVOS"};
 
 SERVO servo;
 
@@ -52,16 +53,22 @@ SERVO::SERVO()
     ESP_ERROR_CHECK(uart_set_pin(uart_port_num, 4, 5, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
 }
 
+static size_t const stack_size = 10000;
+static StackType_t stack[stack_size] {0};
+static StaticTask_t task_buffer;
+
 void SERVO::start()
 {
     /*** ASYNC API service ***/
-    xTaskCreate(
-        SERVO_TASK,                 /* Function that implements the task. */
-        "SERVO BUS SERVICE",        /* Text name for the task. */
-        10000,                      /* Stack size in words, not bytes. */
-        (void*)this,                /* Parameter passed into the task. */
-        tskIDLE_PRIORITY,           /* Priority at which the task is created. */
-        &task_handle                /* Used to pass out the created task's handle. */
+    _task_handle = xTaskCreateStaticPinnedToCore(
+        SERVO_TASK,   
+        "SERVO BUS SERVICE",
+        stack_size,         
+        (void*)this,        
+        SERVO_PRIORITY,     
+        stack,
+        &task_buffer,
+        SERVO_CORE
     );
 }
 
@@ -168,6 +175,7 @@ int SERVO::is_torque_enable(u8 ID, u8 & enable)
 
     // send read instruction
     int const status = read_register_byte(ID, SERVO_TORQUE_ENABLE,enable);
+    ESP_LOGE(TAG, "Reply error [%d]",status);
 
     // check reply
     if(status!=SERVO_STATUS_OK) return SERVO_STATUS_FAIL;
@@ -203,6 +211,7 @@ int SERVO::get_goal_speed(u8 ID, u16 & speed)
 
     // send read instruction
     int const status = read_register_word(ID, SERVO_GOAL_SPEED_L,speed);
+    ESP_LOGE(TAG, "Reply error [%d]",status);
 
     // check reply
     if(status!=SERVO_STATUS_OK) return SERVO_STATUS_FAIL;
@@ -238,6 +247,7 @@ int SERVO::get_position(u8 ID, u16 & position)
 
     // send read instruction
     int const status = read_register_word(ID, SERVO_PRESENT_POSITION_L,position);
+    ESP_LOGE(TAG, "Reply error [%d]",status);
 
     // check reply
     if(status!=SERVO_STATUS_OK) return SERVO_STATUS_FAIL;
@@ -256,6 +266,7 @@ int SERVO::get_speed(u8 ID, s16 & speed)
     // send read instruction
     u16 present_value {0};
     int const status = read_register_word(ID, SERVO_PRESENT_SPEED_L,present_value);
+    ESP_LOGE(TAG, "Reply error [%d]",status);
 
     // check reply
     if(status!=SERVO_STATUS_OK) return SERVO_STATUS_FAIL;
@@ -279,6 +290,7 @@ int SERVO::get_load(u8 ID, s16 & load)
     // send read instruction
     u16 present_value {0};
     int const status = read_register_word(ID, SERVO_PRESENT_LOAD_L,present_value);
+    ESP_LOGE(TAG, "Reply error [%d]",status);
 
     // check reply
     if(status!=SERVO_STATUS_OK) return SERVO_STATUS_FAIL;
@@ -304,6 +316,7 @@ int SERVO::get_voltage(u8 ID, u8 & voltage)
     // send read instruction
     u8 present_value {0};
     int const status = read_register_byte(ID, SERVO_PRESENT_VOLTAGE,present_value);
+    ESP_LOGE(TAG, "Reply error [%d]",status);
 
     // check reply
     if(status!=SERVO_STATUS_OK) return SERVO_STATUS_FAIL;
@@ -334,6 +347,7 @@ int SERVO::get_temperature(u8 ID, u8 & temperature)
     // send read instruction
     u8 present_value {0};
     int const status = read_register_byte(ID, SERVO_PRESENT_TEMPERATURE,present_value);
+    ESP_LOGE(TAG, "Reply error [%d]",status);
 
     // check reply
     if(status!=SERVO_STATUS_OK) return SERVO_STATUS_FAIL;
@@ -363,6 +377,7 @@ int SERVO::get_move(u8 ID, u8 & move)
     // send read instruction
     u8 present_value {0};
     int const status = read_register_byte(ID, SERVO_MOVING,present_value);
+    ESP_LOGE(TAG, "Reply error [%d]",status);
 
     // check reply
     if(status!=SERVO_STATUS_OK) return SERVO_STATUS_FAIL;
@@ -385,6 +400,7 @@ int SERVO::get_current(u8 ID, s16 & current)
     // send read instruction
     u16 present_value {0};
     int const status = read_register_word(ID, SERVO_PRESENT_CURRENT_L,present_value);
+    ESP_LOGE(TAG, "Reply error [%d]",status);
 
     // check reply
     if(status!=SERVO_STATUS_OK) return SERVO_STATUS_FAIL;
@@ -420,7 +436,7 @@ int SERVO::unlock_eeprom(u8 ID)
     u8 reply_id {0};
     u8 reply_state {0};
     int const status = reply_frame(reply_id,reply_state,nullptr,0);
-    ///printf(" reply_id:%d reply_state:%d status:%d.",reply_id,reply_state,status);
+    ESP_LOGE(TAG, "Reply error [%d,%d,%d]",status,reply_id,reply_state);
 
     // check reply
     if(status!=SERVO_STATUS_OK) return SERVO_STATUS_FAIL;
@@ -446,7 +462,7 @@ int SERVO::lock_eeprom(u8 ID)
     u8 reply_id {0};
     u8 reply_state {0};
     int const status = reply_frame(reply_id,reply_state,nullptr,0);
-    ///printf(" reply_id:%d reply_state:%d status:%d.",reply_id,reply_state,status);
+    ESP_LOGE(TAG, "Reply error [%d,%d,%d]",status,reply_id,reply_state);
 
     // check reply
     if(status!=SERVO_STATUS_OK) return SERVO_STATUS_FAIL;

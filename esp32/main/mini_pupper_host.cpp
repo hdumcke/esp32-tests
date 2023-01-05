@@ -10,6 +10,8 @@ static const char* TAG = "HOST";
 #include "mini_pupper_servos.h"
 #include "mini_pupper_imu.h"
 #include "mini_pupper_power.h"
+#include "mini_pupper_taskes.h"
+
 #include "driver/uart.h"
 #include "esp_log.h"
 #include <string.h>
@@ -43,15 +45,21 @@ _is_service_enabled(false)
     ESP_ERROR_CHECK(uart_driver_install(_uart_port_num, 1024, 1024, 20, &_uart_queue, 0));
 }
 
+static size_t const stack_size = 10000;
+static StackType_t stack[stack_size] {0};
+static StaticTask_t task_buffer;
+
 void HOST::start()
 {
-    xTaskCreate(
-        HOST_TASK,                 /* Function that implements the task. */
-        "HOST INTERFACE SERVICE",        /* Text name for the task. */
-        10000,                      /* Stack size in words, not bytes. */
-        (void*)this,                /* Parameter passed into the task. */
-        1,           /* Priority at which the task is created. */
-        &_task_handle                /* Used to pass out the created task's handle. */
+    _task_handle = xTaskCreateStaticPinnedToCore(
+        HOST_TASK,   
+        "HOST INTERFACE SERVICE",
+        stack_size,         
+        (void*)this,        
+        HOST_PRIORITY,     
+        stack,
+        &task_buffer,
+        HOST_CORE
     );
 }
 

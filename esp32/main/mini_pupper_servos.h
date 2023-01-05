@@ -271,7 +271,7 @@ protected:
 
     // background servo bus service
     bool _is_service_enabled {false};
-    TaskHandle_t task_handle {NULL};
+    TaskHandle_t _task_handle {NULL};
     friend void SERVO_TASK(void * parameters);
 
     /* LOW LEVEL helpers
