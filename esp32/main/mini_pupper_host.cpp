@@ -27,9 +27,9 @@ HOST host;
 
 HOST::HOST() : 
 _uart_port_num(2),
+_is_service_enabled(false),
 _task_handle(NULL),
-_uart_queue(NULL),
-_is_service_enabled(false)
+_uart_queue(NULL)
 {
     // set UART port
     uart_config_t uart_config;
@@ -71,6 +71,8 @@ void HOST::enable_service(bool enable)
 void HOST_TASK(void * parameters)
 {
     HOST * host = reinterpret_cast<HOST*>(parameters);
+    // protocol interpreter
+    protocol_interpreter_handler protocole_handler;
     for(;;)
     {
         // Waiting for UART event.
@@ -89,11 +91,53 @@ void HOST_TASK(void * parameters)
         ESP_LOGD(TAG, "RX uart event size: %d", event.size);
 
         // read a frame from host
-        size_t const rx_buffer_size {128};
-        u8 rx_buffer[rx_buffer_size] {0};
+        static u8 rx_buffer[1024] {0};
         // copy RX fifo into local buffer
         int const read_length {uart_read_bytes(host->_uart_port_num,rx_buffer,event.size,portMAX_DELAY)};
 
+        // decode received data
+        bool have_to_reply {false};
+        for(size_t index=0; index<read_length; ++index)
+        {
+            bool const payload = protocol_interpreter(rx_buffer[index],protocole_handler);
+            if(payload)
+            {
+                // waitinf for a INST_CONTROL frame
+                if(protocole_handler.payload_buffer[0]==INST_CONTROL)
+                {
+                    // decode parameters
+                    parameters_control_instruction_format parameters {0};
+                    memcpy(&parameters,&protocole_handler.payload_buffer[1],sizeof(parameters_control_instruction_format));
+
+                    // log
+                    ESP_LOGD(TAG, "Goal Position: %d %d %d %d %d %d %d %d %d %d %d %d",
+                        parameters.goal_position[0],parameters.goal_position[1],parameters.goal_position[2],
+                        parameters.goal_position[3],parameters.goal_position[4],parameters.goal_position[5],
+                        parameters.goal_position[6],parameters.goal_position[7],parameters.goal_position[8],
+                        parameters.goal_position[9],parameters.goal_position[10],parameters.goal_position[11]
+                    );
+
+                    // update servo setpoint only if service is enabled
+                    if(host->_is_service_enabled)
+                    {
+                        //servo.setTorque12Async(parameters.torque_enable);
+                        servo.setPosition12Async(parameters.goal_position);
+                    }
+
+                    // send have_to_reply
+                    have_to_reply = true;
+                }
+                else
+                {
+                    ESP_LOGI(TAG, "RX unexpected frame. Instr:%d. Length:%d",protocole_handler.payload_buffer[0],protocole_handler.payload_length);        
+                }
+            }
+        }
+
+        // have to reply ?
+        if(!have_to_reply) continue;
+
+/*
         // waiting for a header...
         if(read_length < 4) 
         {
@@ -176,7 +220,7 @@ void HOST_TASK(void * parameters)
 
         // flush RX FIFO
         uart_flush(host->_uart_port_num);  
-
+*/
         // servo feedback
         parameters_control_acknowledge_format feedback_parameters;
         servo.getPosition12Async(feedback_parameters.present_position);

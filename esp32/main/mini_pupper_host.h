@@ -31,13 +31,12 @@ struct HOST
 
 private:
     int _uart_port_num {2};
+    bool _is_service_enabled {false};
     
     // background host serial bus service
     TaskHandle_t _task_handle {NULL};    
     QueueHandle_t _uart_queue {NULL};    
     friend void HOST_TASK(void * parameters);
-
-    bool _is_service_enabled {false};
 };
 
 extern HOST host; 
