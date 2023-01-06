@@ -65,7 +65,7 @@ The calibration happens in two phases, first you set Mini Pupper into calibratio
 
 #### Begin Calibration
 
-With a termina connection to the ESP32 enter::
+With a termina connection to the ESP32 enter:
 
   calibrate-begin
 
@@ -73,7 +73,7 @@ You can now assemble the Mini Pupper legs, move all hip servos in a position so 
 
 #### End Calibration
 
-Once the legs are in the ideal position you can store the configiration by entering::
+Once the legs are in the ideal position you can store the configiration by entering:
 
   calibrate-end
 
@@ -81,7 +81,7 @@ Calbration offsets are stored in NVRAM and read each time you restart Mini Puppe
 
 #### Clear Calibration
 
-To clear calibration data from NVRAM enter::
+To clear calibration data from NVRAM enter:
 
   calibrate-clear
 
