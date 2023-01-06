@@ -13,7 +13,6 @@
 #include "esp_timer.h"
 #include "nvs.h"
 #include "nvs_flash.h"
-#include "imu_cmd.h"
 #include "cmd_system.h"
 #include "cmd_wifi.h"
 
@@ -56,70 +55,6 @@ static struct
     struct arg_int *servo_pos12;
     struct arg_end *end;
 } servo_pos12_args;
-
-/*
- * Switch ON/OFF servo power supply
- *
- */
-
-static int mini_pupper_cmd_disable(int argc, char **argv)
-{
-    servo.enable_power(false);
-    return 0;
-}
-
-static void register_mini_pupper_cmd_disable(void)
-{
-    const esp_console_cmd_t cmd_servo_disable = {
-        .command = "servo-disable",
-        .help = "disabing the servos",
-        .hint = NULL,
-        .func = &mini_pupper_cmd_disable,
-        .argtable = NULL
-    };
-    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_servo_disable) );
-}
-
-static int mini_pupper_cmd_enable(int argc, char **argv)
-{
-    servo.enable_power();
-    return 0;
-}
-
-static void register_mini_pupper_cmd_enable(void)
-{
-    const esp_console_cmd_t cmd_servo_enable = {
-        .command = "servo-enable",
-        .help = "enabing the servos",
-        .hint = NULL,
-        .func = &mini_pupper_cmd_enable,
-	.argtable = NULL
-    };
-    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_servo_enable) );
-}
-
-static int mini_pupper_cmd_isEnabled(int argc, char **argv)
-{
-    if(servo.is_power_enabled()) {
-        printf("servos are enabled\r\n");
-    }
-    else{
-        printf("servos are not enabled\r\n");
-    }
-    return 0;
-}
-
-static void register_mini_pupper_cmd_isEnabled(void)
-{
-    const esp_console_cmd_t cmd_servo_isEnabled = {
-        .command = "servo-isEnabled",
-        .help = "check if the servos are enabled",
-        .hint = NULL,
-        .func = &mini_pupper_cmd_isEnabled,
-        .argtable = NULL
-    };
-    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_servo_isEnabled) );
-}
 
 /*
  * Switch ON/OFF servo torque
@@ -991,9 +926,6 @@ void register_mini_pupper_cmds(void)
 
 void register_mini_pupper_extended_cmds(void)
 {
-    register_mini_pupper_cmd_disable();
-    register_mini_pupper_cmd_enable();
-    register_mini_pupper_cmd_isEnabled();
     register_mini_pupper_cmd_disableTorque();
     register_mini_pupper_cmd_enableTorque();
     register_mini_pupper_cmd_isTorqueEnabled();
@@ -1011,7 +943,6 @@ void register_mini_pupper_extended_cmds(void)
     register_mini_pupper_cmd_getPositionAsync();
     register_mini_pupper_cmd_getSpeedAsync();
     register_mini_pupper_cmd_getLoadAsync();
-    register_imu_cmds();
     register_system();
     register_wifi();
 }

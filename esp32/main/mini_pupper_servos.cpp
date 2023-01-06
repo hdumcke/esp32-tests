@@ -49,7 +49,7 @@ SERVO::SERVO()
     uart_port_num = UART_NUM_1;
     ESP_ERROR_CHECK(uart_driver_install(uart_port_num, 1024, 1024, 0, NULL, 0));
     ESP_ERROR_CHECK(uart_param_config(uart_port_num, &uart_config));
-    ESP_ERROR_CHECK(uart_set_pin(uart_port_num, 4, 5, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
+    ESP_ERROR_CHECK(uart_set_pin(uart_port_num, 16, 17, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
 }
 
 void SERVO::start()
