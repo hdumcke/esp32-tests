@@ -275,6 +275,7 @@ extern "C" void app_main(void)
                     ESP_LOGI(TAG, "STATE_SITTING_DOWN.");                    
                 }
 
+
             }
             break;
 

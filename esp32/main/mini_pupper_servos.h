@@ -69,6 +69,8 @@
  */
 
 #include "mini_pupper_types.h"
+#include "mini_pupper_stats.h"
+
 
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
@@ -248,6 +250,9 @@ struct SERVO
     void getPosition12Async(u16 servoPositions[]);    
     void getSpeed12Async(s16 servoSpeeds[]);    
     void getLoad12Async(s16 servoLoads[]);    
+
+    // public stats
+    mini_pupper::periodic_process_monitor monitor;
 
 protected:
 

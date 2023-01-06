@@ -333,7 +333,6 @@ void IMU_TASK(void * parameters)
     if(!xQueueReceive(imu->_INT2_evt_queue,(void*)&value,(TickType_t)portMAX_DELAY)) continue;
     xQueueReset(imu->_INT2_evt_queue);
 
-
     // Time
     int64_t const current_time_us { esp_timer_get_time() };
 
@@ -384,6 +383,10 @@ void IMU_TASK(void * parameters)
 
     // log
     ESP_LOGD(TAG, "(dt:%lld time:%lld) ATTITUDE: roll:%.3f  pitch:%.3f  yaw:%.3f", delta_time_us, current_time_us, imu->_roll_deg, imu->_pitch_deg, imu->_yaw_deg);
+
+    // stats
+    imu->monitor.update();
+
 
   }    
 }

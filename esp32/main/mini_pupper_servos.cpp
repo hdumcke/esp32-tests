@@ -872,11 +872,16 @@ void SERVO_TASK(void * parameters)
             servoID = (servoID+1)%12;
             // read one servo feedback
             servo->cmd_feedback_one_servo(servo->state[servoID]);
+
+            // stats
+            servo->monitor.update();
+
         }
         // delay 1ms
         // - about 1KHz refresh frequency for sync write servo setpoints
         // - about 80Hz refresh frequency for read/ack servo feedbacks
         vTaskDelay(1 / portTICK_PERIOD_MS);
+
     }
 }
 

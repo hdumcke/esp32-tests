@@ -11,6 +11,8 @@ static const char* TAG = "HOST";
 #include "mini_pupper_imu.h"
 #include "mini_pupper_power.h"
 #include "mini_pupper_tasks.h"
+#include "mini_pupper_stats.h"
+
 
 #include "driver/uart.h"
 #include "esp_log.h"
@@ -168,6 +170,9 @@ void HOST_TASK(void * parameters)
                         // Wait for packet to be sent
                         //ESP_ERROR_CHECK(uart_wait_tx_done(host->_uart_port_num, 10)); // wait timeout is 10 RTOS ticks (TickType_t)
                     }
+
+                    // stats
+                    host->monitor.update();
 
                 }
                 break;
