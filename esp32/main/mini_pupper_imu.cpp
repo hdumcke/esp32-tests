@@ -5,7 +5,7 @@
 
 #include "mini_pupper_imu.h"
 #include "mini_pupper_imu_filter.h"
-#include "mini_pupper_taskes.h"
+#include "mini_pupper_tasks.h"
 
 #include "esp_log.h"
 #include "esp_timer.h"
