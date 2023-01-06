@@ -54,3 +54,35 @@ And then execute
 
 And answer the questions. At the end eject your SD card, stick it into Mini Pupper, boot Mini Pupper and wait until the IP address is shown on the LCD.
 
+### Calibration
+
+Calbration is done on the ESP32. We assume that the final product ships with a cable that allows to connect the USB port on the Raspberry Pi to the ESP32 programming port and you can open a terminal connection on the Raspberry Pi
+to the ESP32 using minincom or screen.
+
+For now use the same environment you used to flash the ESP32 and do idf.py monitor
+
+The calibration happens in two phases, first you set Mini Pupper into calibration mode and you manually adjust the legs. After that you store the manual set positions in NVRAM and your Mini Pupper is calibrated
+
+#### Begin Calibration
+
+With a termina connection to the ESP32 enter::
+
+  calibrate-begin
+
+You can now assemble the Mini Pupper legs, move all hip servos in a position so that the legs are vertical, and leg servos in a position so that the legs are in an orientation of 45 degrees.
+
+#### End Calibration
+
+Once the legs are in the ideal position you can store the configiration by entering::
+
+  calibrate-end
+
+Calbration offsets are stored in NVRAM and read each time you restart Mini Pupper
+
+#### Clear Calibration
+
+To clear calibration data from NVRAM enter::
+
+  calibrate-clear
+
+You may now start the calibration process again.
