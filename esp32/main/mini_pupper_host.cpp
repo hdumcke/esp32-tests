@@ -10,7 +10,7 @@ static const char* TAG = "HOST";
 #include "mini_pupper_servos.h"
 #include "mini_pupper_imu.h"
 #include "mini_pupper_power.h"
-#include "mini_pupper_taskes.h"
+#include "mini_pupper_tasks.h"
 
 #include "driver/uart.h"
 #include "esp_log.h"

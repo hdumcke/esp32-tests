@@ -5,7 +5,7 @@
 
 #include "mini_pupper_servos.h"
 #include "mini_pupper_math.h"
-#include "mini_pupper_taskes.h"
+#include "mini_pupper_tasks.h"
 
 #include "driver/uart.h"
 #include "driver/gpio.h"
