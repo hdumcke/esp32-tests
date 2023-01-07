@@ -174,6 +174,8 @@ uint8_t IMU::read_6dof()
     gyro.x = 1.0/16.0* ((int16_t)(raw[7]<<8) | raw[6]);
     gyro.y = 1.0/16.0* ((int16_t)(raw[9]<<8) | raw[8]);
     gyro.z = 1.0/16.0* ((int16_t)(raw[11]<<8) | raw[10]);
+    // stats
+    f_monitor.update();
   }
   else
   {
@@ -183,6 +185,8 @@ uint8_t IMU::read_6dof()
     gyro.x = 0.0f;
     gyro.y = 0.0f;
     gyro.z = 0.0f;
+    // stats
+    f_monitor.update(mini_pupper::frame_error_rate_monitor::TIME_OUT_ERROR);
     return 6;
   }
   return 0;

@@ -5,7 +5,7 @@
 
 static const char* TAG = "HOST";
 
-#include "mini_pupper_protocol.h"
+
 #include "mini_pupper_host.h"
 #include "mini_pupper_servos.h"
 #include "mini_pupper_imu.h"
@@ -31,7 +31,8 @@ HOST::HOST() :
 _uart_port_num(2),
 _is_service_enabled(false),
 _task_handle(NULL),
-_uart_queue(NULL)
+_uart_queue(NULL),
+f_monitor(_protocol_handler.f_monitor)
 {
     // set UART port
     uart_config_t uart_config;
@@ -75,7 +76,7 @@ void HOST_TASK(void * parameters)
     HOST * host = reinterpret_cast<HOST*>(parameters);
     uart_event_t event;
     u8 rx_buffer[1024] {0};
-    protocol_interpreter_handler protocole_handler;
+    protocol_interpreter_handler & protocol_handler {host->_protocol_handler};
     for(;;)
     {
         // Waiting for UART event.
@@ -99,15 +100,15 @@ void HOST_TASK(void * parameters)
                     bool have_to_reply {false};
                     for(size_t index=0; index<read_length; ++index)
                     {
-                        bool const payload = protocol_interpreter(rx_buffer[index],protocole_handler);
+                        bool const payload = protocol_interpreter(rx_buffer[index],protocol_handler);
                         if(payload)
                         {
                             // waitinf for a INST_CONTROL frame
-                            if(protocole_handler.payload_buffer[0]==INST_CONTROL)
+                            if(protocol_handler.payload_buffer[0]==INST_CONTROL)
                             {
                                 // decode parameters
                                 parameters_control_instruction_format parameters {0};
-                                memcpy(&parameters,&protocole_handler.payload_buffer[1],sizeof(parameters_control_instruction_format));
+                                memcpy(&parameters,&protocol_handler.payload_buffer[1],sizeof(parameters_control_instruction_format));
 
                                 // log
                                 ESP_LOGD(TAG, "Goal Position: %d %d %d %d %d %d %d %d %d %d %d %d",
@@ -126,10 +127,12 @@ void HOST_TASK(void * parameters)
 
                                 // send have_to_reply
                                 have_to_reply = true;
+
                             }
                             else
                             {
-                                ESP_LOGI(TAG, "RX unexpected frame. Instr:%d. Length:%d",protocole_handler.payload_buffer[0],protocole_handler.payload_length);        
+                                ESP_LOGI(TAG, "RX unexpected frame. Instr:%d. Length:%d",protocol_handler.payload_buffer[0],protocol_handler.payload_length);        
+                                host->f_monitor.update(mini_pupper::frame_error_rate_monitor::SYNTAX_ERROR);
                             }
                         }
                     }

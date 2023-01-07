@@ -19,6 +19,7 @@
  */
 
 #include "mini_pupper_host_base.h"
+#include "mini_pupper_protocol.h"
 
 void HOST_TASK(void * parameters);
 
@@ -30,18 +31,24 @@ struct HOST
 
     void enable_service(bool enable = true);
 
-    // public stats
-    mini_pupper::periodic_process_monitor p_monitor;
-    mini_pupper::frame_error_rate_monitor f_monitor;
-
 private:
+
     int _uart_port_num {2};
     bool _is_service_enabled {false};
     
+    protocol_interpreter_handler _protocol_handler;
+
     // background host serial bus service
     TaskHandle_t _task_handle {NULL};    
     QueueHandle_t _uart_queue {NULL};    
     friend void HOST_TASK(void * parameters);
+
+public:
+
+    // public stats
+    mini_pupper::periodic_process_monitor p_monitor;
+    mini_pupper::frame_error_rate_monitor & f_monitor;
+
 };
 
 extern HOST host; 

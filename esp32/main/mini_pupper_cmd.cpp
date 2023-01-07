@@ -983,7 +983,7 @@ static int mini_pupper_cmd_stats(int argc, char **argv)
         sqrtf(servo.p_monitor.frequency_var),
         servo.p_monitor.counter
     );      
-    ESP_LOGI(TAG, "IMU service frequency: %.0fHz < %.0fHz < %.0fHz  [var:%.1fHz] (count:%lld)",
+    ESP_LOGI(TAG, "IMU service frequency:   %.0fHz < %.0fHz < %.0fHz  [var:%.1fHz] (count:%lld)",
         imu.p_monitor.frequency_min,
         imu.p_monitor.frequency_mean,
         imu.p_monitor.frequency_max,
@@ -991,12 +991,26 @@ static int mini_pupper_cmd_stats(int argc, char **argv)
         imu.p_monitor.counter
     );  
 
+    host.f_monitor.compute_rates();
+    ESP_LOGI(TAG, "HOST RX frame error rates:  CHKS=%.3f%%   SYNT=%.3f%%   TOUT=%.3f%%   TRUNC=%.3f%%   .",
+        host.f_monitor.rate[mini_pupper::frame_error_rate_monitor::CHECKSUM_ERROR]*100.0,
+        host.f_monitor.rate[mini_pupper::frame_error_rate_monitor::SYNTAX_ERROR]*100.0,
+        host.f_monitor.rate[mini_pupper::frame_error_rate_monitor::TIME_OUT_ERROR]*100.0,
+        host.f_monitor.rate[mini_pupper::frame_error_rate_monitor::TRUNCATED_ERROR]*100.0
+    );
     servo.f_monitor.compute_rates();
-    ESP_LOGI(TAG, "SERVO frame error rates: CHKS=%.3f%%   SYNT=%.3f%%   TOUT=%.3f%%   TRUNC=%.3f%%   .",
+    ESP_LOGI(TAG, "SERVO RX frame error rates: CHKS=%.3f%%   SYNT=%.3f%%   TOUT=%.3f%%   TRUNC=%.3f%%   .",
         servo.f_monitor.rate[mini_pupper::frame_error_rate_monitor::CHECKSUM_ERROR]*100.0,
         servo.f_monitor.rate[mini_pupper::frame_error_rate_monitor::SYNTAX_ERROR]*100.0,
         servo.f_monitor.rate[mini_pupper::frame_error_rate_monitor::TIME_OUT_ERROR]*100.0,
         servo.f_monitor.rate[mini_pupper::frame_error_rate_monitor::TRUNCATED_ERROR]*100.0
+    );
+    imu.f_monitor.compute_rates();
+    ESP_LOGI(TAG, "IMU RX frame error rates:   CHKS=%.3f%%   SYNT=%.3f%%   TOUT=%.3f%%   TRUNC=%.3f%%   .",
+        imu.f_monitor.rate[mini_pupper::frame_error_rate_monitor::CHECKSUM_ERROR]*100.0,
+        imu.f_monitor.rate[mini_pupper::frame_error_rate_monitor::SYNTAX_ERROR]*100.0,
+        imu.f_monitor.rate[mini_pupper::frame_error_rate_monitor::TIME_OUT_ERROR]*100.0,
+        imu.f_monitor.rate[mini_pupper::frame_error_rate_monitor::TRUNCATED_ERROR]*100.0
     );
 
     return 0;
