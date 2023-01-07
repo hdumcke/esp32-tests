@@ -849,6 +849,9 @@ void SERVO::ack_feedback_one_servo(SERVO_STATE & servoState)
                 servoState.present_load =  (s16)load;
                 if(servoState.present_load&(1<<10))
                     servoState.present_load = -(servoState.present_load&~(1<<10));
+
+                // stats
+                f_monitor.update(); // OK
             }
             else
             {
@@ -900,7 +903,7 @@ void SERVO_TASK(void * parameters)
         // delay 1ms
         // - about 1KHz refresh frequency for sync write servo setpoints
         // - about 80Hz refresh frequency for read/ack servo feedbacks
-        vTaskDelay(3 / portTICK_PERIOD_MS);
+        vTaskDelay(2 / portTICK_PERIOD_MS);
 
     }
 }
