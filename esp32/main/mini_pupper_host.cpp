@@ -104,10 +104,10 @@ void HOST_TASK(void * parameters)
                         if(payload)
                         {
                             // waitinf for a INST_CONTROL frame
-                            if(protocol_handler.payload_buffer[0]==INST_CONTROL)
+                            if(protocol_handler.payload_buffer[0]==INST_CONTROL && protocol_handler.payload_length == sizeof(parameters_control_instruction_format)+2)
                             {
                                 // decode parameters
-                                parameters_control_instruction_format parameters {0};
+                                parameters_control_instruction_format parameters;
                                 memcpy(&parameters,&protocol_handler.payload_buffer[1],sizeof(parameters_control_instruction_format));
 
                                 // log
@@ -117,11 +117,17 @@ void HOST_TASK(void * parameters)
                                     parameters.goal_position[6],parameters.goal_position[7],parameters.goal_position[8],
                                     parameters.goal_position[9],parameters.goal_position[10],parameters.goal_position[11]
                                 );
+                                ESP_LOGD(TAG, "Torque Switch: %d %d %d %d %d %d %d %d %d %d %d %d",
+                                    parameters.torque_enable[0],parameters.torque_enable[1],parameters.torque_enable[2],
+                                    parameters.torque_enable[3],parameters.torque_enable[4],parameters.torque_enable[5],
+                                    parameters.torque_enable[6],parameters.torque_enable[7],parameters.torque_enable[8],
+                                    parameters.torque_enable[9],parameters.torque_enable[10],parameters.torque_enable[11]
+                                );
 
                                 // update servo setpoint only if service is enabled
                                 if(host->_is_service_enabled)
                                 {
-                                    //servo.setTorque12Async(parameters.torque_enable);
+                                    servo.setTorque12Async(parameters.torque_enable);
                                     servo.setPosition12Async(parameters.goal_position);
                                 }
 
@@ -132,7 +138,7 @@ void HOST_TASK(void * parameters)
                             else
                             {
                                 ESP_LOGI(TAG, "RX unexpected frame. Instr:%d. Length:%d",protocol_handler.payload_buffer[0],protocol_handler.payload_length);        
-                                host->f_monitor.update(mini_pupper::frame_error_rate_monitor::SYNTAX_ERROR);
+                                host->f_monitor.update(mini_pupper::frame_error_rate_monitor::SYNTAX_ERROR, false);
                             }
                         }
                     }
@@ -148,6 +154,11 @@ void HOST_TASK(void * parameters)
                         feedback_parameters.roll = imu.get_roll();
                         feedback_parameters.pitch = imu.get_pitch();
                         feedback_parameters.yaw = imu.get_yaw();
+                        quat_t const q { imu.get_quat() };
+                        feedback_parameters.q_w = q.w;
+                        feedback_parameters.q_x = q.v.x;
+                        feedback_parameters.q_y = q.v.y;
+                        feedback_parameters.q_z = q.v.z;
                         // power supply feedback
                         feedback_parameters.voltage_V = POWER::get_voltage_V();
                         feedback_parameters.current_A = POWER::get_current_A();

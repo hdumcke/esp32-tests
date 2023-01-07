@@ -87,9 +87,12 @@ namespace mini_pupper
 
         static constexpr error_type all[] {CHECKSUM_ERROR,SYNTAX_ERROR,TIME_OUT_ERROR};
 
-        void update(error_type error = ALL)
+        void update(error_type error = ALL, bool increment_ALL = true)
         {
-            ++counter[ALL];
+            if(increment_ALL)
+            {
+                ++counter[ALL];
+            }   
             if(error!=ALL)
             {
                 ++counter[error];

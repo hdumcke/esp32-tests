@@ -4,7 +4,6 @@
  */
 
 #include "mini_pupper_imu.h"
-#include "mini_pupper_imu_filter.h"
 #include "mini_pupper_tasks.h"
 
 #include "esp_log.h"
@@ -293,6 +292,11 @@ float IMU::get_yaw() const
   return _yaw_deg;
 }
 
+quat_t IMU::get_quat() const
+{
+  return _filter.getQuat();
+}
+
 float IMU::roll_adjust(float roll_deg)
 {
   if(roll_deg>=0)
@@ -326,7 +330,7 @@ void IMU_TASK(void * parameters)
 {
   IMU * imu { reinterpret_cast<IMU*>(parameters) };
   bool first_imu_fusion_filtering {true};
-  IMU_FILTER filter;
+  IMU_FILTER & filter { imu->_filter };
   for(;;)
   {
     static float const DEG2RAD { M_PI/180.0 };
