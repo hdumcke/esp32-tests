@@ -14,6 +14,7 @@
 // frame parameters format for control instruction
 struct parameters_control_instruction_format
 {
+    u8 torque_enable[12];
     u16 goal_position[12];
 };
 
@@ -27,6 +28,10 @@ struct parameters_control_acknowledge_format
     float roll;
     float pitch;
     float yaw;
+    float q_x;
+    float q_y;
+    float q_z;
+    float q_w;
     // POWER SUPPLY data
     float voltage_V;
     float current_A;
