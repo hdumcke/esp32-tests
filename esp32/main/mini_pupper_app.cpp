@@ -66,7 +66,7 @@ extern "C" void app_main(void)
 {
     esp_console_repl_t *repl = NULL;
     esp_console_repl_config_t repl_config = ESP_CONSOLE_REPL_CONFIG_DEFAULT();
-    repl_config.prompt = "muni_pupper>";
+    repl_config.prompt = "mini_pupper>";
     repl_config.max_cmdline_length = CONFIG_CONSOLE_MAX_COMMAND_LINE_LENGTH;
 
     initialize_nvs();
@@ -274,6 +274,7 @@ extern "C" void app_main(void)
                     state = STATE_SITTING_DOWN;
                     ESP_LOGI(TAG, "STATE_SITTING_DOWN.");                    
                 }
+
 
             }
             break;

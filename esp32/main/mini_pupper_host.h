@@ -7,6 +7,7 @@
 #define _mini_pupper_host_H
 
 #include "mini_pupper_types.h"
+#include "mini_pupper_stats.h"
 
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
@@ -28,6 +29,9 @@ struct HOST
     void start();
 
     void enable_service(bool enable = true);
+
+    // public stats
+    mini_pupper::periodic_process_monitor monitor;
 
 private:
     int _uart_port_num {2};

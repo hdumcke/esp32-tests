@@ -17,6 +17,8 @@
 #include "vector_type.h"
 #include "quaternion_type.h"
 
+#include "mini_pupper_stats.h"
+
 void IMU_TASK(void * parameters);
 void IRAM_ATTR IMU_ISR(void * arg);
 
@@ -48,6 +50,9 @@ struct IMU
   vec3_t dv;
   uint8_t ae_reg1;
   uint8_t ae_reg2;
+
+  // public stats
+  mini_pupper::periodic_process_monitor monitor;
 
 private:
 

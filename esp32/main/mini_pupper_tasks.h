@@ -3,8 +3,8 @@
  * - Pat92fr
  */
 
-#ifndef _mini_pupper_taskes_H
-#define _mini_pupper_taskes_H
+#ifndef _mini_pupper_tasks_H
+#define _mini_pupper_tasks_H
 
 enum e_mini_pupper_task_priorities
 {
@@ -17,4 +17,4 @@ enum e_mini_pupper_task_priorities
 #define HOST_CORE 0
 #define IMU_CORE 0
 
-#endif //_mini_pupper_taskes_H
+#endif //_mini_pupper_tasks_H

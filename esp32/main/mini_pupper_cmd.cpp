@@ -18,31 +18,18 @@
 #include "cmd_wifi.h"
 
 #include "mini_pupper_servos.h"
-#include "mini_pupper_cmd.h"
+#include "mini_pupper_host.h"
+#include "mini_pupper_imu.h"
 #include "mini_pupper_app.h"
+#include "mini_pupper_cmd.h"
 
-static const char *TAG = "SERVOCMD";
+static const char *TAG = "CLI";
 
 static struct
 {
     struct arg_int *servo_id;
     struct arg_end *end;
 } servo_id_args;
-
-static struct
-{
-    struct arg_int *loop;
-    struct arg_end *end;
-} servo_loop_args;
-
-static struct
-{
-    struct arg_int *servo_id;
-    struct arg_int *start_pos;
-    struct arg_int *end_pos;
-    struct arg_int *accuracy;
-    struct arg_end *end;
-} servo_perftest_args;
 
 static struct
 {
@@ -979,6 +966,45 @@ static void register_mini_pupper_cmd_getLoadAsync(void)
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_servo_getLoad) );
 }
 
+
+static int mini_pupper_cmd_stats(int argc, char **argv)
+{
+    ESP_LOGI(TAG, "HOST communication frequency: %.0fHz < %.0fHz < %.0fHz  [var:%.1fHz] (count:%lld)",
+        host.monitor.frequency_min,
+        host.monitor.frequency_mean,
+        host.monitor.frequency_max,
+        sqrtf(host.monitor.frequency_var),
+        host.monitor.counter
+    );  
+    ESP_LOGI(TAG, "SERVO control frequency: %.0fHz < %.0fHz < %.0fHz  [var:%.1fHz] (count:%lld)",
+        servo.monitor.frequency_min,
+        servo.monitor.frequency_mean,
+        servo.monitor.frequency_max,
+        sqrtf(servo.monitor.frequency_var),
+        servo.monitor.counter
+    );      
+    ESP_LOGI(TAG, "IMU service frequency: %.0fHz < %.0fHz < %.0fHz  [var:%.1fHz] (count:%lld)",
+        imu.monitor.frequency_min,
+        imu.monitor.frequency_mean,
+        imu.monitor.frequency_max,
+        sqrtf(imu.monitor.frequency_var),
+        imu.monitor.counter
+    );  
+    return 0;
+}
+
+static void register_mini_pupper_cmd_stats(void)
+{
+    const esp_console_cmd_t cmd_servo_getLoad = {
+        .command = "top",
+        .help = "return statistics",
+        .hint = "no params",
+        .func = &mini_pupper_cmd_stats,
+        .argtable = NULL
+    };
+    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_servo_getLoad) );
+}
+
 void register_mini_pupper_cmds(void)
 {
     register_mini_pupper_cmd_scan();
@@ -987,6 +1013,8 @@ void register_mini_pupper_cmds(void)
     register_mini_pupper_cmd_calibrate_end();
     register_mini_pupper_cmd_calibrate_clear();
     register_mini_pupper_cmd_extended_menu();
+
+    register_mini_pupper_cmd_stats();
 }
 
 void register_mini_pupper_extended_cmds(void)
