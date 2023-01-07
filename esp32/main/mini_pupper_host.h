@@ -31,7 +31,8 @@ struct HOST
     void enable_service(bool enable = true);
 
     // public stats
-    mini_pupper::periodic_process_monitor monitor;
+    mini_pupper::periodic_process_monitor p_monitor;
+    mini_pupper::frame_error_rate_monitor f_monitor;
 
 private:
     int _uart_port_num {2};

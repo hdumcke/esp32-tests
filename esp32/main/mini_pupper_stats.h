@@ -68,7 +68,43 @@ namespace mini_pupper
     };
 
 
+    // Monitor a frame error rate communication
+    //  - transmission count
+    //  - checksum error count
+    //  - syntax error count
+    //  - time-out count
+    struct frame_error_rate_monitor
+    {
+        enum error_type
+        {
+            ALL = 0,
+            CHECKSUM_ERROR,
+            SYNTAX_ERROR,
+            TIME_OUT_ERROR,
+            TRUNCATED_ERROR,
+            ERROR_COUT
+        };
 
+        static constexpr error_type all[] {CHECKSUM_ERROR,SYNTAX_ERROR,TIME_OUT_ERROR};
+
+        void update(error_type error = ALL)
+        {
+            ++counter[ALL];
+            if(error!=ALL)
+            {
+                ++counter[error];
+            }
+        }
+
+        void compute_rates()
+        {
+            for(auto & e : all)
+                rate[e] = static_cast<double>(counter[e])/static_cast<double>(counter[ALL]);
+        }
+
+        uint64_t counter[ERROR_COUT]        {0};
+        double   rate[ERROR_COUT]           {0.0};
+    };
 
 };
 

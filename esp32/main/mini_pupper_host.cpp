@@ -172,7 +172,7 @@ void HOST_TASK(void * parameters)
                     }
 
                     // stats
-                    host->monitor.update();
+                    host->p_monitor.update();
 
                 }
                 break;
