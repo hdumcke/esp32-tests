@@ -154,11 +154,11 @@ void HOST_TASK(void * parameters)
                         feedback_parameters.roll = imu.get_roll();
                         feedback_parameters.pitch = imu.get_pitch();
                         feedback_parameters.yaw = imu.get_yaw();
-                        quat_t const q { imu.get_quat() };
-                        feedback_parameters.q_w = q.w;
-                        feedback_parameters.q_x = q.v.x;
-                        feedback_parameters.q_y = q.v.y;
-                        feedback_parameters.q_z = q.v.z;
+                        quaternion const q { imu.get_quat() };
+                        feedback_parameters.q_w = q.q1;
+                        feedback_parameters.q_x = q.q2;
+                        feedback_parameters.q_y = q.q3;
+                        feedback_parameters.q_z = q.q4;
                         // power supply feedback
                         feedback_parameters.voltage_V = POWER::get_voltage_V();
                         feedback_parameters.current_A = POWER::get_current_A();

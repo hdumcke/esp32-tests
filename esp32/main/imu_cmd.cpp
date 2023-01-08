@@ -13,7 +13,6 @@
 
 static const char *TAG = "IMUCMD";
 
-static uint64_t start_time = 0;
 static uint64_t end_time = 0;
 
 static int imu_cmd_init(int argc, char **argv)
@@ -101,7 +100,7 @@ static int imu_cmd_read_6dof(int argc, char **argv)
             printf("error: %d \r\n", err);
         }
         else {
-            printf("Ax:%.3f Ay:%.3f Az:%.3f | Gx:%.3f Gy:%.3f Gz:%.3f. ", imu.acc.x, imu.acc.y, imu.acc.z, imu.gyro.x, imu.gyro.y, imu.gyro.z);
+            printf("Ax:%.3f Ay:%.3f Az:%.3f | Gx:%.3f Gy:%.3f Gz:%.3f. ", imu.ax, imu.ay, imu.az, imu.gx, imu.gy, imu.gz);
         }
 	vTaskDelay(200 / portTICK_PERIOD_MS);
     }
@@ -122,90 +121,10 @@ static void register_imu_cmd_read_6dof(void)
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_imu_read_6dof) );
 }
 
-static int imu_cmd_read_attitude(int argc, char **argv)
-{
-    uint8_t err;
-
-    int nerrors = arg_parse(argc, argv, (void **)&imu_loop_args);
-    if (nerrors != 0) {
-        arg_print_errors(stderr, imu_loop_args.end, argv[0]);
-        return 0;
-    }
-
-    int loop = imu_loop_args.loop->ival[0];
-
-    for(int i=0; i<loop; i++) {
-        err = imu.read_attitude();
-        if(err) {
-            printf("error: %d \r\n", err);
-        }
-        else {
-            printf("%f\t%f\t%f\t%f\t%f\t%f\t%f\t%d\t%d \r\n", imu.dq.w, imu.dq.v.x, imu.dq.v.y, imu.dq.v.x, imu.dv.x, imu.dv.y, imu.dv.z, imu.ae_reg1, imu.ae_reg2);
-        }
-	vTaskDelay(200 / portTICK_PERIOD_MS);
-    }
-    return 0;
-}
-
-static void register_imu_cmd_read_attitude(void)
-{
-    imu_loop_args.loop = arg_int1(NULL, "loop", "<n>", "loop <n> times");
-    imu_loop_args.end = arg_end(2);
-    const esp_console_cmd_t cmd_imu_read_attitude = {
-        .command = "imu-read_attitude",
-        .help = "read attitude the imu",
-        .hint = "--loop <n>",
-        .func = &imu_cmd_read_attitude,
-	.argtable = NULL
-    };
-    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_imu_read_attitude) );
-}
-
-static int imu_cmd_perftest(int argc, char **argv)
-{
-    uint8_t err;
-
-    start_time = esp_timer_get_time();
-    for(int i=0; i<10; i++) {
-        err = imu.read_6dof();
-        if(err) {
-            ESP_LOGE(TAG, "Error: %d", err);
-        }
-    }
-    end_time = esp_timer_get_time();
-    ESP_LOGI(TAG, "Time (read_6dof): %llu microseconds", (uint64_t)(end_time-start_time)/10);
-
-    start_time = esp_timer_get_time();
-    for(int i=0; i<10; i++) {
-        err = imu.read_attitude();
-        if(err) {
-            ESP_LOGE(TAG, "Error: %d", err);
-        }
-    }
-    end_time = esp_timer_get_time();
-    ESP_LOGI(TAG, "Time (read_attitude): %llu microseconds", (uint64_t)(end_time-start_time)/10);
-
-    return 0;
-}
-
-static void register_imu_cmd_perftest(void)
-{
-    const esp_console_cmd_t cmd_imu_perftest = {
-        .command = "imu-perftest",
-        .help = "imu performance test",
-        .hint = NULL,
-        .func = &imu_cmd_perftest,
-        .argtable = NULL
-    };
-    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_imu_perftest) );
-}
-
 void register_imu_cmds(void)
 {
     register_imu_cmd_init();
     register_imu_cmd_who_am_i();
     register_imu_cmd_version();
     register_imu_cmd_read_6dof();
-    register_imu_cmd_read_attitude();
-    register_imu_cmd_perftest();
 }
