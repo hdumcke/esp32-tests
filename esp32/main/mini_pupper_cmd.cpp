@@ -970,26 +970,49 @@ static void register_mini_pupper_cmd_getLoadAsync(void)
 static int mini_pupper_cmd_stats(int argc, char **argv)
 {
     ESP_LOGI(TAG, "HOST communication frequency: %.0fHz < %.0fHz < %.0fHz  [var:%.1fHz] (count:%lld)",
-        host.monitor.frequency_min,
-        host.monitor.frequency_mean,
-        host.monitor.frequency_max,
-        sqrtf(host.monitor.frequency_var),
-        host.monitor.counter
+        host.p_monitor.frequency_min,
+        host.p_monitor.frequency_mean,
+        host.p_monitor.frequency_max,
+        sqrtf(host.p_monitor.frequency_var),
+        host.p_monitor.counter
     );  
     ESP_LOGI(TAG, "SERVO control frequency: %.0fHz < %.0fHz < %.0fHz  [var:%.1fHz] (count:%lld)",
-        servo.monitor.frequency_min,
-        servo.monitor.frequency_mean,
-        servo.monitor.frequency_max,
-        sqrtf(servo.monitor.frequency_var),
-        servo.monitor.counter
+        servo.p_monitor.frequency_min,
+        servo.p_monitor.frequency_mean,
+        servo.p_monitor.frequency_max,
+        sqrtf(servo.p_monitor.frequency_var),
+        servo.p_monitor.counter
     );      
-    ESP_LOGI(TAG, "IMU service frequency: %.0fHz < %.0fHz < %.0fHz  [var:%.1fHz] (count:%lld)",
-        imu.monitor.frequency_min,
-        imu.monitor.frequency_mean,
-        imu.monitor.frequency_max,
-        sqrtf(imu.monitor.frequency_var),
-        imu.monitor.counter
+    ESP_LOGI(TAG, "IMU service frequency:   %.0fHz < %.0fHz < %.0fHz  [var:%.1fHz] (count:%lld)",
+        imu.p_monitor.frequency_min,
+        imu.p_monitor.frequency_mean,
+        imu.p_monitor.frequency_max,
+        sqrtf(imu.p_monitor.frequency_var),
+        imu.p_monitor.counter
     );  
+
+    host.f_monitor.compute_rates();
+    ESP_LOGI(TAG, "HOST RX frame error rates:  CHKS=%.3f%%   SYNT=%.3f%%   TOUT=%.3f%%   TRUNC=%.3f%%   .",
+        host.f_monitor.rate[mini_pupper::frame_error_rate_monitor::CHECKSUM_ERROR]*100.0,
+        host.f_monitor.rate[mini_pupper::frame_error_rate_monitor::SYNTAX_ERROR]*100.0,
+        host.f_monitor.rate[mini_pupper::frame_error_rate_monitor::TIME_OUT_ERROR]*100.0,
+        host.f_monitor.rate[mini_pupper::frame_error_rate_monitor::TRUNCATED_ERROR]*100.0
+    );
+    servo.f_monitor.compute_rates();
+    ESP_LOGI(TAG, "SERVO RX frame error rates: CHKS=%.3f%%   SYNT=%.3f%%   TOUT=%.3f%%   TRUNC=%.3f%%   .",
+        servo.f_monitor.rate[mini_pupper::frame_error_rate_monitor::CHECKSUM_ERROR]*100.0,
+        servo.f_monitor.rate[mini_pupper::frame_error_rate_monitor::SYNTAX_ERROR]*100.0,
+        servo.f_monitor.rate[mini_pupper::frame_error_rate_monitor::TIME_OUT_ERROR]*100.0,
+        servo.f_monitor.rate[mini_pupper::frame_error_rate_monitor::TRUNCATED_ERROR]*100.0
+    );
+    imu.f_monitor.compute_rates();
+    ESP_LOGI(TAG, "IMU RX frame error rates:   CHKS=%.3f%%   SYNT=%.3f%%   TOUT=%.3f%%   TRUNC=%.3f%%   .",
+        imu.f_monitor.rate[mini_pupper::frame_error_rate_monitor::CHECKSUM_ERROR]*100.0,
+        imu.f_monitor.rate[mini_pupper::frame_error_rate_monitor::SYNTAX_ERROR]*100.0,
+        imu.f_monitor.rate[mini_pupper::frame_error_rate_monitor::TIME_OUT_ERROR]*100.0,
+        imu.f_monitor.rate[mini_pupper::frame_error_rate_monitor::TRUNCATED_ERROR]*100.0
+    );
+
     return 0;
 }
 

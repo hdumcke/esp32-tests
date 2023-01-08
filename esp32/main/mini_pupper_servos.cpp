@@ -849,9 +849,32 @@ void SERVO::ack_feedback_one_servo(SERVO_STATE & servoState)
                 servoState.present_load =  (s16)load;
                 if(servoState.present_load&(1<<10))
                     servoState.present_load = -(servoState.present_load&~(1<<10));
+
+                // stats
+                f_monitor.update(); // OK
+            }
+            else
+            {
+                // stats
+                f_monitor.update(mini_pupper::frame_error_rate_monitor::CHECKSUM_ERROR);
             }
         }
+        else
+        {
+            // stats
+            f_monitor.update(mini_pupper::frame_error_rate_monitor::SYNTAX_ERROR);
+        }
     }
+    else if(read_length>0)
+    {
+        // stats
+        f_monitor.update(mini_pupper::frame_error_rate_monitor::TRUNCATED_ERROR);
+    }
+    else if(read_length==0)
+    {
+        // stats
+        f_monitor.update(mini_pupper::frame_error_rate_monitor::TIME_OUT_ERROR);
+    }    
     // flush RX FIFO
     uart_flush(uart_port_num); 
 }
@@ -874,13 +897,13 @@ void SERVO_TASK(void * parameters)
             servo->cmd_feedback_one_servo(servo->state[servoID]);
 
             // stats
-            servo->monitor.update();
+            servo->p_monitor.update();
 
         }
         // delay 1ms
         // - about 1KHz refresh frequency for sync write servo setpoints
         // - about 80Hz refresh frequency for read/ack servo feedbacks
-        vTaskDelay(1 / portTICK_PERIOD_MS);
+        vTaskDelay(2 / portTICK_PERIOD_MS);
 
     }
 }

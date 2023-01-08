@@ -18,6 +18,7 @@
 #include "quaternion_type.h"
 
 #include "mini_pupper_stats.h"
+#include "mini_pupper_imu_filter.h"
 
 void IMU_TASK(void * parameters);
 void IRAM_ATTR IMU_ISR(void * arg);
@@ -29,6 +30,8 @@ struct IMU
   uint8_t init();
 
   void start();
+
+  quat_t get_quat() const;
 
   float get_roll() const;
   float get_pitch() const;
@@ -52,7 +55,8 @@ struct IMU
   uint8_t ae_reg2;
 
   // public stats
-  mini_pupper::periodic_process_monitor monitor;
+    mini_pupper::periodic_process_monitor p_monitor;
+    mini_pupper::frame_error_rate_monitor f_monitor;
 
 private:
 
@@ -68,6 +72,9 @@ private:
   uint8_t write_byte(uint8_t reg_addr, uint8_t data);
   uint8_t read_byte(uint8_t reg_addr, uint8_t *data);
   uint8_t read_bytes(uint8_t reg_addr, uint8_t data[], uint8_t size);
+
+  // filter
+  IMU_FILTER _filter;
 
   // background host serial bus service
   TaskHandle_t _task_handle {NULL};    

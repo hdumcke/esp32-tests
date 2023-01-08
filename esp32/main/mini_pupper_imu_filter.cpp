@@ -93,7 +93,8 @@ void IMU_FILTER::rotateHeading( float angle, const bool SMALL_ANG ) {
 //----------------- Fusion outputs ------------------- 
 
 // Quaternion
-quat_t IMU_FILTER::getQuat() { 
+quat_t IMU_FILTER::getQuat() const
+{ 
   return q;
 }
 

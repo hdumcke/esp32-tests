@@ -45,6 +45,12 @@ void esp32_protocol(setpoint_and_feedback_data * control_block)
         goal_position = neutral_pos;
     }
 
+    // Initialize all control/torque_switch to enable
+    for(auto & torque_enable : control_block->control.torque_enable)
+    {
+        torque_enable = 1;
+    }
+
     // reference : https://www.pololu.com/docs/0J73/15.5
 
     // Open serial device
@@ -264,6 +270,7 @@ void esp32_protocol(setpoint_and_feedback_data * control_block)
             );
 
             printf("Attitude:  roll:%.3f  pitch:%.3f  yaw:%.3f\n", control_block->feedback.roll, control_block->feedback.pitch, control_block->feedback.yaw);
+            printf("Attitude:  qw:%.3f  qx:%.3f  qy:%.3f  qz:%.3f\n", control_block->feedback.q_w, control_block->feedback.q_x, control_block->feedback.q_y, control_block->feedback.q_z);
             printf("Power:  %.3fV  %.3fA\n", control_block->feedback.voltage_V, control_block->feedback.current_A);
 	   }
     }

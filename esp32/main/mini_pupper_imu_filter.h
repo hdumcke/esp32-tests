@@ -35,7 +35,7 @@ class IMU_FILTER
     //-- Fusion outputs:
     
     // Quaternion
-    quat_t getQuat();
+    quat_t getQuat() const;
 
     // Axis projections:
     vec3_t getXaxis( const bool );

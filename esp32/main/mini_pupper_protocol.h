@@ -7,6 +7,7 @@
 #define _mini_pupper_protocol_H
 
 #include "mini_pupper_types.h"
+#include "mini_pupper_stats.h"
 #include <string.h>
 
 ///#include "esp_log.h"
@@ -48,7 +49,7 @@ struct protocol_interpreter_handler
     u8 checksum {0};
     static u8 const MAX_PAYLOAD_LENGTH {128};
     u8 payload_buffer[MAX_PAYLOAD_LENGTH] {0};
-    unsigned int error_checksum {0};
+    mini_pupper::frame_error_rate_monitor f_monitor;
 };
 
 inline bool protocol_interpreter(u8 input_byte, protocol_interpreter_handler & handler)
@@ -71,7 +72,11 @@ inline bool protocol_interpreter(u8 input_byte, protocol_interpreter_handler & h
         {
             if(input_byte==0x01)      handler.state = LENGTH;
             else if(input_byte==0xFF) handler.state = ID;
-            else                      handler.state = HEADER1;   
+            else
+            {
+                handler.state = HEADER1;   
+                handler.f_monitor.update(mini_pupper::frame_error_rate_monitor::SYNTAX_ERROR);
+            }
             handler.checksum = input_byte;
         }
         break;
@@ -81,7 +86,11 @@ inline bool protocol_interpreter(u8 input_byte, protocol_interpreter_handler & h
             handler.checksum += input_byte;
             handler.payload_byte_cout = 0;
             if(handler.payload_length>0 && handler.payload_length<handler.MAX_PAYLOAD_LENGTH) handler.state = PAYLOAD; // reject empty payload, reject too large payload
-            else                                                                              handler.state = HEADER1;
+            else
+            {
+                handler.state = HEADER1;   
+                handler.f_monitor.update(mini_pupper::frame_error_rate_monitor::SYNTAX_ERROR);
+            }                
         }
         break;
     case PAYLOAD: // waiting for a length
@@ -95,8 +104,16 @@ inline bool protocol_interpreter(u8 input_byte, protocol_interpreter_handler & h
         {
             handler.state = HEADER1;
             // checksum
-            if(input_byte==(u8)(~handler.checksum)) return true; // payload ready to decode
-            ++handler.error_checksum;
+            if(input_byte==(u8)(~handler.checksum))
+            {
+                handler.f_monitor.update();
+                return true; // payload ready to decode
+            }
+            else
+            {
+                handler.f_monitor.update(mini_pupper::frame_error_rate_monitor::CHECKSUM_ERROR);
+            }
+            
             ///ESP_LOGI("PROTOCOL", "RX frame checksum FAIL! length:%d rcv_chk:%d exp_chk:%d",handler.payload_length,input_byte,(u8)(~handler.checksum));
         }
         break;

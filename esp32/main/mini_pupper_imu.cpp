@@ -4,7 +4,6 @@
  */
 
 #include "mini_pupper_imu.h"
-#include "mini_pupper_imu_filter.h"
 #include "mini_pupper_tasks.h"
 
 #include "esp_log.h"
@@ -174,6 +173,8 @@ uint8_t IMU::read_6dof()
     gyro.x = 1.0/16.0* ((int16_t)(raw[7]<<8) | raw[6]);
     gyro.y = 1.0/16.0* ((int16_t)(raw[9]<<8) | raw[8]);
     gyro.z = 1.0/16.0* ((int16_t)(raw[11]<<8) | raw[10]);
+    // stats
+    f_monitor.update();
   }
   else
   {
@@ -183,6 +184,8 @@ uint8_t IMU::read_6dof()
     gyro.x = 0.0f;
     gyro.y = 0.0f;
     gyro.z = 0.0f;
+    // stats
+    f_monitor.update(mini_pupper::frame_error_rate_monitor::TIME_OUT_ERROR);
     return 6;
   }
   return 0;
@@ -289,6 +292,11 @@ float IMU::get_yaw() const
   return _yaw_deg;
 }
 
+quat_t IMU::get_quat() const
+{
+  return _filter.getQuat();
+}
+
 float IMU::roll_adjust(float roll_deg)
 {
   if(roll_deg>=0)
@@ -322,7 +330,7 @@ void IMU_TASK(void * parameters)
 {
   IMU * imu { reinterpret_cast<IMU*>(parameters) };
   bool first_imu_fusion_filtering {true};
-  IMU_FILTER filter;
+  IMU_FILTER & filter { imu->_filter };
   for(;;)
   {
     static float const DEG2RAD { M_PI/180.0 };
@@ -385,7 +393,7 @@ void IMU_TASK(void * parameters)
     ESP_LOGD(TAG, "(dt:%lld time:%lld) ATTITUDE: roll:%.3f  pitch:%.3f  yaw:%.3f", delta_time_us, current_time_us, imu->_roll_deg, imu->_pitch_deg, imu->_yaw_deg);
 
     // stats
-    imu->monitor.update();
+    imu->p_monitor.update();
 
 
   }    
