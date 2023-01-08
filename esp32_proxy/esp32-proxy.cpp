@@ -341,8 +341,8 @@ int main(int argc, char *argv[])
     /* This is the main loop for handling connections. */
 
     int data_socket {0};
-    u8 r_buffer[26];
-    u8 s_buffer[26];
+    u8 r_buffer[38];
+    u8 s_buffer[38];
     for (;;) {
 
         /* Wait for incoming connection. */
@@ -369,38 +369,45 @@ int main(int argc, char *argv[])
                 /* Handle commands. */
 		int offset;
                 offset = 0;
-                if(r_buffer[1] == INST_SETPOS && r_buffer[0] == 26) {
-            	memcpy((char*)control_block + offset, &r_buffer[2], sizeof(parameters_control_instruction_format));
-            	s_buffer[0]= 2;
-            	s_buffer[1]= INST_SETPOS;
+                if(r_buffer[1] == INST_SETPOS && r_buffer[0] == 38) {
+                    memcpy((char*)control_block + offset, &r_buffer[2], sizeof(parameters_control_instruction_format));
+                    s_buffer[0]= 2;
+                    s_buffer[1]= INST_SETPOS;
                 }
 
                 offset = sizeof(parameters_control_instruction_format);
                 if(r_buffer[1] == INST_GETPOS && r_buffer[0] == 2) {
-            	s_buffer[0]= 2 + 12*sizeof(u16);
-            	s_buffer[1]= INST_GETPOS;
-            	memcpy(&s_buffer[2], (char*)control_block + offset, 12*sizeof(u16));
+                    s_buffer[0]= 2 + 12*sizeof(u16);
+                    s_buffer[1]= INST_GETPOS;
+                    memcpy(&s_buffer[2], (char*)control_block + offset, 12*sizeof(u16));
                 }
 
                 offset += 12*sizeof(u16);
                 if(r_buffer[1] == INST_GETLOAD && r_buffer[0] == 2) {
-            	s_buffer[0]= 2 + 12*sizeof(s16);
-            	s_buffer[1]= INST_GETLOAD;
-            	memcpy(&s_buffer[2], (char*)control_block + offset, 12*sizeof(s16));
+                    s_buffer[0]= 2 + 12*sizeof(s16);
+                    s_buffer[1]= INST_GETLOAD;
+                    memcpy(&s_buffer[2], (char*)control_block + offset, 12*sizeof(s16));
                 }
 
                 offset += 12*sizeof(s16);
                 if(r_buffer[1] == INST_GETIMU && r_buffer[0] == 2) {
-            	s_buffer[0]= 2 + 3*sizeof(float);
-            	s_buffer[1]= INST_GETIMU;
-            	memcpy(&s_buffer[2], (char*)control_block + offset, 3*sizeof(float));
+                    s_buffer[0]= 2 + 3*sizeof(float);
+                    s_buffer[1]= INST_GETIMU;
+                    memcpy(&s_buffer[2], (char*)control_block + offset, 3*sizeof(float));
                 }
 
                 offset += 3*sizeof(float);
+                if(r_buffer[1] == INST_GETIMUQUAT && r_buffer[0] == 2) {
+                    s_buffer[0]= 2 + 4*sizeof(float);
+                    s_buffer[1]= INST_GETIMUQUAT;
+                    memcpy(&s_buffer[2], (char*)control_block + offset, 4*sizeof(float));
+                }
+
+                offset += 4*sizeof(float);
                 if(r_buffer[1] == INST_GETPOWER && r_buffer[0] == 2) {
-            	s_buffer[0]= 2 + 2*sizeof(float);
-            	s_buffer[1]= INST_GETPOWER;
-            	memcpy(&s_buffer[2], (char*)control_block + offset, 2*sizeof(float));
+                    s_buffer[0]= 2 + 2*sizeof(float);
+                    s_buffer[1]= INST_GETPOWER;
+                    memcpy(&s_buffer[2], (char*)control_block + offset, 2*sizeof(float));
                 }
 
                 /* Send result. */
