@@ -14,11 +14,9 @@
 
 #include <stdint.h>
 
-#include "vector_type.h"
-#include "quaternion_type.h"
-
 #include "mini_pupper_stats.h"
-#include "mini_pupper_imu_filter.h"
+
+#include "madgwickFilter.h"
 
 void IMU_TASK(void * parameters);
 void IRAM_ATTR IMU_ISR(void * arg);
@@ -31,7 +29,7 @@ struct IMU
 
   void start();
 
-  quat_t get_quat() const;
+  quaternion get_quat() const;
 
   float get_roll() const;
   float get_pitch() const;
@@ -43,17 +41,13 @@ struct IMU
   uint8_t version();
 
   uint8_t read_6dof();
-  uint8_t read_attitude();
 
   /* DEBUG */
 
-  vec3_t acc;
-  vec3_t gyro;
-  quat_t dq;
-  vec3_t dv;
-  uint8_t ae_reg1;
-  uint8_t ae_reg2;
-
+  float ax, ay, az;
+  float gx, gy, gz;
+  
+  
   // public stats
     mini_pupper::periodic_process_monitor p_monitor;
     mini_pupper::frame_error_rate_monitor f_monitor;
@@ -65,16 +59,11 @@ private:
   float _yaw_deg {0.0f};
 
   static float roll_adjust(float roll_deg);
-  static float compute_roll(quat_t dq);
-  static float compute_pitch(quat_t dq);
 
   // I2C bus helpers
   uint8_t write_byte(uint8_t reg_addr, uint8_t data);
   uint8_t read_byte(uint8_t reg_addr, uint8_t *data);
   uint8_t read_bytes(uint8_t reg_addr, uint8_t data[], uint8_t size);
-
-  // filter
-  IMU_FILTER _filter;
 
   // background host serial bus service
   TaskHandle_t _task_handle {NULL};    

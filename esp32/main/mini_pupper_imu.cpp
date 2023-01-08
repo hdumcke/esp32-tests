@@ -6,6 +6,7 @@
 #include "mini_pupper_imu.h"
 #include "mini_pupper_tasks.h"
 
+
 #include "esp_log.h"
 #include "esp_timer.h"
 #include "driver/i2c.h"
@@ -167,59 +168,25 @@ uint8_t IMU::read_6dof()
 
   if(!err)
   {
-    acc.x = 1.0/16384.0*((int16_t)(raw[1]<<8) | raw[0]);
-    acc.y = 1.0/16384.0*((int16_t)(raw[3]<<8) | raw[2]);
-    acc.z = 1.0/16384.0*((int16_t)(raw[5]<<8) | raw[4]);
-    gyro.x = 1.0/16.0* ((int16_t)(raw[7]<<8) | raw[6]);
-    gyro.y = 1.0/16.0* ((int16_t)(raw[9]<<8) | raw[8]);
-    gyro.z = 1.0/16.0* ((int16_t)(raw[11]<<8) | raw[10]);
+    ax = 1.0/16384.0*((int16_t)(raw[1]<<8) | raw[0]);
+    ay = 1.0/16384.0*((int16_t)(raw[3]<<8) | raw[2]);
+    az = 1.0/16384.0*((int16_t)(raw[5]<<8) | raw[4]);
+    gx = 1.0/16.0* ((int16_t)(raw[7]<<8) | raw[6]);
+    gy = 1.0/16.0* ((int16_t)(raw[9]<<8) | raw[8]);
+    gz = 1.0/16.0* ((int16_t)(raw[11]<<8) | raw[10]);
     // stats
     f_monitor.update();
   }
   else
   {
-    acc.x = 0.0f;
-    acc.y = 0.0f;
-    acc.z = 0.0f;
-    gyro.x = 0.0f;
-    gyro.y = 0.0f;
-    gyro.z = 0.0f;
+    ax = 0.0f;
+    ay = 0.0f;
+    az = 0.0f;
+    gx = 0.0f;
+    gy = 0.0f;
+    gz = 0.0f;
     // stats
     f_monitor.update(mini_pupper::frame_error_rate_monitor::TIME_OUT_ERROR);
-    return 6;
-  }
-  return 0;
-}
-
-uint8_t IMU::read_attitude()
-{
-  uint8_t raw[16];
-  uint8_t reg_addr = QMI8658C_ACC_GYRO_OUTW_L_Q_REG;
-  uint8_t err = i2c_master_write_read_device(I2C_MASTER_NUM, I2C_DEV_ADDR, &reg_addr, 1, raw, sizeof(raw), I2C_MASTER_TIMEOUT_MS / portTICK_PERIOD_MS);
-
-  if(!err)
-  {
-    dq.w = 1.0/16384.0*((int16_t)(raw[1]<<8) | raw[0]);
-    dq.v.x = 1.0/16384.0*((int16_t)(raw[3]<<8) | raw[2]);
-    dq.v.y = 1.0/16384.0*((int16_t)(raw[5]<<8) | raw[4]);
-    dq.v.z = 1.0/16384.0* ((int16_t)(raw[7]<<8) | raw[6]);
-    dv.x = 1.0/1024.0* ((int16_t)(raw[9]<<8) | raw[8]);
-    dv.y = 1.0/1024.0* ((int16_t)(raw[11]<<8) | raw[10]);
-    dv.z = 1.0/1024.0* ((int16_t)(raw[13]<<8) | raw[12]);
-    ae_reg1 = raw[14];
-    ae_reg2 = raw[15];
-  }
-  else
-  {
-    dq.w = 0.0f;
-    dq.v.x = 0.0f;
-    dq.v.y = 0.0f;
-    dq.v.z = 0.0f;
-    dv.x = 0.0f;
-    dv.y = 0.0f;
-    dv.z = 0.0f;
-    ae_reg1 = 0;
-    ae_reg2 = 0;    
     return 6;
   }
   return 0;
@@ -292,9 +259,9 @@ float IMU::get_yaw() const
   return _yaw_deg;
 }
 
-quat_t IMU::get_quat() const
+quaternion IMU::get_quat() const
 {
-  return _filter.getQuat();
+  return q_est;
 }
 
 float IMU::roll_adjust(float roll_deg)
@@ -305,32 +272,9 @@ float IMU::roll_adjust(float roll_deg)
     return roll_deg+180.0f;
 }
 
-float IMU::compute_roll(quat_t dq)
-{
-  vec3_t v = dq.v;
-  float y = 2*( dq.w*v.x + v.y*v.z );
-  float x = 1 - 2*( v.x*v.x + v.y*v.y );
-  return atan2( y, x );
-}
-
-float IMU::compute_pitch(quat_t dq)
-{
-  vec3_t v = dq.v;
-  float a = 2*( v.y*dq.w - v.z*v.x );    
-  if( a > 1 ) {
-    return M_PI_2; 
-  } else if ( a < -1 ) {
-    return -M_PI_2;
-  } else {
-    return asin(a);
-  }
-}
-
 void IMU_TASK(void * parameters)
 {
   IMU * imu { reinterpret_cast<IMU*>(parameters) };
-  bool first_imu_fusion_filtering {true};
-  IMU_FILTER & filter { imu->_filter };
   for(;;)
   {
     static float const DEG2RAD { M_PI/180.0 };
@@ -354,37 +298,23 @@ void IMU_TASK(void * parameters)
 
     // log debug
     ESP_LOGD(TAG, "ax:%0.3f ay:%0.3f az:%0.3f gx:%0.3f gy:%0.3f gz:%0.3f",
-      imu->acc.x,
-      imu->acc.y,
-      imu->acc.z,
-      (imu->gyro.x*DEG2RAD),
-      (imu->gyro.y*DEG2RAD),
-      (imu->gyro.z*DEG2RAD)
+      imu->ax,
+      imu->ay,
+      imu->az,
+      (imu->gx*DEG2RAD),
+      (imu->gy*DEG2RAD),
+      (imu->gz*DEG2RAD)
     );
 
     // Fusion & Filter
-    if(first_imu_fusion_filtering)
-    {
-      filter.setup( imu->acc.x, imu->acc.y, imu->acc.z );  
-      first_imu_fusion_filtering = false;  
-    }
-    else
-    {
-      
-      filter.update(
-        imu->gyro.x*DEG2RAD, 
-        imu->gyro.y*DEG2RAD, 
-        imu->gyro.z*DEG2RAD, 
-        imu->acc.x, 
-        imu->acc.y, 
-        imu->acc.z
-      );  
-    }
+    imu_filter(imu->ax,imu->ay,imu->az,imu->gx*DEG2RAD,imu->gy*DEG2RAD,imu->gz*DEG2RAD);
 
     //  Store attitude
-    imu->_roll_deg = filter.pitch()*RAD2DEG;
-    imu->_pitch_deg = imu->roll_adjust(filter.roll()*RAD2DEG);
-    imu->_yaw_deg = filter.yaw()*RAD2DEG;
+    float roll, pitch, yaw;
+    eulerAngles(q_est, &roll, &pitch, &yaw);
+    imu->_roll_deg = pitch;
+    imu->_pitch_deg = imu->roll_adjust(roll);
+    imu->_yaw_deg = yaw;
 
     int64_t const end_time_us { esp_timer_get_time() };
     int64_t const delta_time_us { end_time_us-current_time_us };
