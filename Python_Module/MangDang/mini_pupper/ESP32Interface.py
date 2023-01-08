@@ -24,9 +24,9 @@ class ESP32Interface:
         except Exception as e:
             print("%s" % e)
 
-    def servos_set_position(self, positions):
+    def servos_set_position_torque(self, positions, torque):
         try:
-            self.sock.sendall(pack("BB12H", 26, 1, *positions))
+            self.sock.sendall(pack("BB12B12H", 38, 1, *torque, *positions))
             data = self.sock.recv(2)
         except Exception as e:
             if e.errno == errno.EPIPE or e.errno == errno.ENOTCONN or e.errno == errno.EBADF:
@@ -40,6 +40,10 @@ class ESP32Interface:
             print("Invalid Ack")
             self.close()
             return
+
+    def servos_set_position(self, positions):
+            torque = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+            self.servos_set_position_torque(positions, torque)
 
     def servos_get_position(self):
         try:
@@ -104,9 +108,29 @@ class ESP32Interface:
                     "yaw": raw_attitude[2]}
         return attitude
 
-    def get_power_status(self):
+    def imu_get_quaternion(self):
         try:
             self.sock.sendall(pack("BB", 2, 5))
+            data = self.sock.recv(18)
+        except Exception as e:
+            if e.errno == errno.EPIPE or e.errno == errno.ENOTCONN or e.errno == errno.EBADF:
+                self.close()
+                self.connect()
+            else:
+                print("%s" % e)
+            return None
+
+        if data[0:2] != pack("BB", 18, 5):
+            print("Invalid Ack")
+            self.close()
+            return None
+
+        quaternion = list(unpack("4f", data[2:]))
+        return quaternion
+
+    def get_power_status(self):
+        try:
+            self.sock.sendall(pack("BB", 2, 6))
             data = self.sock.recv(10)
         except Exception as e:
             if e.errno == errno.EPIPE or e.errno == errno.ENOTCONN or e.errno == errno.EBADF:
@@ -116,7 +140,7 @@ class ESP32Interface:
                 print("%s" % e)
             return None
 
-        if data[0:2] != pack("BB", 10, 5):
+        if data[0:2] != pack("BB", 10, 6):
             print("Invalid Ack")
             self.close()
             return None
