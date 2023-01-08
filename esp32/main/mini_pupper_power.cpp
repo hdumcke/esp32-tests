@@ -75,7 +75,8 @@ namespace POWER
         );
 
         adc_continuous_evt_cbs_t cbs {
-            .on_conv_done = s_conv_done_cb
+            .on_conv_done = s_conv_done_cb,
+            .on_pool_ovf = nullptr
         };
         ESP_ERROR_CHECK(adc_continuous_register_event_callbacks(handle, &cbs, NULL));
 
