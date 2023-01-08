@@ -307,7 +307,10 @@ void IMU_TASK(void * parameters)
     );
 
     // Fusion & Filter
-    imu_filter(imu->ax,imu->ay,imu->az,imu->gx*DEG2RAD,imu->gy*DEG2RAD,imu->gz*DEG2RAD);
+    if(!((imu->ax == 0.0f) && (imu->ay == 0.0f) && (imu->az == 0.0f)))
+    {
+        imu_filter(imu->ax,imu->ay,imu->az,imu->gx*DEG2RAD,imu->gy*DEG2RAD,imu->gz*DEG2RAD);
+    }
 
     //  Store attitude
     float roll, pitch, yaw;

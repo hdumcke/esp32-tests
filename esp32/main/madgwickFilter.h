@@ -85,10 +85,13 @@ static inline float quat_Norm (struct quaternion q)
 // Normalizes pointer q by calling quat_Norm(q),
 static inline void quat_Normalization(struct quaternion * q){
     float norm = quat_Norm(*q);
-    q -> q1 /= norm;
-    q -> q2 /= norm;
-    q -> q3 /= norm;
-    q -> q4 /= norm;
+    if(norm!=0.0f) // pat92fr
+    {
+        q -> q1 /= norm;
+        q -> q2 /= norm;
+        q -> q3 /= norm;
+        q -> q4 /= norm;
+    }
 }
 
 static inline void printQuaternion (struct quaternion q){
