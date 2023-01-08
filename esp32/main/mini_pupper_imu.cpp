@@ -278,7 +278,7 @@ void IMU_TASK(void * parameters)
   for(;;)
   {
     static float const DEG2RAD { M_PI/180.0 };
-    static float const RAD2DEG { 180.0/M_PI };
+    //static float const RAD2DEG { 180.0/M_PI };
 
     // Waiting for UART event.
     static uint32_t value {0};
@@ -310,6 +310,10 @@ void IMU_TASK(void * parameters)
     if(!((imu->ax == 0.0f) && (imu->ay == 0.0f) && (imu->az == 0.0f)))
     {
         imu_filter(imu->ax,imu->ay,imu->az,imu->gx*DEG2RAD,imu->gy*DEG2RAD,imu->gz*DEG2RAD);
+    }
+    else
+    {
+      ESP_LOGI(TAG, "(time:%lld) IMU zero-G warning !", current_time_us);      
     }
 
     //  Store attitude
