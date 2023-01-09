@@ -1,5 +1,11 @@
 # Demo Scripts
 
+## Installation
+
+Install required Python modules:
+
+sudo pip install -r requirements.txt
+
 ## Haptic Demo
 
 Run:
