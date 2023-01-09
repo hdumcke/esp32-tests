@@ -8,9 +8,6 @@ This is work in progress and should be of no interest to anyone other than peopl
 
 ### Install esp-idf on Raspberry Pi
 
-
-### Compile esp-idf code and flash ESP32
-
 Flash a SD card with ubuntu-22.04.1-preinstalled-server-arm64+raspi.img.xz
 
 On the same PC where you flashed your SD card:
@@ -24,6 +21,8 @@ And then execute
 And answer the questions. The stack you want to install is Mini Pupper Hardware: v2, Owner: Third Parties, stack: ESP IDF
 
 At the end eject your SD card, stick it into your Raspberry Pi, boot and wait until it reboots. This process takes more that 40 minutes, with a slow Internet connection it will take longer. Please be patient.
+
+### Compile esp-idf code and flash ESP32
 
 In the environment you prepared above:
 
