@@ -1,0 +1,2 @@
+numpy-quaternion
+matplotlib>=3.6.0
