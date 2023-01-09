@@ -1,9 +1,15 @@
+#!/usr/bin/python
 from MangDang.mini_pupper.ESP32Interface import ESP32Interface
 from itertools import product, combinations
 from collections import defaultdict
 import matplotlib.pyplot as plt
 import numpy as np
+import quaternion
 import datetime
+
+
+data_fields = {'quat_w', 'quat_x', 'quat_y', 'quat_z', 'accel_x', 'accel_y', 'accel_z',
+               'gyro_x', 'gyro_y', 'gyro_z', 'compass_x', 'compass_y', 'compass_z'}
 
 
 def wrap_angle(ang):
@@ -11,8 +17,39 @@ def wrap_angle(ang):
     return ang
 
 
-class mpl_plotter():
-    def __init__(self, angles_init=(0, 0, 0)):
+def quat_to_elev_azim_roll(q, angle_offsets=(0, 0, 0)):
+    # See Diebel, James "Representing Attitude: Euler Angles, Unit Quaternions, and Rotation Vectors" (2006)
+    # https://www.astro.rug.nl/software/kapteyn-beta/_downloads/attitude.pdf
+    # Sequence (3, 2, 1), Eqn. 452
+    q0, q1, q2, q3 = q.w, q.x, q.y, q.z
+    phi = np.arctan2(-2*q1*q2 + 2*q0*q3, q1**2 + q0**2 - q3**2 - q2**2)
+    theta = np.arcsin(2*q1*q3 + 2*q0*q2)
+    psi = np.arctan2(-2*q2*q3 + 2*q0*q1, q3**2 - q2**2 - q1**2 + q0**2)
+    azim = np.rad2deg(phi) + angle_offsets[0]
+    elev = -np.rad2deg(theta) + angle_offsets[1]
+    roll = np.rad2deg(psi) + angle_offsets[2]
+    return elev, azim, roll
+
+
+def elev_azim_roll_to_quat(elev, azim, roll, angle_offsets=(0, 0, 0)):
+    # See Diebel, James "Representing Attitude: Euler Angles, Unit Quaternions, and Rotation Vectors" (2006)
+    # https://www.astro.rug.nl/software/kapteyn-beta/_downloads/attitude.pdf
+    # Sequence (3, 2, 1), Eqn. 459
+    phi = np.deg2rad(azim) - angle_offsets[0]
+    theta = np.deg2rad(-elev) - angle_offsets[1]
+    psi = np.deg2rad(roll) - angle_offsets[2]
+    q0 = np.cos(phi/2)*np.cos(theta/2)*np.cos(psi/2) - np.sin(phi/2)*np.sin(theta/2)*np.sin(psi/2)
+    q1 = np.cos(phi/2)*np.cos(theta/2)*np.sin(psi/2) + np.sin(phi/2)*np.sin(theta/2)*np.cos(psi/2)
+    q2 = np.cos(phi/2)*np.sin(theta/2)*np.cos(psi/2) - np.sin(phi/2)*np.cos(theta/2)*np.sin(psi/2)
+    q3 = np.cos(phi/2)*np.sin(theta/2)*np.sin(psi/2) + np.sin(phi/2)*np.cos(theta/2)*np.cos(psi/2)
+    q = np.quaternion(q0, q1, q2, q3)
+    return q
+
+
+class quaternion_plotter():
+    def __init__(self, angles_init=(0, 0, 0), port='/dev/ttyACM0', baudrate=115200):
+        self.port = port
+        self.baudrate = baudrate
         self.running = True
         self.data = defaultdict(float)
         self.n = 0
@@ -25,7 +62,7 @@ class mpl_plotter():
         self.last_plotted = datetime.datetime.now()
 
         self.t = self.t_start
-        self.q = 0
+        self.q = np.quaternion(1, 0, 0, 0)
         self.angles_init = angles_init  # elev, azim, roll (deg)
         self.ang = np.array(angles_init)
         # self.accel = np.array([0, 0, 0])
@@ -40,10 +77,22 @@ class mpl_plotter():
         # self.mags = [self.mag]
 
 
-    def process_data(self):
+    def update_data(self):
+        quat = self.esp32.imu_get_quaternion()
+        self.data['quat_w'] = float(quat[0])
+        self.data['quat_x'] = float(quat[1])
+        self.data['quat_y'] = float(quat[2])
+        self.data['quat_z'] = float(quat[3])
 
-        attitude = self.esp32.imu_get_attitude()
-        elev, azim, roll = attitude['pitch'], attitude['yaw'], attitude['roll']
+
+    def process_data(self):
+        q0 = self.data['quat_w']
+        q1 = self.data['quat_x']
+        q2 = self.data['quat_y']
+        q3 = self.data['quat_z']
+        self.q = np.quaternion(q0, q1, q2, q3)
+
+        elev, azim, roll = quat_to_elev_azim_roll(self.q, self.angles_init)
         self.ang = wrap_angle(np.array([elev, azim, roll]))
 
         self.t = datetime.datetime.now()
@@ -78,31 +127,33 @@ class mpl_plotter():
         axd['3d'].remove()
         axd['3d'] = fig.add_subplot(ss, projection='3d')
 
-        while self.running:
-            dt = datetime.datetime.now() - self.t
-            if dt.total_seconds() >= 1./self.read_freq:
-                self.process_data()
-                self.update_timeseries()
+        while True:
+            while self.running:
+                dt = datetime.datetime.now() - self.t
+                if dt.total_seconds() >= 1./self.read_freq:
+                    self.update_data()
+                    self.process_data()
+                    self.update_timeseries()
 
-            # Init plots
-            if self.n == 1:
-                self.plot_cuboid(axd['3d'])
-                if not plot_3d_only:
-                    self.plot_q_line(axd['q'])
-                    self.plot_ang_line(axd['ang'])
-                plt.show(block=False)
-
-            # Update plots
-            if self.n > 0:
-                dt = self.t - self.last_plotted
-                if dt.total_seconds() >= 1./self.plot_freq:
-                    self.update_cuboid_plot(axd['3d'])
+                # Init plots
+                if self.n == 1:
+                    self.plot_cuboid(axd['3d'])
                     if not plot_3d_only:
-                        self.update_q_plot(axd['q'])
-                        self.update_ang_plot(axd['ang'])
-                    fig.canvas.draw()
-                    fig.canvas.flush_events()
-                    self.last_plotted = datetime.datetime.now()
+                        self.plot_q_line(axd['q'])
+                        self.plot_ang_line(axd['ang'])
+                    plt.show(block=False)
+
+                # Update plots
+                if self.n > 0:
+                    dt = self.t - self.last_plotted
+                    if dt.total_seconds() >= 1./self.plot_freq:
+                        self.update_cuboid_plot(axd['3d'])
+                        if not plot_3d_only:
+                            self.update_q_plot(axd['q'])
+                            self.update_ang_plot(axd['ang'])
+                        fig.canvas.draw()
+                        fig.canvas.flush_events()
+                        self.last_plotted = datetime.datetime.now()
 
 
     ## Plotting init methods
@@ -155,9 +206,10 @@ class mpl_plotter():
 
     ## Plotting update methods
     def update_cuboid_plot(self, ax):
+        print(self.t, self.q) #, self.ang)
         elev, azim, roll = self.ang
         ax.view_init(elev, azim, roll)
-        ax.set_title(f'pitch={elev:0.1f}, yaw={azim:0.1f}, roll={roll:0.1f}')
+        ax.set_title(f'elev={elev:0.1f}, azim={azim:0.1f}, roll={roll:0.1f}')
 
 
     def update_q_plot(self, ax):
@@ -186,7 +238,7 @@ class mpl_plotter():
 
 
 def main():
-    qp = mpl_plotter(angles_init=(0, 0, 180))
+    qp = quaternion_plotter(port='/dev/ttyACM0', angles_init=(0, 0, 180))
     qp.run()
 
 
