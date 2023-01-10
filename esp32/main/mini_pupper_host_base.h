@@ -69,14 +69,13 @@ struct parameters_control_acknowledge_format
     // SERVO feedback
     u16 present_position[12];
     s16 present_load[12];
-    // IMU data
-    float roll;
-    float pitch;
-    float yaw;
-    float q_x;
-    float q_y;
-    float q_z;
-    float q_w;
+    // IMU raw data
+    float ax;
+    float ay;
+    float az;
+    float gx;
+    float gy;
+    float gz;
     // POWER SUPPLY data
     float voltage_V;
     float current_A;

@@ -16,8 +16,6 @@
 
 #include "mini_pupper_stats.h"
 
-#include "madgwickFilter.h"
-
 void IMU_TASK(void * parameters);
 void IRAM_ATTR IMU_ISR(void * arg);
 
@@ -29,17 +27,10 @@ struct IMU
 
   void start();
 
-  quaternion get_quat() const;
-
-  float get_roll() const;
-  float get_pitch() const;
-  float get_yaw() const;
-
   /* DEBUG */
 
   uint8_t who_am_i();
   uint8_t version();
-
   uint8_t read_6dof();
 
   /* DEBUG */
@@ -47,18 +38,11 @@ struct IMU
   float ax, ay, az;
   float gx, gy, gz;
   
-  
   // public stats
     mini_pupper::periodic_process_monitor p_monitor;
     mini_pupper::frame_error_rate_monitor f_monitor;
 
 private:
-
-  float _roll_deg {0.0f};
-  float _pitch_deg {0.0f};
-  float _yaw_deg {0.0f};
-
-  static float roll_adjust(float roll_deg);
 
   // I2C bus helpers
   uint8_t write_byte(uint8_t reg_addr, uint8_t data);
