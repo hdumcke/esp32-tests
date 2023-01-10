@@ -322,6 +322,7 @@ static void register_mini_pupper_cmd_calibrate_end(void)
   {
     if (remove("/data//calib.txt") == 0) {
         printf("The calibration file is deleted successfully.");
+        servo.resetCalibration();
     } else {
         printf("The calibration file is not deleted.");
     }
