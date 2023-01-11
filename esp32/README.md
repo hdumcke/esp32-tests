@@ -20,7 +20,7 @@ To build the project:
 cd ~
 git clone https://github.com/hdumcke/esp32-tests
 cd ~/esp32-tests/esp32
-idf.py set-target esp32s3
+idf.py set-target esp32
 idf.py menuconfig # you can use all default values
 idf.py build
 export ESPPORT=/dev/ttyUSB0
