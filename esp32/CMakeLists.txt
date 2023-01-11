@@ -5,6 +5,7 @@
 cmake_minimum_required(VERSION 3.16)
 
 set(EXTRA_COMPONENT_DIRS $ENV{IDF_PATH}/examples/system/console/advanced/components)
+execute_process(COMMAND ${CMAKE_SOURCE_DIR}/get-version.sh OUTPUT_VARIABLE PROJECT_VER)
 
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 project(mini_pupper_app)

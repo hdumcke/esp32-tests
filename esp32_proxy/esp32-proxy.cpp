@@ -22,7 +22,7 @@ static bool const print_debug_max {false};
 
 static char const * filename {"/dev/ttyAMA1"};
 
-char *version = strdup("dev");
+static char const * version = PROJECT_VER;
 
 // Setpoint and feedback data format for client-server communication (PoD)
 struct setpoint_and_feedback_data
