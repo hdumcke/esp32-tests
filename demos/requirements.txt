@@ -1,2 +1,3 @@
-numpy-quaternion
+ahrs
 matplotlib>=3.6.0
+numpy-quaternion

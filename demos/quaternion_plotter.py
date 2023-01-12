@@ -1,5 +1,6 @@
 #!/usr/bin/python
 from MangDang.mini_pupper.ESP32Interface import ESP32Interface
+from ahrs.filters import Madgwick
 from itertools import product, combinations
 from collections import defaultdict
 import matplotlib.pyplot as plt
@@ -57,6 +58,12 @@ class quaternion_plotter():
         self.plot_freq = 30
         self.maxpoints = 10*self.read_freq
         self.esp32 = ESP32Interface()
+        self.Q = np.array([1., 0., 0., 0.])
+        data = self.esp32.imu_get_data()
+        acc_data = np.tile([data['ax'], data['ay'], data['az']], (1,1))
+        gyro_data = np.tile([data['gx'], data['gy'], data['gz']], (1,1))
+        gyro_data *= np.pi / 180
+        self.madgwick = Madgwick(gyr=gyro_data, acc=acc_data, q0=[0.7071, 0.0, 0.7071, 0.0])
 
         self.t_start = datetime.datetime.now()
         self.last_plotted = datetime.datetime.now()
@@ -76,14 +83,16 @@ class quaternion_plotter():
         # self.gyros = [self.gyro]
         # self.mags = [self.mag]
 
-
     def update_data(self):
-        quat = self.esp32.imu_get_quaternion()
-        self.data['quat_w'] = float(quat[0])
-        self.data['quat_x'] = float(quat[1])
-        self.data['quat_y'] = float(quat[2])
-        self.data['quat_z'] = float(quat[3])
-
+        data = self.esp32.imu_get_data()
+        acc_data = np.array([data['ax'], data['ay'], data['az']])
+        gyro_data = np.array([data['gx'], data['gy'], data['gz']])
+        gyro_data *= np.pi / 180
+        self.Q = self.madgwick.updateIMU(self.Q, gyr=gyro_data, acc=acc_data)
+        self.data['quat_w'] = float(self.Q[0])
+        self.data['quat_x'] = float(self.Q[1])
+        self.data['quat_y'] = float(self.Q[2])
+        self.data['quat_z'] = float(self.Q[3])
 
     def process_data(self):
         q0 = self.data['quat_w']

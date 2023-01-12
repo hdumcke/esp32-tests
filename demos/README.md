@@ -16,14 +16,12 @@ You can now move the front right leg and the other legs will follow. Note that s
 
 ## IMU Demo
 
+Code based on https://github.com/scottshambaugh/mpl_quaternion_views.git
+
 Run:
-
-./mpl_plotter.py
-
-and/or
 
 ./quaternion_plotter.py
 
 These script will produce a GUI, either run it when a monitor is connect to your Mini Pupper or use it with ssh X Windows forwarding.
 
-mpl_plotter will read yaw, pitch and roll, quaternion_plotter will read the quaternions. All IMU data is filtered on the ESP32. The IMU is positioned "upside down" on the main board. The orientation of yaw, pitch and roll is already corrected, the quaternions are not correctet (for the time being).
+The IMU is positioned "upside down" on the main board, the application must correct the orientation.
