@@ -33,7 +33,11 @@ if [ $(lsb_release -cs) == "jammy" ]; then
     sudo sed -i "s/cards.pcm.front/cards.pcm.default/" /usr/share/alsa/alsa.conf
 fi
 
-### Install
+### Install LCD images
+sudo rm -rf /var/lib/mini_pupper_bsp
+sudo cp -r $BASEDIR/Display /var/lib/mini_pupper_bsp
+
+### Install system components
 for dir in IO_Configuration FuelGauge System esp32_proxy; do
     cd $BASEDIR/$dir
     ./install.sh
@@ -47,11 +51,9 @@ cd /tmp
 wget --no-check-certificate https://bootstrap.pypa.io/get-pip.py
 sudo python get-pip.py
 
-### Install LCD driver
+### Install Python module
 sudo apt install -y python3-dev
 sudo git config --global --add safe.directory $BASEDIR # temporary fix https://bugs.launchpad.net/devstack/+bug/1968798
-sudo rm -rf /var/lib/mini_pupper_bsp
-sudo cp -r $BASEDIR/Display /var/lib/mini_pupper_bsp
 sudo pip install $BASEDIR/Python_Module
 
 ### Make pwm sysfs and nvmem work for non-root users
