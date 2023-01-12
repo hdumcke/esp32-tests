@@ -1,6 +1,103 @@
 CHANGES
 =======
 
+* Raw IMU data upload
+* Update mini\_pupper\_cmd.cpp
+* added demos/requirements.txt
+
+v0.1
+----
+
+* updated README
+* demo -> demos
+* added README for demo
+* added IMU demo
+* imu filter nan fix test
+* imu filter nan fix test
+* minor fix
+* Madgwick filter
+* updated after torque has been eposed and added haptic demo
+* update esp32 proxy with quaternion and torque enable
+* wip
+* full stats display
+* added IMU visualization (wip)
+* wip
+* wip
+* wip
+* add periodic monitoring of tasks, cmd statistics, typos
+* fixed typos
+* updated README with calibration information
+* updated README with calibration information
+* More reliable HOST communication decoder
+* More reliable HOST communication decoder
+* More reliable HOST communication decoder
+* Tasks with CORE and PRIORITY atrtibutes
+* working on version string
+* finished calibration
+* apply calibration data in servo task
+* ref\_zero hard-coded, file access, calibrated data in servo state, helpers
+* wip calibration process
+* wip
+* wip
+* cleanup of esp32 code and start working on calibration
+* made ESP32Interface.py more robust fir proxy failures
+* updated FuelGauge with information from ESP32
+* esp32-proxy terminates when client disconnects
+* low-voltage cutoff
+* merged changes from pat92fr manually
+* up proxy wip
+* servos\_enable is now done on esp32
+* fixed install.sh
+* install esp32-proxy as a service
+* fixed esp32/README.md
+* integrated imu and power in Python API
+* servo soft start
+* init with IMU and POWER feedback
+* updated esp32/README.md
+* updated esp32/README.md
+* merged recent changes from pat92fr
+* updated Python\_Module
+* updated with content from host-serial-communication-alpha branch
+* working on esp32\_protocol
+* RPi protocol with both signed and unsigned data
+* final steps
+* final steps
+* final steps
+* Update mini\_pupper\_servos.h
+* final steps
+* wip
+* wip
+* wip
+* wip
+* updated README
+* updated README
+* updated README
+* signed load ok
+* wip
+* wip
+* get position ok
+* wip set position
+* servo scan ok ping ok
+* wip
+* wip
+* wip
+* cleanup start
+* rewrote set\_servos\_before\_assembly.py to use hardware\_interface.set\_actuator\_postions
+* removed config RASPI\_CONTROLLED
+* updated with servo-12-srv branch from pat92fr
+* updated README
+* fixed MICROS\_PER\_RAD in calibrate\_tool.py
+* fixed path the nvram
+* fixed a bug in HardwareInterface.py
+* enable LCD and audio
+* use setPosition12 for Python call, added servo-rotate12 command
+* Update servo\_cmd.cpp
+* setPosition12
+* removed all write\_type\_\* functions from CLI added servo-setPosition12, example call: servo-setPosition12  --pos "1023 1023 1023 1023 1023 1023 1023 1023 1023 1023 1023 1023" This provides a string with the positions. Converting the sring and error checks (position in 0..1023, 12 values provided) needs to be done
+* fixing some minor issues
+* fixing setup.sh
+* testing setup
+* testing on real mini pupper
 * added Python\_Module from v1
 * working on simulation
 * testing Python API

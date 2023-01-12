@@ -393,19 +393,12 @@ int main(int argc, char *argv[])
 
                 offset += 12*sizeof(s16);
                 if(r_buffer[1] == INST_GETIMU && r_buffer[0] == 2) {
-                    s_buffer[0]= 2 + 3*sizeof(float);
+                    s_buffer[0]= 2 + 6*sizeof(float);
                     s_buffer[1]= INST_GETIMU;
-                    memcpy(&s_buffer[2], (char*)control_block + offset, 3*sizeof(float));
+                    memcpy(&s_buffer[2], (char*)control_block + offset, 6*sizeof(float));
                 }
 
-                offset += 3*sizeof(float);
-                if(r_buffer[1] == INST_GETIMUQUAT && r_buffer[0] == 2) {
-                    s_buffer[0]= 2 + 4*sizeof(float);
-                    s_buffer[1]= INST_GETIMUQUAT;
-                    memcpy(&s_buffer[2], (char*)control_block + offset, 4*sizeof(float));
-                }
-
-                offset += 4*sizeof(float);
+                offset += 6*sizeof(float);
                 if(r_buffer[1] == INST_GETPOWER && r_buffer[0] == 2) {
                     s_buffer[0]= 2 + 2*sizeof(float);
                     s_buffer[1]= INST_GETPOWER;
