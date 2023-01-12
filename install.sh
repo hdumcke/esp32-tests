@@ -34,7 +34,7 @@ if [ $(lsb_release -cs) == "jammy" ]; then
 fi
 
 ### Install
-for dir in IO_Configuration FuelGauge System; do
+for dir in IO_Configuration FuelGauge System esp32_proxy; do
     cd $BASEDIR/$dir
     ./install.sh
 done
@@ -53,9 +53,6 @@ sudo git config --global --add safe.directory $BASEDIR # temporary fix https://b
 sudo rm -rf /var/lib/mini_pupper_bsp
 sudo cp -r $BASEDIR/Display /var/lib/mini_pupper_bsp
 sudo pip install $BASEDIR/Python_Module
-
-### Install esp32 gateway
-$BASEDIR//esp32_proxy/install.sh
 
 ### Make pwm sysfs and nvmem work for non-root users
 ### reference: https://github.com/raspberrypi/linux/issues/1983

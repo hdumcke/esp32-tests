@@ -42,8 +42,8 @@ class ESP32Interface:
             return
 
     def servos_set_position(self, positions):
-            torque = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
-            self.servos_set_position_torque(positions, torque)
+        torque = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+        self.servos_set_position_torque(positions, torque)
 
     def servos_get_position(self):
         try:
@@ -85,10 +85,10 @@ class ESP32Interface:
         load = list(unpack("12h", data[2:]))
         return load
 
-    def imu_get_attitude(self):
+    def imu_get_data(self):
         try:
             self.sock.sendall(pack("BB", 2, 4))
-            data = self.sock.recv(14)
+            data = self.sock.recv(26)
         except Exception as e:
             if e.errno == errno.EPIPE or e.errno == errno.ENOTCONN or e.errno == errno.EBADF:
                 self.close()
@@ -97,40 +97,23 @@ class ESP32Interface:
                 print("%s" % e)
             return None
 
-        if data[0:2] != pack("BB", 14, 4):
+        if data[0:2] != pack("BB", 26, 4):
             print("Invalid Ack")
             self.close()
             return None
 
-        raw_attitude = list(unpack("3f", data[2:]))
-        attitude = {"roll": raw_attitude[0],
-                    "pitch": raw_attitude[1],
-                    "yaw": raw_attitude[2]}
-        return attitude
-
-    def imu_get_quaternion(self):
-        try:
-            self.sock.sendall(pack("BB", 2, 5))
-            data = self.sock.recv(18)
-        except Exception as e:
-            if e.errno == errno.EPIPE or e.errno == errno.ENOTCONN or e.errno == errno.EBADF:
-                self.close()
-                self.connect()
-            else:
-                print("%s" % e)
-            return None
-
-        if data[0:2] != pack("BB", 18, 5):
-            print("Invalid Ack")
-            self.close()
-            return None
-
-        quaternion = list(unpack("4f", data[2:]))
-        return quaternion
+        raw_data = list(unpack("6f", data[2:]))
+        imu_data = {"ax": raw_data[0],
+                    "ay": raw_data[1],
+                    "az": raw_data[2],
+                    "gx": raw_data[3],
+                    "gy": raw_data[4],
+                    "gz": raw_data[5]}
+        return imu_data
 
     def get_power_status(self):
         try:
-            self.sock.sendall(pack("BB", 2, 6))
+            self.sock.sendall(pack("BB", 2, 5))
             data = self.sock.recv(10)
         except Exception as e:
             if e.errno == errno.EPIPE or e.errno == errno.ENOTCONN or e.errno == errno.EBADF:
@@ -140,7 +123,7 @@ class ESP32Interface:
                 print("%s" % e)
             return None
 
-        if data[0:2] != pack("BB", 10, 6):
+        if data[0:2] != pack("BB", 10, 5):
             print("Invalid Ack")
             self.close()
             return None
