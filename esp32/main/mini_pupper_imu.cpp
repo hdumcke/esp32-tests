@@ -244,94 +244,32 @@ void IMU::start()
   gpio_isr_handler_add(GPIO_NUM_39, IMU_ISR, (void*)this);
 }
 
-float IMU::get_roll() const
-{
-  return _roll_deg;
-}
-
-float IMU::get_pitch() const
-{
-  return _pitch_deg;
-}
-
-float IMU::get_yaw() const
-{
-  return _yaw_deg;
-}
-
-quaternion IMU::get_quat() const
-{
-  return q_est;
-}
-
-float IMU::roll_adjust(float roll_deg)
-{
-  if(roll_deg>=0)
-    return roll_deg-180.0f;
-  else
-    return roll_deg+180.0f;
-}
-
 void IMU_TASK(void * parameters)
 {
   IMU * imu { reinterpret_cast<IMU*>(parameters) };
   for(;;)
   {
-    static float const DEG2RAD { M_PI/180.0 };
-    //static float const RAD2DEG { 180.0/M_PI };
-
     // Waiting for UART event.
     static uint32_t value {0};
     if(!xQueueReceive(imu->_INT2_evt_queue,(void*)&value,(TickType_t)portMAX_DELAY)) continue;
     xQueueReset(imu->_INT2_evt_queue);
 
-    // Time
-    int64_t const current_time_us { esp_timer_get_time() };
-
-    // log debug
-    ESP_LOGD(TAG, "INT2 (time:%lld)(queue:%d)", current_time_us, uxQueueMessagesWaiting(imu->_INT2_evt_queue));
-  
     // Read raw IMU data
     uint8_t const read_data { imu->read_6dof() };
     if(read_data)
-      ESP_LOGI(TAG, "(time:%lld) IMU read error!!!!", current_time_us);
+      ESP_LOGI(TAG, "IMU read error!!!");
 
     // log debug
     ESP_LOGD(TAG, "ax:%0.3f ay:%0.3f az:%0.3f gx:%0.3f gy:%0.3f gz:%0.3f",
       imu->ax,
       imu->ay,
       imu->az,
-      (imu->gx*DEG2RAD),
-      (imu->gy*DEG2RAD),
-      (imu->gz*DEG2RAD)
+      imu->gx,
+      imu->gy,
+      imu->gz
     );
-
-    // Fusion & Filter
-    if(!((imu->ax == 0.0f) && (imu->ay == 0.0f) && (imu->az == 0.0f)))
-    {
-        imu_filter(imu->ax,imu->ay,imu->az,imu->gx*DEG2RAD,imu->gy*DEG2RAD,imu->gz*DEG2RAD);
-    }
-    else
-    {
-      ESP_LOGI(TAG, "(time:%lld) IMU zero-G warning !", current_time_us);      
-    }
-
-    //  Store attitude
-    float roll, pitch, yaw;
-    eulerAngles(q_est, &roll, &pitch, &yaw);
-    imu->_roll_deg = pitch;
-    imu->_pitch_deg = imu->roll_adjust(roll);
-    imu->_yaw_deg = yaw;
-
-    int64_t const end_time_us { esp_timer_get_time() };
-    int64_t const delta_time_us { end_time_us-current_time_us };
-
-    // log
-    ESP_LOGD(TAG, "(dt:%lld time:%lld) ATTITUDE: roll:%.3f  pitch:%.3f  yaw:%.3f", delta_time_us, current_time_us, imu->_roll_deg, imu->_pitch_deg, imu->_yaw_deg);
 
     // stats
     imu->p_monitor.update();
-
-
   }    
 }

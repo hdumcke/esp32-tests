@@ -151,14 +151,12 @@ void HOST_TASK(void * parameters)
                         servo.getPosition12Async(feedback_parameters.present_position);
                         servo.getLoad12Async(feedback_parameters.present_load);
                         // imu feedback
-                        feedback_parameters.roll = imu.get_roll();
-                        feedback_parameters.pitch = imu.get_pitch();
-                        feedback_parameters.yaw = imu.get_yaw();
-                        quaternion const q { imu.get_quat() };
-                        feedback_parameters.q_w = q.q1;
-                        feedback_parameters.q_x = q.q2;
-                        feedback_parameters.q_y = q.q3;
-                        feedback_parameters.q_z = q.q4;
+                        feedback_parameters.ax = imu.ax;
+                        feedback_parameters.ay = imu.ay;
+                        feedback_parameters.az = imu.az;
+                        feedback_parameters.gx = imu.gx;
+                        feedback_parameters.gy = imu.gy;
+                        feedback_parameters.gz = imu.gz;
                         // power supply feedback
                         feedback_parameters.voltage_V = POWER::get_voltage_V();
                         feedback_parameters.current_A = POWER::get_current_A();

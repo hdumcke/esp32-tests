@@ -269,8 +269,10 @@ void esp32_protocol(setpoint_and_feedback_data * control_block)
             control_block->feedback.present_load[9],control_block->feedback.present_load[10],control_block->feedback.present_load[11]
             );
 
-            printf("Attitude:  roll:%.3f  pitch:%.3f  yaw:%.3f\n", control_block->feedback.roll, control_block->feedback.pitch, control_block->feedback.yaw);
-            printf("Attitude:  qw:%.3f  qx:%.3f  qy:%.3f  qz:%.3f\n", control_block->feedback.q_w, control_block->feedback.q_x, control_block->feedback.q_y, control_block->feedback.q_z);
+            printf("Attitude:  ax:%.3f  ay:%.3f  az:%.3f  gx:%.3f  gy:%.3f  gz:%.3f\n",
+                control_block->feedback.ax, control_block->feedback.ay, control_block->feedback.az,
+                control_block->feedback.gx, control_block->feedback.gy, control_block->feedback.gz
+            );
             printf("Power:  %.3fV  %.3fA\n", control_block->feedback.voltage_V, control_block->feedback.current_A);
 	   }
     }
