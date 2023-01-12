@@ -5,6 +5,11 @@
 cmake_minimum_required(VERSION 3.16)
 
 set(EXTRA_COMPONENT_DIRS $ENV{IDF_PATH}/examples/system/console/advanced/components)
+if(CMAKE_HOST_WIN32)
+  set(PROJECT_VER "Build on Windows")
+ELSE()
+  execute_process(COMMAND ${CMAKE_SOURCE_DIR}/get-version.sh OUTPUT_VARIABLE PROJECT_VER)
+ENDIF()
 
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 project(mini_pupper_app)
