@@ -435,8 +435,9 @@ int SERVO::unlock_eeprom(u8 ID)
     // wait for reply
     u8 reply_id {0};
     u8 reply_state {0};
-    int const status = reply_frame(reply_id,reply_state,nullptr,0);
-    ESP_LOGE(TAG, "Reply error [%d,%d,%d]",status,reply_id,reply_state);
+    int const status = reply_frame(reply_id,reply_state,nullptr,0,100);
+    if(status)
+        ESP_LOGI(TAG, "Reply error [%d,%d,%d]",status,reply_id,reply_state);
 
     // check reply
     if(status!=SERVO_STATUS_OK) return SERVO_STATUS_FAIL;
@@ -461,8 +462,9 @@ int SERVO::lock_eeprom(u8 ID)
     // wait for reply
     u8 reply_id {0};
     u8 reply_state {0};
-    int const status = reply_frame(reply_id,reply_state,nullptr,0);
-    ESP_LOGE(TAG, "Reply error [%d,%d,%d]",status,reply_id,reply_state);
+    int const status = reply_frame(reply_id,reply_state,nullptr,0,100);
+    if(status)
+        ESP_LOGI(TAG, "Reply error [%d,%d,%d]",status,reply_id,reply_state);
 
     // check reply
     if(status!=SERVO_STATUS_OK) return SERVO_STATUS_FAIL;
@@ -519,7 +521,23 @@ int SERVO::setID(u8 servoID, u8 newID)
     enable_service(false);
 
     unlock_eeprom(servoID);
+
+    // change ID register
     write_register_byte(servoID, SERVO_ID, newID);
+
+    // wait for reply
+    u8 reply_id {0};
+    u8 reply_state {0};
+    int const status = reply_frame(reply_id,reply_state,nullptr,0,100);
+    if(status)
+        ESP_LOGI(TAG, "Reply error [%d,%d,%d]",status,reply_id,reply_state);
+
+    // check reply
+    if(status!=SERVO_STATUS_OK) return SERVO_STATUS_FAIL;
+
+    // check reply
+    if(reply_state!=0) return SERVO_STATUS_FAIL;
+
     lock_eeprom(newID);
 
     return SERVO_STATUS_OK;
@@ -950,7 +968,7 @@ int SERVO::write_frame(u8 ID, u8 instruction, u8 const * parameters, size_t para
     return SERVO_STATUS_OK;
 }
 
-int SERVO::reply_frame(u8 & ID, u8 & state, u8 * parameters, size_t parameter_length)
+int SERVO::reply_frame(u8 & ID, u8 & state, u8 * parameters, size_t parameter_length, TickType_t timeout)
 {
     // a buffer to process reply packet from one servo
     // prepare frame to one servo
@@ -958,7 +976,7 @@ int SERVO::reply_frame(u8 & ID, u8 & state, u8 * parameters, size_t parameter_le
     size_t const buffer_size {2+1+1+length};        // 0xFF 0xFF ID LENGTH (STATE PARAM... CHK)    
     u8 buffer[buffer_size] {0};
     // copy RX fifo into local buffer
-    int const read_length = uart_read_bytes(uart_port_num,buffer,buffer_size,2);
+    int const read_length = uart_read_bytes(uart_port_num,buffer,buffer_size,timeout);
     // flush RX FIFO
     uart_flush(uart_port_num);    
     // check expected frame size
