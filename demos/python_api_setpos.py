@@ -9,6 +9,15 @@ servos = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
 # maximum deviation from neutral position
 max_delta = 50
 
+# move only hips
+#servos = [1, 4, 7, 10]
+
+# move only upper legs
+#servos = [2, 5, 8, 11]
+
+# move only lower legs
+#servos = [3, 6, 9, 12]
+
 esp32 = ESP32Interface()
 
 delta = 1
@@ -20,6 +29,6 @@ while True:
         positions[servo - 1] += delta
         positions[servo - 1] %= 1024
     # limit to configured maximum deviation
-    if positions[0] >= upper_max or positions[0] <= lower_min:
+    if positions[servos[0] - 1] >= upper_max or positions[servos[0] - 1] <= lower_min:
         delta *= -1
     time.sleep(1 / 500)  # 500 Hz
