@@ -1,3 +1,4 @@
+#!/usr/bin/python
 from MangDang.mini_pupper.ESP32Interface import ESP32Interface
 import time
 
