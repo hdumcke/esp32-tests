@@ -22,6 +22,7 @@
 #include "mini_pupper_imu.h"
 #include "mini_pupper_app.h"
 #include "mini_pupper_cmd.h"
+#include "mini_pupper_ota.h"
 
 static const char *TAG = "CLI";
 
@@ -318,28 +319,64 @@ static void register_mini_pupper_cmd_calibrate_end(void)
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_calibrate) );
 }
 
-  static int mini_pupper_cmd_calibrate_clear(int argc, char **argv)
-  {
-    if (remove("/data//calib.txt") == 0) {
-        printf("The calibration file is deleted successfully.");
-        servo.resetCalibration();
-    } else {
-        printf("The calibration file is not deleted.");
-    }
-    return 0;
+static int mini_pupper_cmd_calibrate_clear(int argc, char **argv)
+{
+  if (remove("/data//calib.txt") == 0) {
+      printf("The calibration file is deleted successfully.");
+      servo.resetCalibration();
+  } else {
+      printf("The calibration file is not deleted.");
   }
+  return 0;
+}
 
-  static void register_mini_pupper_cmd_calibrate_clear(void)
-  {
-      const esp_console_cmd_t cmd_calibrate = {
-          .command = "calibrate-clear",
-          .help = "clear mini pupper calibration",
-          .hint = NULL,
-          .func = &mini_pupper_cmd_calibrate_clear,
-             .argtable = NULL
-      };
-      ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_calibrate) );
-  }
+static void register_mini_pupper_cmd_calibrate_clear(void)
+{
+    const esp_console_cmd_t cmd_calibrate = {
+        .command = "calibrate-clear",
+        .help = "clear mini pupper calibration",
+        .hint = NULL,
+        .func = &mini_pupper_cmd_calibrate_clear,
+           .argtable = NULL
+    };
+    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_calibrate) );
+}
+
+static struct {
+    struct arg_str *ssid;
+    struct arg_str *wifi_passwd;
+    struct arg_end *end;
+} ota_args;
+
+
+static int mini_pupper_cmd_ota(int argc, char **argv)
+{
+    int nerrors = arg_parse(argc, argv, (void **)&ota_args);
+    if (nerrors != 0) {
+        arg_print_errors(stderr, ota_args.end, argv[0]);
+        return 0;
+    }
+
+    // check for OTA updates
+    state = STATE_RESTING;
+    check_ota_updates(ota_args.ssid->sval[0], ota_args.wifi_passwd->sval[0]);
+  return 0;
+}
+
+static void register_mini_pupper_cmd_ota(void)
+{
+    ota_args.ssid = arg_str1(NULL, "ssid", "<ssid>", "Wifi SSID");
+    ota_args.wifi_passwd = arg_str0(NULL, "password", "<pwd>", "Wifi password");
+    ota_args.end = arg_end(2);
+    const esp_console_cmd_t cmd_ota = {
+        .command = "update",
+        .help = "Get OTA updates",
+        .hint = "--ssid <ssid> --password <pwd>",
+        .func = &mini_pupper_cmd_ota,
+        .argtable = NULL
+    };
+    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_ota) );
+}
 
 static struct {
     struct arg_int *servo_id;
@@ -1036,9 +1073,10 @@ void register_mini_pupper_cmds(void)
     register_mini_pupper_cmd_calibrate_begin();
     register_mini_pupper_cmd_calibrate_end();
     register_mini_pupper_cmd_calibrate_clear();
-    register_mini_pupper_cmd_extended_menu();
+    register_mini_pupper_cmd_ota();
+    // register_mini_pupper_cmd_extended_menu();
 
-    register_mini_pupper_cmd_stats();
+    // register_mini_pupper_cmd_stats();
 }
 
 void register_mini_pupper_extended_cmds(void)
