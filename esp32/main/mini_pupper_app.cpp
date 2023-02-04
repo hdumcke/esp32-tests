@@ -92,6 +92,9 @@ extern "C" void app_main(void)
 #error Unsupported console type
 #endif
 
+    // enable servo
+    servo.enable_power();
+
     // start CLI early
     ESP_ERROR_CHECK(esp_console_start_repl(repl));
 }

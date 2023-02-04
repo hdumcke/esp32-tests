@@ -15,7 +15,7 @@
 // reference :
 //https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/uart.html
 
-static const char *TAG = "SERVOS";
+static char const * TAG {"SERVOS"};
 
 SERVO servo;
 
@@ -23,7 +23,7 @@ SERVO::SERVO()
 {
     // set UART port
     uart_config_t uart_config;
-    uart_config.baud_rate = 1000000;
+    uart_config.baud_rate = 500000;
     uart_config.data_bits = UART_DATA_8_BITS;
     uart_config.parity = UART_PARITY_DISABLE;
     uart_config.stop_bits = UART_STOP_BITS_1;
@@ -34,10 +34,10 @@ SERVO::SERVO()
 #elif SOC_UART_SUPPORT_XTAL_CLK
     uart_config.source_clk = UART_SCLK_XTAL;
 #endif
-    uart_port_num = UART_NUM_1;
+    uart_port_num = UART_NUM_2;
     ESP_ERROR_CHECK(uart_driver_install(uart_port_num, 1024, 1024, 0, NULL, 0));
     ESP_ERROR_CHECK(uart_param_config(uart_port_num, &uart_config));
-    ESP_ERROR_CHECK(uart_set_pin(uart_port_num, 16, 17, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
+    ESP_ERROR_CHECK(uart_set_pin(uart_port_num, 17, 16, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
 }
 
 void SERVO::start()
@@ -62,13 +62,13 @@ void SERVO::enable_power(bool enable)
 {
     if(enable)
     {
-        gpio_set_level(GPIO_NUM_8, 1);
+        //gpio_set_level(GPIO_NUM_8, 1);
         _is_power_enabled = true;
         _is_service_enabled = false;
     }
     else
     {
-        gpio_set_level(GPIO_NUM_8, 0);
+        //gpio_set_level(GPIO_NUM_8, 0);
         _is_power_enabled = false;
         _is_service_enabled = false;
     }
@@ -156,6 +156,7 @@ int SERVO::is_torque_enable(u8 ID, u8 & enable)
 
     // send read instruction
     int const status = read_register_byte(ID, SERVO_TORQUE_ENABLE,enable);
+    ESP_LOGE(TAG, "Reply error [%d]",status);
 
     // check reply
     if(status!=SERVO_STATUS_OK) return SERVO_STATUS_FAIL;
@@ -191,6 +192,7 @@ int SERVO::get_goal_speed(u8 ID, u16 & speed)
 
     // send read instruction
     int const status = read_register_word(ID, SERVO_GOAL_SPEED_L,speed);
+    ESP_LOGE(TAG, "Reply error [%d]",status);
 
     // check reply
     if(status!=SERVO_STATUS_OK) return SERVO_STATUS_FAIL;
@@ -226,6 +228,7 @@ int SERVO::get_position(u8 ID, u16 & position)
 
     // send read instruction
     int const status = read_register_word(ID, SERVO_PRESENT_POSITION_L,position);
+    ESP_LOGE(TAG, "Reply error [%d]",status);
 
     // check reply
     if(status!=SERVO_STATUS_OK) return SERVO_STATUS_FAIL;
@@ -244,6 +247,7 @@ int SERVO::get_speed(u8 ID, s16 & speed)
     // send read instruction
     u16 present_value {0};
     int const status = read_register_word(ID, SERVO_PRESENT_SPEED_L,present_value);
+    ESP_LOGE(TAG, "Reply error [%d]",status);
 
     // check reply
     if(status!=SERVO_STATUS_OK) return SERVO_STATUS_FAIL;
@@ -267,6 +271,7 @@ int SERVO::get_load(u8 ID, s16 & load)
     // send read instruction
     u16 present_value {0};
     int const status = read_register_word(ID, SERVO_PRESENT_LOAD_L,present_value);
+    ESP_LOGE(TAG, "Reply error [%d]",status);
 
     // check reply
     if(status!=SERVO_STATUS_OK) return SERVO_STATUS_FAIL;
@@ -292,6 +297,7 @@ int SERVO::get_voltage(u8 ID, u8 & voltage)
     // send read instruction
     u8 present_value {0};
     int const status = read_register_byte(ID, SERVO_PRESENT_VOLTAGE,present_value);
+    ESP_LOGE(TAG, "Reply error [%d]",status);
 
     // check reply
     if(status!=SERVO_STATUS_OK) return SERVO_STATUS_FAIL;
@@ -322,6 +328,7 @@ int SERVO::get_temperature(u8 ID, u8 & temperature)
     // send read instruction
     u8 present_value {0};
     int const status = read_register_byte(ID, SERVO_PRESENT_TEMPERATURE,present_value);
+    ESP_LOGE(TAG, "Reply error [%d]",status);
 
     // check reply
     if(status!=SERVO_STATUS_OK) return SERVO_STATUS_FAIL;
@@ -351,6 +358,7 @@ int SERVO::get_move(u8 ID, u8 & move)
     // send read instruction
     u8 present_value {0};
     int const status = read_register_byte(ID, SERVO_MOVING,present_value);
+    ESP_LOGE(TAG, "Reply error [%d]",status);
 
     // check reply
     if(status!=SERVO_STATUS_OK) return SERVO_STATUS_FAIL;
@@ -373,6 +381,7 @@ int SERVO::get_current(u8 ID, s16 & current)
     // send read instruction
     u16 present_value {0};
     int const status = read_register_word(ID, SERVO_PRESENT_CURRENT_L,present_value);
+    ESP_LOGE(TAG, "Reply error [%d]",status);
 
     // check reply
     if(status!=SERVO_STATUS_OK) return SERVO_STATUS_FAIL;
@@ -407,8 +416,9 @@ int SERVO::unlock_eeprom(u8 ID)
     // wait for reply
     u8 reply_id {0};
     u8 reply_state {0};
-    int const status = reply_frame(reply_id,reply_state,nullptr,0);
-    ///printf(" reply_id:%d reply_state:%d status:%d.",reply_id,reply_state,status);
+    int const status = reply_frame(reply_id,reply_state,nullptr,0,100);
+    if(status)
+        ESP_LOGI(TAG, "Reply error [%d,%d,%d]",status,reply_id,reply_state);
 
     // check reply
     if(status!=SERVO_STATUS_OK) return SERVO_STATUS_FAIL;
@@ -433,8 +443,9 @@ int SERVO::lock_eeprom(u8 ID)
     // wait for reply
     u8 reply_id {0};
     u8 reply_state {0};
-    int const status = reply_frame(reply_id,reply_state,nullptr,0);
-    ///printf(" reply_id:%d reply_state:%d status:%d.",reply_id,reply_state,status);
+    int const status = reply_frame(reply_id,reply_state,nullptr,0,100);
+    if(status)
+        ESP_LOGI(TAG, "Reply error [%d,%d,%d]",status,reply_id,reply_state);
 
     // check reply
     if(status!=SERVO_STATUS_OK) return SERVO_STATUS_FAIL;
@@ -894,7 +905,7 @@ int SERVO::write_frame(u8 ID, u8 instruction, u8 const * parameters, size_t para
     return SERVO_STATUS_OK;
 }
 
-int SERVO::reply_frame(u8 & ID, u8 & state, u8 * parameters, size_t parameter_length)
+int SERVO::reply_frame(u8 & ID, u8 & state, u8 * parameters, size_t parameter_length, TickType_t timeout)
 {
     // a buffer to process reply packet from one servo
     // prepare frame to one servo
@@ -902,7 +913,7 @@ int SERVO::reply_frame(u8 & ID, u8 & state, u8 * parameters, size_t parameter_le
     size_t const buffer_size {2+1+1+length};        // 0xFF 0xFF ID LENGTH (STATE PARAM... CHK)    
     u8 buffer[buffer_size] {0};
     // copy RX fifo into local buffer
-    int const read_length = uart_read_bytes(uart_port_num,buffer,buffer_size,2);
+    int const read_length = uart_read_bytes(uart_port_num,buffer,buffer_size,timeout);
     // flush RX FIFO
     uart_flush(uart_port_num);    
     // check expected frame size

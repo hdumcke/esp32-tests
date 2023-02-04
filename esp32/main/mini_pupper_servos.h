@@ -280,7 +280,7 @@ protected:
      * 
      */
     int write_frame(u8 ID, u8 instruction, u8 const * parameters, size_t parameter_length);
-    int reply_frame(u8 & ID, u8 & state, u8 * parameters, size_t parameter_length);
+    int reply_frame(u8 & ID, u8 & state, u8 * parameters, size_t parameter_length, TickType_t timeout = 2);
 
     int write_register_byte(u8 id, u8 reg, u8 value);
     int write_register_word(u8 id, u8 reg, u16 value);
