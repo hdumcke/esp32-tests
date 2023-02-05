@@ -6,6 +6,9 @@
 #ifndef _mini_pupper_imu_h
 #define _mini_pupper_imu_h
 
+//#define _IMU_BY_I2C_BUS
+#define _IMU_BY_SPI_BUS
+
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <freertos/queue.h>

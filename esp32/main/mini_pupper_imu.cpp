@@ -9,22 +9,33 @@
 
 #include "esp_log.h"
 #include "esp_timer.h"
-#include "driver/i2c.h"
 #include "driver/gpio.h"
+#ifdef _IMU_BY_I2C_BUS
+  #include "driver/i2c.h"
+#else
+  #include "driver/spi_master.h"
+#endif
 
 #include <cmath>
 
 static const char *TAG = "IMU";
 
-#define I2C_MASTER_FREQ_HZ          400000                     /*!< I2C master clock frequency */
-#define I2C_MASTER_TX_BUF_DISABLE   0                          /*!< I2C master doesn't need buffer */
-#define I2C_MASTER_RX_BUF_DISABLE   0                          /*!< I2C master doesn't need buffer */
-#define I2C_MASTER_SDA_IO           41
-#define I2C_MASTER_SCL_IO           42
-#define I2C_MASTER_TIMEOUT_MS       1000
-#define I2C_MASTER_NUM              I2C_NUM_0
-
-#define I2C_DEV_ADDR (uint8_t)0x6B //0b1101010+1b (A0=GND)
+#ifdef _IMU_BY_I2C_BUS
+    #define I2C_MASTER_FREQ_HZ          400000                     /*!< I2C master clock frequency */
+    #define I2C_MASTER_TX_BUF_DISABLE   0                          /*!< I2C master doesn't need buffer */
+    #define I2C_MASTER_RX_BUF_DISABLE   0                          /*!< I2C master doesn't need buffer */
+    #define I2C_MASTER_SDA_IO           41
+    #define I2C_MASTER_SCL_IO           42
+    #define I2C_MASTER_TIMEOUT_MS       1000
+    #define I2C_MASTER_NUM              I2C_NUM_0
+    #define I2C_DEV_ADDR (uint8_t)0x6B //0b1101010+1b (A0=GND)
+#else
+    #define SPI_MASTER_ID   SPI2_HOST
+    #define SPI_MASTER_MISO 13
+    #define SPI_MASTER_MOSI 11
+    #define SPI_MASTER_CLK  12
+    #define SPI_MASTER_CS   38
+#endif
 
 /** registers */
 #define QMI8658C_WHO_AM_I_REG               0x00 // ID in QMI8658C default to 0x05
@@ -93,6 +104,7 @@ IMU imu;
 IMU::IMU():
 _task_handle(NULL) 
 {
+#ifdef _IMU_BY_I2C_BUS
   /* start i2c bus */
   i2c_config_t conf;
   conf.mode = I2C_MODE_MASTER;
@@ -106,7 +118,30 @@ _task_handle(NULL)
 
   ESP_ERROR_CHECK(i2c_driver_install(I2C_NUM_0, conf.mode, I2C_MASTER_RX_BUF_DISABLE, I2C_MASTER_TX_BUF_DISABLE, 0));
   ESP_LOGI(TAG, "I2C initialized successfully");
+#else
+    #define SPI_MASTER_CS   38
 
+  /* start SPI bus */
+    spi_bus_config_t conf;
+    conf.miso_io_num = SPI_MASTER_MISO;
+    conf.mosi_io_num = SPI_MASTER_MOSI;
+    conf.sclk_io_num = SPI_MASTER_CLK;
+    conf.data1_io_num = -1;
+    conf.data2_io_num = -1;
+    conf.data3_io_num = -1;
+    conf.data4_io_num = -1;
+    conf.data5_io_num = -1;
+    conf.data6_io_num = -1;
+    conf.data7_io_num = -1;
+    conf.quadwp_io_num = -1;
+    conf.quadhd_io_num = -1;
+    conf.max_transfer_sz = 32;
+    conf.flags = SPICOMMON_BUSFLAG_MASTER;
+    conf.intr_flags = ESP_INTR_FLAG_LEVEL3;
+    //Initialize the SPI bus
+    ESP_ERROR_CHECK(spi_bus_initialize(SPI_MASTER_ID, &conf, SPI_DMA_CH_AUTO));
+  ESP_LOGI(TAG, "SPI initialized successfully");
+#endif
   // GPIO #39 configuration (IMU :: INT2)  
   gpio_config_t io_conf {};
   io_conf.intr_type = GPIO_INTR_DISABLE;
@@ -136,7 +171,7 @@ uint8_t IMU::init()
     uint8_t error = write_byte(config[index].reg,config[index].value);
     if(error!=0) return index*10;
     vTaskDelay(10 / portTICK_PERIOD_MS);
-    uint8_t data[2];
+    uint8_t data[2] {0};
     error = read_bytes(config[index].reg, data, 1);
     if(error) return index*10+1; 
     if(data[0]!=config[index].value) return index*10+2;
@@ -147,24 +182,32 @@ uint8_t IMU::init()
 
 uint8_t IMU::write_byte(uint8_t reg_addr, uint8_t data)
 {
-    int ret;
     uint8_t write_buf[2] = {reg_addr, data};
-
-    ret = i2c_master_write_to_device(I2C_MASTER_NUM, I2C_DEV_ADDR, write_buf, sizeof(write_buf), I2C_MASTER_TIMEOUT_MS / portTICK_PERIOD_MS);
-
-    return ret;
+#ifdef _IMU_BY_I2C_BUS
+    return i2c_master_write_to_device(I2C_MASTER_NUM, I2C_DEV_ADDR, write_buf, sizeof(write_buf), I2C_MASTER_TIMEOUT_MS / portTICK_PERIOD_MS);
+#else
+  return 0; 
+#endif
 }
 
 uint8_t IMU::read_bytes(uint8_t reg_addr, uint8_t data[], uint8_t size)
 {
+#ifdef _IMU_BY_I2C_BUS
   return i2c_master_write_read_device(I2C_MASTER_NUM, I2C_DEV_ADDR, &reg_addr, 1, data, size, I2C_MASTER_TIMEOUT_MS / portTICK_PERIOD_MS);
+#else
+   return 0; 
+#endif
 }
 
 uint8_t IMU::read_6dof()
 {
-  uint8_t raw[12];
+  uint8_t raw[12] {0};
   uint8_t reg_addr = QMI8658C_ACC_GYRO_OUTX_L_XL_REG;
+#ifdef _IMU_BY_I2C_BUS
   uint8_t err = i2c_master_write_read_device(I2C_MASTER_NUM, I2C_DEV_ADDR, &reg_addr, 1, raw, sizeof(raw), I2C_MASTER_TIMEOUT_MS / portTICK_PERIOD_MS);
+#else
+  uint8_t err = 0;
+#endif
 
   if(!err)
   {
@@ -194,14 +237,14 @@ uint8_t IMU::read_6dof()
 
 uint8_t IMU::who_am_i()
 {
-  uint8_t data[2];
+  uint8_t data[2] {0};
   read_bytes(QMI8658C_WHO_AM_I_REG, data, 1);
   return data[0];
 }
 
 uint8_t IMU::version()
 {
-  uint8_t data[2];
+  uint8_t data[2] {0};
   read_bytes(QMI8658C_WHO_AM_I_REG+1, data, 1);
   return data[0];
 }
