@@ -14,6 +14,11 @@
 #include <freertos/queue.h>
 
 #include <esp_timer.h>
+#ifdef _IMU_BY_I2C_BUS
+
+#else
+  #include "driver/spi_master.h"
+#endif
 
 #include <stdint.h>
 
@@ -47,7 +52,13 @@ struct IMU
 
 private:
 
-  // I2C bus helpers
+#ifdef _IMU_BY_I2C_BUS
+
+#else
+  spi_device_handle_t _spi_device_handle;
+#endif
+
+  // bus helpers
   uint8_t write_byte(uint8_t reg_addr, uint8_t data);
   uint8_t read_byte(uint8_t reg_addr, uint8_t *data);
   uint8_t read_bytes(uint8_t reg_addr, uint8_t data[], uint8_t size);
