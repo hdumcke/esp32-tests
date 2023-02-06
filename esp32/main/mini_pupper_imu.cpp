@@ -146,9 +146,9 @@ _task_handle(NULL)
     dev_conf.mode=0;
     //dev_conf.clock_source = SPI_CLK_SRC_DEFAULT;
     dev_conf.duty_cycle_pos=128;        //50% duty cycle
-    dev_conf.cs_ena_pretrans=3;        //Keep the CS low 3 cycles before transaction
-    dev_conf.cs_ena_posttrans=3;        //Keep the CS low 3 cycles after transaction, to stop slave from missing the last bit when CS has less propagation delay than CLK
-    dev_conf.clock_speed_hz=5000000;
+    dev_conf.cs_ena_pretrans=6;        //Keep the CS low 3 cycles before transaction
+    dev_conf.cs_ena_posttrans=8;        //Keep the CS low 3 cycles after transaction, to stop slave from missing the last bit when CS has less propagation delay than CLK
+    dev_conf.clock_speed_hz=SPI_MASTER_FREQ_8M;
     dev_conf.input_delay_ns = 0;
     dev_conf.spics_io_num=SPI_MASTER_CS;
     dev_conf.queue_size=3;
@@ -199,10 +199,11 @@ uint8_t IMU::init()
 
 uint8_t IMU::write_byte(uint8_t reg_addr, uint8_t data)
 {
-    uint8_t write_buf[2] = {reg_addr, data};
 #ifdef _IMU_BY_I2C_BUS
-    return i2c_master_write_to_device(I2C_MASTER_NUM, I2C_DEV_ADDR, write_buf, sizeof(write_buf), I2C_MASTER_TIMEOUT_MS / portTICK_PERIOD_MS);
+  uint8_t write_buf[2] = {reg_addr, data};
+  return i2c_master_write_to_device(I2C_MASTER_NUM, I2C_DEV_ADDR, write_buf, sizeof(write_buf), I2C_MASTER_TIMEOUT_MS / portTICK_PERIOD_MS);
 #else
+  uint8_t txbuf[1] = {data};
   spi_transaction_t t;
   t.flags = 0;
   t.user=nullptr;
@@ -210,9 +211,9 @@ uint8_t IMU::write_byte(uint8_t reg_addr, uint8_t data)
   t.addr = reg_addr | 0<<7; // reset read bit
   t.length=1;
   t.rxlength=0;
-  t.tx_buffer=&data;
+  t.tx_buffer=txbuf;
   t.rx_buffer=nullptr;   
-  return spi_device_transmit(_spi_device_handle, &t);
+  return spi_device_polling_transmit(_spi_device_handle, &t);
 #endif
 }
 
@@ -230,7 +231,7 @@ uint8_t IMU::read_bytes(uint8_t reg_addr, uint8_t data[], uint8_t size)
   t.rxlength=size;
   t.tx_buffer=nullptr;
   t.rx_buffer=data;   
-  return spi_device_transmit(_spi_device_handle, &t);
+  return spi_device_polling_transmit(_spi_device_handle, &t);
 #endif
 }
 
@@ -241,7 +242,16 @@ uint8_t IMU::read_6dof()
 #ifdef _IMU_BY_I2C_BUS
   uint8_t err = i2c_master_write_read_device(I2C_MASTER_NUM, I2C_DEV_ADDR, &reg_addr, 1, raw, sizeof(raw), I2C_MASTER_TIMEOUT_MS / portTICK_PERIOD_MS);
 #else
-  uint8_t err = 0;
+  spi_transaction_t t;
+  t.flags = 0;
+  t.user=nullptr;
+  t.cmd = 0;
+  t.addr = reg_addr | 1<<7; // reset read bit
+  t.length=12;
+  t.rxlength=12;
+  t.tx_buffer=nullptr;
+  t.rx_buffer=raw;   
+  uint8_t err = spi_device_polling_transmit(_spi_device_handle, &t);
 #endif
 
   if(!err)
