@@ -149,7 +149,7 @@ _task_handle(NULL)
     dev_conf.duty_cycle_pos=128;        //50% duty cycle
     dev_conf.cs_ena_pretrans=6;        //Keep the CS low 3 cycles before transaction
     dev_conf.cs_ena_posttrans=8;        //Keep the CS low 3 cycles after transaction, to stop slave from missing the last bit when CS has less propagation delay than CLK
-    dev_conf.clock_speed_hz=SPI_MASTER_FREQ_8M;
+    dev_conf.clock_speed_hz=2000000;
     dev_conf.input_delay_ns = 0;
     dev_conf.spics_io_num=SPI_MASTER_CS;
     dev_conf.queue_size=1;
