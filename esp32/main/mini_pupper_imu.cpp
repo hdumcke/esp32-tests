@@ -143,7 +143,7 @@ _task_handle(NULL)
     dev_conf.command_bits=0;
     dev_conf.address_bits=8;
     dev_conf.dummy_bits=0;
-    dev_conf.mode=0;
+    dev_conf.mode=3;
     //dev_conf.clock_source = SPI_CLK_SRC_DEFAULT;
     dev_conf.duty_cycle_pos=128;        //50% duty cycle
     dev_conf.cs_ena_pretrans=6;        //Keep the CS low 3 cycles before transaction
@@ -188,8 +188,8 @@ uint8_t IMU::init()
     uint8_t error = write_byte(config[index].reg,config[index].value);
     if(error!=0) return index*10;
     vTaskDelay(10 / portTICK_PERIOD_MS);
-    uint8_t data[2] {0};
-    error = read_bytes(config[index].reg, data, 1);
+    uint8_t data[1] {0};
+    error = read_byte(config[index].reg, data);
     if(error) return index*10+1; 
     if(data[0]!=config[index].value) return index*10+2;
     vTaskDelay(10 / portTICK_PERIOD_MS);
@@ -203,17 +203,52 @@ uint8_t IMU::write_byte(uint8_t reg_addr, uint8_t data)
   uint8_t write_buf[2] = {reg_addr, data};
   return i2c_master_write_to_device(I2C_MASTER_NUM, I2C_DEV_ADDR, write_buf, sizeof(write_buf), I2C_MASTER_TIMEOUT_MS / portTICK_PERIOD_MS);
 #else
-  uint8_t txbuf[1] = {data};
   spi_transaction_t t;
-  t.flags = 0;
+  t.flags = SPI_TRANS_USE_TXDATA;
   t.user=nullptr;
   t.cmd = 0;
   t.addr = reg_addr | 0<<7; // reset read bit
   t.length=1;
   t.rxlength=0;
-  t.tx_buffer=txbuf;
-  t.rx_buffer=nullptr;   
+  t.tx_buffer=&t.tx_data;
+  t.rx_buffer=&t.rx_data;   
+  t.tx_data[3]=0;
+  t.tx_data[2]=0;
+  t.tx_data[1]=0;
+  t.tx_data[0]=data;
+  t.rx_data[3]=0;
+  t.rx_data[2]=0;
+  t.rx_data[1]=0;
+  t.rx_data[0]=0;
   return spi_device_polling_transmit(_spi_device_handle, &t);
+#endif
+}
+
+uint8_t IMU::read_byte(uint8_t reg_addr, uint8_t *data)
+{
+#ifdef _IMU_BY_I2C_BUS
+  return i2c_master_write_read_device(I2C_MASTER_NUM, I2C_DEV_ADDR, &reg_addr, 1, data, 1, I2C_MASTER_TIMEOUT_MS / portTICK_PERIOD_MS);
+#else
+  spi_transaction_t t;
+  t.flags = SPI_TRANS_USE_TXDATA | SPI_TRANS_USE_RXDATA;
+  t.user=nullptr;
+  t.cmd = 0;
+  t.addr = reg_addr | 1<<7; // reset read bit
+  t.length=1;
+  t.rxlength=1;
+  t.tx_buffer=&t.tx_data;
+  t.rx_buffer=&t.rx_data;   
+  t.tx_data[3]=0;
+  t.tx_data[2]=0;
+  t.tx_data[1]=0;
+  t.tx_data[0]=0;
+  t.rx_data[3]=0;
+  t.rx_data[2]=0;
+  t.rx_data[1]=0;
+  t.rx_data[0]=0;
+  esp_err_t err = spi_device_polling_transmit(_spi_device_handle, &t);
+  *data = t.rx_data[0];
+  return err;
 #endif
 }
 
@@ -282,15 +317,15 @@ uint8_t IMU::read_6dof()
 
 uint8_t IMU::who_am_i()
 {
-  uint8_t data[2] {0};
-  read_bytes(QMI8658C_WHO_AM_I_REG, data, 1);
+  uint8_t data[1] {0};
+  read_byte(QMI8658C_WHO_AM_I_REG, data);
   return data[0];
 }
 
 uint8_t IMU::version()
 {
-  uint8_t data[2] {0};
-  read_bytes(QMI8658C_WHO_AM_I_REG+1, data, 1);
+  uint8_t data[1] {0};
+  read_byte(QMI8658C_WHO_AM_I_REG+1, data);
   return data[0];
 }
 
