@@ -17,6 +17,7 @@
 #endif
 
 #include <cmath>
+#include <cstring>
 
 static const char *TAG = "IMU";
 
@@ -134,7 +135,7 @@ _task_handle(NULL)
     conf.quadwp_io_num = -1;
     conf.quadhd_io_num = -1;
     conf.max_transfer_sz = 32;
-    conf.flags = SPICOMMON_BUSFLAG_MASTER;
+    conf.flags = SPICOMMON_BUSFLAG_MASTER | SPICOMMON_BUSFLAG_GPIO_PINS;
     conf.intr_flags = ESP_INTR_FLAG_LEVEL3;
     ESP_ERROR_CHECK(spi_bus_initialize(SPI_MASTER_ID, &conf, SPI_DMA_CH_AUTO));
     ESP_LOGI(TAG, "SPI host initialized successfully");
@@ -143,7 +144,7 @@ _task_handle(NULL)
     dev_conf.command_bits=0;
     dev_conf.address_bits=8;
     dev_conf.dummy_bits=0;
-    dev_conf.mode=3;
+    dev_conf.mode=0;
     //dev_conf.clock_source = SPI_CLK_SRC_DEFAULT;
     dev_conf.duty_cycle_pos=128;        //50% duty cycle
     dev_conf.cs_ena_pretrans=6;        //Keep the CS low 3 cycles before transaction
@@ -204,22 +205,12 @@ uint8_t IMU::write_byte(uint8_t reg_addr, uint8_t data)
   return i2c_master_write_to_device(I2C_MASTER_NUM, I2C_DEV_ADDR, write_buf, sizeof(write_buf), I2C_MASTER_TIMEOUT_MS / portTICK_PERIOD_MS);
 #else
   spi_transaction_t t;
+  memset(&t, 0, sizeof(t)); 
   t.flags = SPI_TRANS_USE_TXDATA;
-  t.user=nullptr;
-  t.cmd = 0;
+  t.user=(void*)0;
   t.addr = reg_addr | 0<<7; // reset read bit
-  t.length=1;
-  t.rxlength=0;
-  t.tx_buffer=&t.tx_data;
-  t.rx_buffer=&t.rx_data;   
-  t.tx_data[3]=0;
-  t.tx_data[2]=0;
-  t.tx_data[1]=0;
-  t.tx_data[0]=data;
-  t.rx_data[3]=0;
-  t.rx_data[2]=0;
-  t.rx_data[1]=0;
-  t.rx_data[0]=0;
+  t.length=1*8;
+  *(uint32_t*)t.tx_data = data;
   return spi_device_polling_transmit(_spi_device_handle, &t);
 #endif
 }
@@ -230,24 +221,13 @@ uint8_t IMU::read_byte(uint8_t reg_addr, uint8_t *data)
   return i2c_master_write_read_device(I2C_MASTER_NUM, I2C_DEV_ADDR, &reg_addr, 1, data, 1, I2C_MASTER_TIMEOUT_MS / portTICK_PERIOD_MS);
 #else
   spi_transaction_t t;
+  memset(&t, 0, sizeof(t)); 
   t.flags = SPI_TRANS_USE_TXDATA | SPI_TRANS_USE_RXDATA;
-  t.user=nullptr;
-  t.cmd = 0;
+  t.user=(void*)0;
   t.addr = reg_addr | 1<<7; // reset read bit
-  t.length=1;
-  t.rxlength=1;
-  t.tx_buffer=&t.tx_data;
-  t.rx_buffer=&t.rx_data;   
-  t.tx_data[3]=0;
-  t.tx_data[2]=0;
-  t.tx_data[1]=0;
-  t.tx_data[0]=0;
-  t.rx_data[3]=0;
-  t.rx_data[2]=0;
-  t.rx_data[1]=0;
-  t.rx_data[0]=0;
+  t.length=1*8;
   esp_err_t err = spi_device_polling_transmit(_spi_device_handle, &t);
-  *data = t.rx_data[0];
+  *data = *(uint32_t*)t.rx_data;
   return err;
 #endif
 }
@@ -258,13 +238,10 @@ uint8_t IMU::read_bytes(uint8_t reg_addr, uint8_t data[], uint8_t size)
   return i2c_master_write_read_device(I2C_MASTER_NUM, I2C_DEV_ADDR, &reg_addr, 1, data, size, I2C_MASTER_TIMEOUT_MS / portTICK_PERIOD_MS);
 #else
   spi_transaction_t t;
-  t.flags = 0;
-  t.user=nullptr;
-  t.cmd = 0;
+  memset(&t, 0, sizeof(t)); 
+  t.user=(void*)0;
   t.addr = reg_addr | 1<<7; // reset read bit
-  t.length=size;
-  t.rxlength=size;
-  t.tx_buffer=nullptr;
+  t.length=size*8;
   t.rx_buffer=data;   
   return spi_device_polling_transmit(_spi_device_handle, &t);
 #endif
@@ -282,8 +259,8 @@ uint8_t IMU::read_6dof()
   t.user=nullptr;
   t.cmd = 0;
   t.addr = reg_addr | 1<<7; // reset read bit
-  t.length=12;
-  t.rxlength=12;
+  t.length=12*8;
+  t.rxlength=12*8;
   t.tx_buffer=nullptr;
   t.rx_buffer=raw;   
   uint8_t err = spi_device_polling_transmit(_spi_device_handle, &t);
