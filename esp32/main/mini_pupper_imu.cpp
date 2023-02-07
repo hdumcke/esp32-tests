@@ -35,7 +35,8 @@ static const char *TAG = "IMU";
     #define SPI_MASTER_MISO 13
     #define SPI_MASTER_MOSI 11
     #define SPI_MASTER_CLK  12
-    #define SPI_MASTER_CS   38
+    //#define SPI_MASTER_CS   38
+    #define SPI_MASTER_CS   14
     #define SPI_READ     (0x80)  /*!< addr | SPIBUS_READ  */
     #define SPI_WRITE    (0x7F)  /*!< addr & SPIBUS_WRITE */
 
@@ -137,7 +138,7 @@ _task_handle(NULL)
     conf.data7_io_num = -1;
     conf.quadwp_io_num = -1;
     conf.quadhd_io_num = -1;
-    conf.max_transfer_sz = 12;
+    conf.max_transfer_sz = 128;
     ESP_ERROR_CHECK(spi_bus_initialize(SPI_MASTER_ID, &conf, SPI_DMA_CH_AUTO));
     ESP_LOGI(TAG, "SPI host initialized successfully");
     //Configuration for the SPI device on the other side of the bus
@@ -147,12 +148,12 @@ _task_handle(NULL)
     dev_conf.dummy_bits=0;
     dev_conf.mode=0;
     dev_conf.duty_cycle_pos=128;        //50% duty cycle
-    dev_conf.cs_ena_pretrans=6;        //Keep the CS low 3 cycles before transaction
-    dev_conf.cs_ena_posttrans=8;        //Keep the CS low 3 cycles after transaction, to stop slave from missing the last bit when CS has less propagation delay than CLK
-    dev_conf.clock_speed_hz=2000000;
+    dev_conf.cs_ena_pretrans=0;        //Keep the CS low 3 cycles before transaction
+    dev_conf.cs_ena_posttrans=0;        //Keep the CS low 3 cycles after transaction, to stop slave from missing the last bit when CS has less propagation delay than CLK
+    dev_conf.clock_speed_hz=1000000; //SPI_MASTER_FREQ_8M;
     dev_conf.input_delay_ns = 0;
     dev_conf.spics_io_num=SPI_MASTER_CS;
-    dev_conf.queue_size=1;
+    dev_conf.queue_size=3;
     dev_conf.flags = 0;
     dev_conf.pre_cb = nullptr;
     dev_conf.post_cb = nullptr;
@@ -215,7 +216,7 @@ uint8_t IMU::write_byte(uint8_t reg_addr, uint8_t data)
   uint8_t buffer[1] = {data};
   t.tx_buffer = buffer;
   t.rx_buffer = nullptr;
-  return spi_device_polling_transmit(_spi_device_handle, &t);
+  return spi_device_transmit(_spi_device_handle, &t);
 #endif
 }
 
@@ -234,7 +235,7 @@ uint8_t IMU::read_byte(uint8_t reg_addr, uint8_t *data)
   t.rxlength=1*8;
   t.tx_buffer=nullptr;   
   t.rx_buffer = data;   
-  esp_err_t err = spi_device_polling_transmit(_spi_device_handle, &t);
+  esp_err_t err = spi_device_transmit(_spi_device_handle, &t);
   return err;
 #endif
 }
@@ -254,7 +255,7 @@ uint8_t IMU::read_bytes(uint8_t reg_addr, uint8_t data[], uint8_t size)
   t.rxlength=size*8;
   t.tx_buffer=nullptr;   
   t.rx_buffer=data;   
-  return spi_device_polling_transmit(_spi_device_handle, &t);
+  return spi_device_transmit(_spi_device_handle, &t);
 #endif
 }
 
