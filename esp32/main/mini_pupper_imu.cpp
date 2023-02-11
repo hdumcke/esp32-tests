@@ -139,7 +139,7 @@ _task_handle(NULL)
     conf.quadwp_io_num = -1;
     conf.quadhd_io_num = -1;
     conf.max_transfer_sz = 128;
-    ESP_ERROR_CHECK(spi_bus_initialize(SPI_MASTER_ID, &conf, SPI_DMA_CH_AUTO));
+    ESP_ERROR_CHECK(spi_bus_initialize(SPI_MASTER_ID, &conf, SPI_DMA_DISABLED)); //SPI_DMA_CH_AUTO));
     ESP_LOGI(TAG, "SPI host initialized successfully");
     //Configuration for the SPI device on the other side of the bus
     spi_device_interface_config_t dev_conf;
