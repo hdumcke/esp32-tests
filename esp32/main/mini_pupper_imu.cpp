@@ -125,39 +125,35 @@ _task_handle(NULL)
   ESP_LOGI(TAG, "I2C initialized successfully");
 #else
     //Initialize the SPI bus
-    spi_bus_config_t conf;
-    conf.miso_io_num = SPI_MASTER_MISO;
-    conf.mosi_io_num = SPI_MASTER_MOSI;
-    conf.sclk_io_num = SPI_MASTER_CLK;
-    conf.data1_io_num = -1;
-    conf.data2_io_num = -1;
-    conf.data3_io_num = -1;
-    conf.data4_io_num = -1;
-    conf.data5_io_num = -1;
-    conf.data6_io_num = -1;
-    conf.data7_io_num = -1;
-    conf.quadwp_io_num = -1;
-    conf.quadhd_io_num = -1;
-    conf.max_transfer_sz = 128;
-    ESP_ERROR_CHECK(spi_bus_initialize(SPI_MASTER_ID, &conf, SPI_DMA_DISABLED)); //SPI_DMA_CH_AUTO));
+    spi_bus_config_t bus_cfg={
+      .mosi_io_num=SPI_MASTER_MOSI,
+      .miso_io_num=SPI_MASTER_MISO,
+      .sclk_io_num=SPI_MASTER_CLK,
+      .quadwp_io_num = -1,
+      .quadhd_io_num = -1,
+      .max_transfer_sz = 128
+    };
+    ESP_ERROR_CHECK(spi_bus_initialize(SPI_MASTER_ID, &bus_cfg, SPI_DMA_CH_AUTO));
     ESP_LOGI(TAG, "SPI host initialized successfully");
+
     //Configuration for the SPI device on the other side of the bus
-    spi_device_interface_config_t dev_conf;
-    dev_conf.command_bits=0;
-    dev_conf.address_bits=8;
-    dev_conf.dummy_bits=0;
-    dev_conf.mode=0;
-    dev_conf.duty_cycle_pos=128;        //50% duty cycle
-    dev_conf.cs_ena_pretrans=0;        //Keep the CS low 3 cycles before transaction
-    dev_conf.cs_ena_posttrans=0;        //Keep the CS low 3 cycles after transaction, to stop slave from missing the last bit when CS has less propagation delay than CLK
-    dev_conf.clock_speed_hz=1000000; //SPI_MASTER_FREQ_8M;
-    dev_conf.input_delay_ns = 0;
-    dev_conf.spics_io_num=SPI_MASTER_CS;
-    dev_conf.queue_size=3;
-    dev_conf.flags = 0;
-    dev_conf.pre_cb = nullptr;
-    dev_conf.post_cb = nullptr;
-    ESP_ERROR_CHECK(spi_bus_add_device(SPI_MASTER_ID, &dev_conf, &_spi_device_handle));
+    spi_device_interface_config_t dev_cfg={
+        .command_bits=0,
+        .address_bits=8,
+        .dummy_bits=0,
+        .mode=0,                                
+        .duty_cycle_pos=128,
+        .cs_ena_pretrans=0,
+        .cs_ena_posttrans=0,
+        .clock_speed_hz=10*1000*1000,           
+        .input_delay_ns = 0,
+        .spics_io_num=SPI_MASTER_CS,            
+        .flags = 0,
+        .queue_size=2,
+        .pre_cb = 0,
+        .post_cb = 0
+    };
+    ESP_ERROR_CHECK(spi_bus_add_device(SPI_MASTER_ID, &dev_cfg, &_spi_device_handle));
     ESP_LOGI(TAG, "SPI device initialized successfully");
 
 #endif
