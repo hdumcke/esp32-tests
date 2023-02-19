@@ -38,7 +38,7 @@ struct IMU
   /* DEBUG */
 
   uint8_t who_am_i();
-  uint8_t version();
+  uint8_t revision();
   uint8_t read_6dof();
 
   /* DEBUG */
@@ -60,7 +60,7 @@ private:
 
   // bus helpers
   uint8_t write_byte(uint8_t reg_addr, uint8_t data);
-  uint8_t read_byte(uint8_t reg_addr, uint8_t *data);
+  uint8_t read_byte(uint8_t reg_addr, uint8_t & data);
   uint8_t read_bytes(uint8_t reg_addr, uint8_t data[], uint8_t size);
 
   // background host serial bus service

@@ -1,4 +1,4 @@
-#include "imu_cmd.h"
+#include "mini_pupper_imu_cmd.h"
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include "mini_pupper_imu.h"
@@ -62,21 +62,21 @@ static void register_imu_cmd_who_am_i(void)
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_imu_who_am_i) );
 }
 
-static int imu_cmd_version(int argc, char **argv)
+static int imu_cmd_revision(int argc, char **argv)
 {
     uint8_t ret;
-    ret = imu.version();
-    printf("version: %d \r\n", ret);
+    ret = imu.revision();
+    printf("revision: %d \r\n", ret);
     return 0;
 }
 
-static void register_imu_cmd_version(void)
+static void register_imu_cmd_revision(void)
 {
     const esp_console_cmd_t cmd_imu_version = {
         .command = "imu-version",
         .help = "return version from the imu",
         .hint = NULL,
-        .func = &imu_cmd_version,
+        .func = &imu_cmd_revision,
 	.argtable = NULL
     };
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_imu_version) );
@@ -125,6 +125,6 @@ void register_imu_cmds(void)
 {
     register_imu_cmd_init();
     register_imu_cmd_who_am_i();
-    register_imu_cmd_version();
+    register_imu_cmd_revision();
     register_imu_cmd_read_6dof();
 }

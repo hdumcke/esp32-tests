@@ -4,5 +4,5 @@ idf_component_register(SRCS "mini_pupper_app.cpp"
                             "mini_pupper_host.cpp"
 			    "mini_pupper_imu.cpp"
 			    "mini_pupper_cmd.cpp"
-			    "imu_cmd.cpp"
+			    "mini_pupper_imu_cmd.cpp"
                     INCLUDE_DIRS ".")

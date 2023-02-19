@@ -13,10 +13,10 @@
 #include "esp_timer.h"
 #include "nvs.h"
 #include "nvs_flash.h"
-#include "imu_cmd.h"
 #include "cmd_system.h"
 #include "cmd_wifi.h"
 
+#include "mini_pupper_imu_cmd.h"
 #include "mini_pupper_servos.h"
 #include "mini_pupper_host.h"
 #include "mini_pupper_imu.h"

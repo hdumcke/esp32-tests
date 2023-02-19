@@ -6,10 +6,10 @@
 #include "mini_pupper_imu.h"
 #include "mini_pupper_tasks.h"
 
-
 #include "esp_log.h"
 #include "esp_timer.h"
 #include "driver/gpio.h"
+
 #ifdef _IMU_BY_I2C_BUS
   #include "driver/i2c.h"
 #else
@@ -36,14 +36,13 @@ static const char *TAG = "IMU";
     #define SPI_MASTER_MOSI 11
     #define SPI_MASTER_CLK  12
     #define SPI_MASTER_CS   38
-    //#define SPI_MASTER_CS   14
     #define SPI_READ     (0x80)  /*!< addr | SPIBUS_READ  */
     #define SPI_WRITE    (0x7F)  /*!< addr & SPIBUS_WRITE */
-
 #endif
 
 /** registers */
 #define QMI8658C_WHO_AM_I_REG               0x00 // ID in QMI8658C default to 0x05
+#define QMI8658C_REVISION                   0x01 
 #define QMI8658C_ACC_GYRO_CTRL1_SPI_REG     0x02
 #define QMI8658C_ACC_GYRO_CTRL2_ACC_REG			0x03
 #define QMI8658C_ACC_GYRO_CTRL3_G_REG			  0x04
@@ -57,7 +56,6 @@ static const char *TAG = "IMU";
 
 #define QMI8658C_STATUSINT_REG		          0x2D
 #define QMI8658C_STATUS0_REG		            0x2E
-
 
 #define QMI8658C_ACC_GYRO_AE_REG1		        0x57
 #define QMI8658C_ACC_GYRO_AE_REG2		        0x58
@@ -110,7 +108,7 @@ IMU::IMU():
 _task_handle(NULL) 
 {
 #ifdef _IMU_BY_I2C_BUS
-  /* start i2c bus */
+  // start i2c bus
   i2c_config_t conf;
   conf.mode = I2C_MODE_MASTER;
   conf.sda_io_num = I2C_MASTER_SDA_IO;
@@ -124,8 +122,8 @@ _task_handle(NULL)
   ESP_ERROR_CHECK(i2c_driver_install(I2C_NUM_0, conf.mode, I2C_MASTER_RX_BUF_DISABLE, I2C_MASTER_TX_BUF_DISABLE, 0));
   ESP_LOGI(TAG, "I2C initialized successfully");
 #else
-    //Initialize the SPI bus
-    spi_bus_config_t bus_cfg={
+    // start SPI host
+    spi_bus_config_t bus_cfg = {
       .mosi_io_num=SPI_MASTER_MOSI,
       .miso_io_num=SPI_MASTER_MISO,
       .sclk_io_num=SPI_MASTER_CLK,
@@ -136,8 +134,8 @@ _task_handle(NULL)
     ESP_ERROR_CHECK(spi_bus_initialize(SPI_MASTER_ID, &bus_cfg, SPI_DMA_CH_AUTO));
     ESP_LOGI(TAG, "SPI host initialized successfully");
 
-    //Configuration for the SPI device on the other side of the bus
-    spi_device_interface_config_t dev_cfg={
+    // configure SPI device (IMU) on the other side of the bus
+    spi_device_interface_config_t dev_cfg = {
         .command_bits=0,
         .address_bits=8,
         .dummy_bits=0,
@@ -145,7 +143,7 @@ _task_handle(NULL)
         .duty_cycle_pos=128,
         .cs_ena_pretrans=0,
         .cs_ena_posttrans=0,
-        .clock_speed_hz=10*1000*1000,           
+        .clock_speed_hz=12*1000000, // 12MHz (15MHz max)
         .input_delay_ns = 0,
         .spics_io_num=SPI_MASTER_CS,            
         .flags = 0,
@@ -163,7 +161,6 @@ _task_handle(NULL)
   io_conf.mode = GPIO_MODE_INPUT;
   io_conf.pin_bit_mask = (1ULL<<GPIO_NUM_39);
   gpio_config(&io_conf);
-
 }
 
 struct imu_configuration
@@ -174,34 +171,24 @@ struct imu_configuration
 
 uint8_t IMU::init()
 {
-  {
-    uint8_t data[1] {0};
-    uint8_t error = read_byte(QMI8658C_WHO_AM_I_REG,data);
-    ESP_LOGI(TAG, "IMU id:%d",(int)data[0]);
-  }
-  {
-    uint8_t data[1] {0};
-    uint8_t error = read_byte(QMI8658C_WHO_AM_I_REG+1,data);
-    ESP_LOGI(TAG, "IMU rev:%d",(int)data[0]);
-  }
+  ESP_LOGI(TAG, "chip identifier: %02xh",(int)who_am_i());
+  ESP_LOGI(TAG, "chip revision: %02xh",(int)revision());
 
-  imu_configuration const config[] = {
+  imu_configuration const configuration[] = {
     {QMI8658C_ACC_GYRO_CTRL1_SPI_REG, 0b01100000 }, // 0b01100000 address auto increment +  read data little endian + sensor enable
     {QMI8658C_ACC_GYRO_CTRL7_REG,     0b00000011 }, // 0b11001011 6D AE mode : enable gyro + enable acc
     {QMI8658C_ACC_GYRO_CTRL2_ACC_REG, 0b00000101 }, // 0b00000101 2g aODR = 235Hz
     {QMI8658C_ACC_GYRO_CTRL3_G_REG,   0b01110101 }  // 0b01110101 2048dps gODR = 235Hz
   };
-
-  for(size_t index=0; index < 4; ++index)
+  uint8_t read_value {0};
+  for(auto const & config : configuration)
   {
-    uint8_t error = write_byte(config[index].reg,config[index].value);
-    if(error!=0) return index*10;
-    vTaskDelay(1 / portTICK_PERIOD_MS);
-    uint8_t data[1] {0};
-    error = read_byte(config[index].reg, data);
-    if(error) return index*10+1; 
-    if(data[0]!=config[index].value) return index*10+2;
-    vTaskDelay(1 / portTICK_PERIOD_MS);
+    if(write_byte(config.reg,config.value)) return config.reg;
+    //vTaskDelay(1 / portTICK_PERIOD_MS);
+    if(read_byte(config.reg, read_value)) return config.reg; 
+    if(read_value!=config.value) return config.reg;
+    //vTaskDelay(1 / portTICK_PERIOD_MS);
+    ESP_LOGI(TAG, "configure register: %02xh - value: %02xh",(int)config.reg,(int)config.value);
   }
   return 0;
 }
@@ -220,7 +207,7 @@ uint8_t IMU::write_byte(uint8_t reg_addr, uint8_t data)
   t.addr = reg_addr & SPI_WRITE;
   t.length=1*8;
   t.rxlength=0;
-  uint8_t buffer[1] = {data};
+  uint8_t buffer[1] = {data}; // TODO : use TX DATA
   t.tx_buffer = buffer;
   t.rx_buffer = nullptr;
   ESP_LOGD(TAG, "write_byte : %d %d",(int)t.addr,(int)buffer[0]);
@@ -229,7 +216,7 @@ uint8_t IMU::write_byte(uint8_t reg_addr, uint8_t data)
 #endif
 }
 
-uint8_t IMU::read_byte(uint8_t reg_addr, uint8_t *data)
+uint8_t IMU::read_byte(uint8_t reg_addr, uint8_t & data)
 {
 #ifdef _IMU_BY_I2C_BUS
   return i2c_master_write_read_device(I2C_MASTER_NUM, I2C_DEV_ADDR, &reg_addr, 1, data, 1, I2C_MASTER_TIMEOUT_MS / portTICK_PERIOD_MS);
@@ -243,9 +230,9 @@ uint8_t IMU::read_byte(uint8_t reg_addr, uint8_t *data)
   t.length=1*8;
   t.rxlength=1*8;
   t.tx_buffer=nullptr;   
-  t.rx_buffer = data;   
+  t.rx_buffer = &data;    // TODO : use RX DATA
   esp_err_t err = spi_device_transmit(_spi_device_handle, &t);
-  ESP_LOGD(TAG, "read_byte : %d %d",(int)t.addr,(int)(*data));
+  ESP_LOGD(TAG, "read_byte : %d %d",(int)t.addr,(int)data);
   return err;
 #endif
 }
@@ -272,7 +259,8 @@ uint8_t IMU::read_bytes(uint8_t reg_addr, uint8_t data[], uint8_t size)
 uint8_t IMU::read_6dof()
 {
   uint8_t raw[12] {0};
-  uint8_t reg_addr = QMI8658C_ACC_GYRO_OUTX_L_XL_REG;
+  uint8_t const reg_addr {QMI8658C_ACC_GYRO_OUTX_L_XL_REG};
+
 #ifdef _IMU_BY_I2C_BUS
   uint8_t err = i2c_master_write_read_device(I2C_MASTER_NUM, I2C_DEV_ADDR, &reg_addr, 1, raw, sizeof(raw), I2C_MASTER_TIMEOUT_MS / portTICK_PERIOD_MS);
 #else
@@ -281,23 +269,17 @@ uint8_t IMU::read_6dof()
 
   if(!err)
   {
-    ax = 1.0/16384.0*((int16_t)(raw[1]<<8) | raw[0]);
-    ay = 1.0/16384.0*((int16_t)(raw[3]<<8) | raw[2]);
-    az = 1.0/16384.0*((int16_t)(raw[5]<<8) | raw[4]);
-    gx = 1.0/16.0* ((int16_t)(raw[7]<<8) | raw[6]);
-    gy = 1.0/16.0* ((int16_t)(raw[9]<<8) | raw[8]);
-    gz = 1.0/16.0* ((int16_t)(raw[11]<<8) | raw[10]);
-        // log debug
-        ESP_LOGI(TAG, "ax:%0.3f ay:%0.3f az:%0.3f gx:%0.3f gy:%0.3f gz:%0.3f",
-          ax,
-          ay,
-          az,
-          gx,
-          gy,
-          gz
-        );    
+    ax = 1.0f/16384.0f*((int16_t)(raw[1]<<8) | raw[0]);
+    ay = 1.0f/16384.0f*((int16_t)(raw[3]<<8) | raw[2]);
+    az = 1.0f/16384.0f*((int16_t)(raw[5]<<8) | raw[4]);
+    gx = 1.0f/16.0f* ((int16_t)(raw[7]<<8) | raw[6]);
+    gy = 1.0f/16.0f* ((int16_t)(raw[9]<<8) | raw[8]);
+    gz = 1.0f/16.0f* ((int16_t)(raw[11]<<8) | raw[10]);
+    // log debug
+    ESP_LOGI(TAG, "ax:%0.3f ay:%0.3f az:%0.3f gx:%0.3f gy:%0.3f gz:%0.3f", ax, ay, az, gx, gy, gz );    
     // stats
     f_monitor.update();
+    return 0;
   }
   else
   {
@@ -309,23 +291,22 @@ uint8_t IMU::read_6dof()
     gz = 0.0f;
     // stats
     f_monitor.update(mini_pupper::frame_error_rate_monitor::TIME_OUT_ERROR);
-    return 6;
+    return err;
   }
-  return 0;
 }
 
 uint8_t IMU::who_am_i()
 {
-  uint8_t data[1] {0};
-  read_byte(QMI8658C_WHO_AM_I_REG, data);
-  return data[0];
+  uint8_t read_value {0};
+  read_byte(QMI8658C_WHO_AM_I_REG, read_value);
+  return read_value;
 }
 
-uint8_t IMU::version()
+uint8_t IMU::revision()
 {
-  uint8_t data[1] {0};
-  read_byte(QMI8658C_WHO_AM_I_REG+1, data);
-  return data[0];
+  uint8_t read_value;
+  read_byte(QMI8658C_WHO_AM_I_REG+1, read_value);
+  return read_value;
 }
 
 void IMU_ISR(void* arg)
@@ -382,14 +363,7 @@ void IMU_TASK(void * parameters)
       ESP_LOGI(TAG, "IMU read error!!!");
 
     // log debug
-    ESP_LOGD(TAG, "ax:%0.3f ay:%0.3f az:%0.3f gx:%0.3f gy:%0.3f gz:%0.3f",
-      imu->ax,
-      imu->ay,
-      imu->az,
-      imu->gx,
-      imu->gy,
-      imu->gz
-    );
+    ESP_LOGD(TAG, "ax:%0.3f ay:%0.3f az:%0.3f gx:%0.3f gy:%0.3f gz:%0.3f", imu->ax, imu->ay, imu->az, imu->gx, imu->gy, imu->gz );
 
     // stats
     imu->p_monitor.update();
