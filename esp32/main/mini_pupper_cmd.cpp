@@ -990,7 +990,7 @@ static int mini_pupper_cmd_stats(int argc, char **argv)
         imu.p_monitor.frequency_max,
         sqrtf(imu.p_monitor.frequency_var),
         imu.p_monitor.counter
-    );  
+    );
 
     host.f_monitor.compute_rates();
     ESP_LOGI(TAG, "HOST RX frame error rates:  CHKS=%.3f%%   SYNT=%.3f%%   TOUT=%.3f%%   TRUNC=%.3f%%   .",

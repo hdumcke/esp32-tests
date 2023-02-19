@@ -35,8 +35,8 @@ static const char *TAG = "IMU";
     #define SPI_MASTER_MISO 13
     #define SPI_MASTER_MOSI 11
     #define SPI_MASTER_CLK  12
-    //#define SPI_MASTER_CS   38
-    #define SPI_MASTER_CS   14
+    #define SPI_MASTER_CS   38
+    //#define SPI_MASTER_CS   14
     #define SPI_READ     (0x80)  /*!< addr | SPIBUS_READ  */
     #define SPI_WRITE    (0x7F)  /*!< addr & SPIBUS_WRITE */
 
@@ -174,8 +174,19 @@ struct imu_configuration
 
 uint8_t IMU::init()
 {
+  {
+    uint8_t data[1] {0};
+    uint8_t error = read_byte(QMI8658C_WHO_AM_I_REG,data);
+    ESP_LOGI(TAG, "IMU id:%d",(int)data[0]);
+  }
+  {
+    uint8_t data[1] {0};
+    uint8_t error = read_byte(QMI8658C_WHO_AM_I_REG+1,data);
+    ESP_LOGI(TAG, "IMU rev:%d",(int)data[0]);
+  }
+
   imu_configuration const config[] = {
-    {QMI8658C_ACC_GYRO_CTRL1_SPI_REG, 0b01000000 }, // 0b01000000 address auto increment +  read data little endian + sensor enable
+    {QMI8658C_ACC_GYRO_CTRL1_SPI_REG, 0b01100000 }, // 0b01100000 address auto increment +  read data little endian + sensor enable
     {QMI8658C_ACC_GYRO_CTRL7_REG,     0b00000011 }, // 0b11001011 6D AE mode : enable gyro + enable acc
     {QMI8658C_ACC_GYRO_CTRL2_ACC_REG, 0b00000101 }, // 0b00000101 2g aODR = 235Hz
     {QMI8658C_ACC_GYRO_CTRL3_G_REG,   0b01110101 }  // 0b01110101 2048dps gODR = 235Hz
@@ -185,12 +196,12 @@ uint8_t IMU::init()
   {
     uint8_t error = write_byte(config[index].reg,config[index].value);
     if(error!=0) return index*10;
-    vTaskDelay(10 / portTICK_PERIOD_MS);
+    vTaskDelay(1 / portTICK_PERIOD_MS);
     uint8_t data[1] {0};
     error = read_byte(config[index].reg, data);
     if(error) return index*10+1; 
     if(data[0]!=config[index].value) return index*10+2;
-    vTaskDelay(10 / portTICK_PERIOD_MS);
+    vTaskDelay(1 / portTICK_PERIOD_MS);
   }
   return 0;
 }
@@ -212,7 +223,9 @@ uint8_t IMU::write_byte(uint8_t reg_addr, uint8_t data)
   uint8_t buffer[1] = {data};
   t.tx_buffer = buffer;
   t.rx_buffer = nullptr;
+  ESP_LOGD(TAG, "write_byte : %d %d",(int)t.addr,(int)buffer[0]);
   return spi_device_transmit(_spi_device_handle, &t);
+
 #endif
 }
 
@@ -232,6 +245,7 @@ uint8_t IMU::read_byte(uint8_t reg_addr, uint8_t *data)
   t.tx_buffer=nullptr;   
   t.rx_buffer = data;   
   esp_err_t err = spi_device_transmit(_spi_device_handle, &t);
+  ESP_LOGD(TAG, "read_byte : %d %d",(int)t.addr,(int)(*data));
   return err;
 #endif
 }
@@ -273,6 +287,15 @@ uint8_t IMU::read_6dof()
     gx = 1.0/16.0* ((int16_t)(raw[7]<<8) | raw[6]);
     gy = 1.0/16.0* ((int16_t)(raw[9]<<8) | raw[8]);
     gz = 1.0/16.0* ((int16_t)(raw[11]<<8) | raw[10]);
+        // log debug
+        ESP_LOGI(TAG, "ax:%0.3f ay:%0.3f az:%0.3f gx:%0.3f gy:%0.3f gz:%0.3f",
+          ax,
+          ay,
+          az,
+          gx,
+          gy,
+          gz
+        );    
     // stats
     f_monitor.update();
   }
