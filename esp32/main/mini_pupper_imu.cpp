@@ -257,7 +257,7 @@ void IMU_TASK(void * parameters)
     // Read raw IMU data
     uint8_t const read_data { imu->read_6dof() };
     if(read_data)
-      ESP_LOGI(TAG, "IMU read error!!!");
+      ESP_LOGD(TAG, "IMU read error!!!");
 
     // log debug
     ESP_LOGD(TAG, "ax:%0.3f ay:%0.3f az:%0.3f gx:%0.3f gy:%0.3f gz:%0.3f",
@@ -271,5 +271,5 @@ void IMU_TASK(void * parameters)
 
     // stats
     imu->p_monitor.update();
-  }    
+  }
 }
