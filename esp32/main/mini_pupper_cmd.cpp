@@ -13,10 +13,10 @@
 #include "esp_timer.h"
 #include "nvs.h"
 #include "nvs_flash.h"
-#include "imu_cmd.h"
 #include "cmd_system.h"
 #include "cmd_wifi.h"
 
+#include "mini_pupper_imu_cmd.h"
 #include "mini_pupper_servos.h"
 #include "mini_pupper_host.h"
 #include "mini_pupper_imu.h"
@@ -990,7 +990,7 @@ static int mini_pupper_cmd_stats(int argc, char **argv)
         imu.p_monitor.frequency_max,
         sqrtf(imu.p_monitor.frequency_var),
         imu.p_monitor.counter
-    );  
+    );
 
     host.f_monitor.compute_rates();
     ESP_LOGI(TAG, "HOST RX frame error rates:  CHKS=%.3f%%   SYNT=%.3f%%   TOUT=%.3f%%   TRUNC=%.3f%%   .",

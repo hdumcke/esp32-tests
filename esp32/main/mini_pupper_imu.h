@@ -6,11 +6,19 @@
 #ifndef _mini_pupper_imu_h
 #define _mini_pupper_imu_h
 
+//#define _IMU_BY_I2C_BUS
+#define _IMU_BY_SPI_BUS
+
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <freertos/queue.h>
 
 #include <esp_timer.h>
+#ifdef _IMU_BY_I2C_BUS
+
+#else
+  #include "driver/spi_master.h"
+#endif
 
 #include <stdint.h>
 
@@ -30,7 +38,7 @@ struct IMU
   /* DEBUG */
 
   uint8_t who_am_i();
-  uint8_t version();
+  uint8_t revision();
   uint8_t read_6dof();
 
   /* DEBUG */
@@ -44,9 +52,15 @@ struct IMU
 
 private:
 
-  // I2C bus helpers
+#ifdef _IMU_BY_I2C_BUS
+
+#else
+  spi_device_handle_t _spi_device_handle;
+#endif
+
+  // bus helpers
   uint8_t write_byte(uint8_t reg_addr, uint8_t data);
-  uint8_t read_byte(uint8_t reg_addr, uint8_t *data);
+  uint8_t read_byte(uint8_t reg_addr, uint8_t & data);
   uint8_t read_bytes(uint8_t reg_addr, uint8_t data[], uint8_t size);
 
   // background host serial bus service
